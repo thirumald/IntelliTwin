@@ -1,0 +1,33 @@
+[
+ {
+  "id": "presight",
+  "product": "IntelliTwin",
+  "byline": "by Presight",
+  "accent": "#00a3ff",
+  "accent_strong": "#3bb8ff",
+  "logo": "/brand/presight-logo.svg",
+  "footer": "Presight \u00a9 2026",
+  "lockup": true,
+  "accent2": "#60d0ac"
+ },
+ {
+  "id": "capital",
+  "product": "Capital Roads",
+  "byline": "Smart Mobility Centre",
+  "accent": "#2fb59a",
+  "accent_strong": "#5fd3bb",
+  "logo": "/brand/mark.svg",
+  "footer": "Capital Roads Authority \u00b7 powered by Presight",
+  "accent2": "#5fd3bb"
+ },
+ {
+  "id": "gulf",
+  "product": "Gulf Mobility",
+  "byline": "Traffic Intelligence",
+  "accent": "#e0a526",
+  "accent_strong": "#f2c35a",
+  "logo": "/brand/mark.svg",
+  "footer": "Gulf Mobility \u00b7 powered by Presight",
+  "accent2": "#f2c35a"
+ }
+]

@@ -1,0 +1,12 @@
+IntelliTwin, Presight (c) 2026
+
+Third-party components (all permissive; no GPL/AGPL/SSPL):
+  FastAPI (MIT), Uvicorn (BSD-3), NumPy (BSD-3), Pillow (HPND), MapLibre GL JS 4.7.1 (BSD-3),
+  IBM Plex Sans / Plex Sans Arabic (SIL OFL 1.1).
+Road geometry: (c) OpenStreetMap contributors, Open Database Licence (ODbL).
+Basemap tiles: OpenStreetMap standard tiles, for demonstration only. For customer deployments set
+INTELLITWIN_TILES to a licensed or self-hosted raster tile URL ({z}/{x}/{y}).
+All traffic, incidents, vehicles, plates and fines are simulated. The fine schedules are illustrative
+and are not the official schedules of any authority.
+
+Presight name and logo (web/brand/presight-logo.svg) are Presight trademarks, taken from presight.ai for use in Presight products and demos only.

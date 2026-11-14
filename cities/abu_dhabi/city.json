@@ -1,0 +1,238 @@
+{
+ "id": "abu_dhabi",
+ "name": "Abu Dhabi",
+ "name_ar": "أبوظبي",
+ "country": "UAE",
+ "currency": "AED",
+ "currency_ar": "د.إ",
+ "tz_offset_h": 4,
+ "center": [
+  54.395,
+  24.47
+ ],
+ "zoom": 11.2,
+ "bbox": [
+  54.3,
+  24.38,
+  54.65,
+  24.52
+ ],
+ "speed_limits": {
+  "motorway": 120,
+  "trunk": 100,
+  "primary": 80
+ },
+ "plate": {
+  "emirate": "Abu Dhabi",
+  "codes": [
+   "A",
+   "B",
+   "C",
+   "D",
+   "E",
+   "F",
+   "G",
+   "H",
+   "I",
+   "J",
+   "K",
+   "L",
+   "M",
+   "N",
+   "O",
+   "P",
+   "Q",
+   "R",
+   "50",
+   "10",
+   "12",
+   "1",
+   "2"
+  ],
+  "digits": [
+   4,
+   5
+  ]
+ },
+ "districts": [
+  {
+   "id": "corniche",
+   "name": "Corniche",
+   "name_ar": "الكورنيش",
+   "lat": 24.48,
+   "lon": 54.335,
+   "weight": 1.0
+  },
+  {
+   "id": "markaziyah",
+   "name": "Al Markaziyah",
+   "name_ar": "المركزية",
+   "lat": 24.495,
+   "lon": 54.368,
+   "weight": 1.25
+  },
+  {
+   "id": "khalidiyah",
+   "name": "Al Khalidiyah",
+   "name_ar": "الخالدية",
+   "lat": 24.465,
+   "lon": 54.345,
+   "weight": 1.1
+  },
+  {
+   "id": "reem",
+   "name": "Al Reem & Maryah",
+   "name_ar": "الريم والماريه",
+   "lat": 24.5,
+   "lon": 54.4,
+   "weight": 1.2
+  },
+  {
+   "id": "saadiyat",
+   "name": "Saadiyat",
+   "name_ar": "السعديات",
+   "lat": 24.53,
+   "lon": 54.44,
+   "weight": 0.7
+  },
+  {
+   "id": "airport_rd",
+   "name": "Airport Road",
+   "name_ar": "شارع المطار",
+   "lat": 24.46,
+   "lon": 54.39,
+   "weight": 1.15
+  },
+  {
+   "id": "yas",
+   "name": "Yas Island",
+   "name_ar": "جزيرة ياس",
+   "lat": 24.49,
+   "lon": 54.6,
+   "weight": 0.8
+  },
+  {
+   "id": "khalifa_city",
+   "name": "Khalifa City",
+   "name_ar": "مدينة خليفة",
+   "lat": 24.42,
+   "lon": 54.56,
+   "weight": 0.9
+  },
+  {
+   "id": "mainland",
+   "name": "Mainland Gateway",
+   "name_ar": "البوابة الرئيسية",
+   "lat": 24.44,
+   "lon": 54.47,
+   "weight": 1.0
+  }
+ ],
+ "fines": [
+  {
+   "id": "speeding",
+   "label": "Speeding",
+   "label_ar": "تجاوز السرعة",
+   "device": "speed",
+   "bands": [
+    {
+     "over": 20,
+     "amount": 300
+    },
+    {
+     "over": 30,
+     "amount": 600
+    },
+    {
+     "over": 40,
+     "amount": 700
+    },
+    {
+     "over": 50,
+     "amount": 1000
+    },
+    {
+     "over": 60,
+     "amount": 2000
+    }
+   ],
+   "black_points": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "id": "red_light",
+   "label": "Red-light running",
+   "label_ar": "تجاوز الإشارة الحمراء",
+   "device": "red_light",
+   "amount": 1000,
+   "black_points": 12,
+   "impound_days": 30
+  },
+  {
+   "id": "wrong_way",
+   "label": "Wrong-way driving",
+   "label_ar": "القيادة عكس السير",
+   "device": "wrong_way",
+   "amount": 600,
+   "black_points": 4,
+   "impound_days": 0
+  },
+  {
+   "id": "illegal_parking",
+   "label": "Illegal parking",
+   "label_ar": "الوقوف الخاطئ",
+   "device": "parking",
+   "amount": 500,
+   "black_points": 0,
+   "impound_days": 0
+  },
+  {
+   "id": "phone_use",
+   "label": "Phone use while driving",
+   "label_ar": "استخدام الهاتف أثناء القيادة",
+   "device": "ai_cabin",
+   "amount": 800,
+   "black_points": 4,
+   "impound_days": 0
+  },
+  {
+   "id": "seatbelt",
+   "label": "No seatbelt",
+   "label_ar": "عدم ربط حزام الأمان",
+   "device": "ai_cabin",
+   "amount": 400,
+   "black_points": 4,
+   "impound_days": 0
+  },
+  {
+   "id": "lane_violation",
+   "label": "Lane violation",
+   "label_ar": "مخالفة المسار",
+   "device": "ai_lane",
+   "amount": 400,
+   "black_points": 4,
+   "impound_days": 0
+  }
+ ],
+ "peak": {
+  "am": [
+   7.0,
+   9.5
+  ],
+  "pm": [
+   16.5,
+   19.5
+  ]
+ },
+ "weekend": [
+  5,
+  6
+ ],
+ "fine_disclaimer": "Illustrative schedule for demonstration only. Not the official fine schedule.",
+ "black_points_system": true
+}
