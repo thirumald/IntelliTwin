@@ -42,7 +42,7 @@ That model differs from IntelliTwin in method: it includes all road classes, dis
 
 | IntelliTwin parameter | Value | Relation to the references |
 | --- | --- | --- |
-| `TOTAL_VEHICLE_TRIPS` | 490,000 | Set to the same order as the third-party total for 06:30–10:00 |
+| `TOTAL_VEHICLE_TRIPS` | 392,000 | 80% of the third-party total for 06:30–10:00, because only major roads are modelled and the full total gridlocked |
 | `THROUGH_SHARE` | 1% | Same order as the third-party through-traffic share |
 | `EXTERNAL_SHARE` | 12% | Own assumption; no reference |
 

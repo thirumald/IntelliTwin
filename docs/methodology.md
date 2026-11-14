@@ -27,13 +27,13 @@ Street names use the OSM English name (`name:en`) where one exists, then the loc
 
 No traffic counts and no census commuting table are public for Abu Dhabi. The demand is therefore an assumption, built as follows.
 
-1. **Total (`TOTAL_VEHICLE_TRIPS`):** 490,000 vehicle trips departing 06:30–10:00. This is set to the same order as the only other public estimate found for the city (see [reference-figures.md](reference-figures.md)). It is the single most influential number in the model, together with the distance parameter below.
+1. **Total (`TOTAL_VEHICLE_TRIPS`):** 392,000 vehicle trips departing 06:30–10:00. The only other public estimate found for the city is about 490,000 for all roads (see [reference-figures.md](reference-figures.md)). IntelliTwin's network has major roads only, and with the full 490,000 it gridlocked (see the tuning history below), so the total is set 20% lower. This is a plausibility adjustment, not calibration. Together with the distance parameter below, it is the most influential number in the model.
 2. **Departure profile (`DEPART_PROFILE`):** relative departures per 15 minutes, rising to a peak around 07:15–08:00 and tapering after.
 3. **Trip ends:** each ordinary street link (primary, secondary, tertiary; not motorways, trunks or ramps) gets a weight.
    - With building data: 80% from the floor space of buildings whose nearest street link it is (within 600 m), 20% from link length × lanes.
    - Without building data: link length × lanes.
    - Homes and workplaces are not distinguished, because open land-use data is too sparse. Origins and destinations use the same weights.
-4. **Trip distribution (gravity):** an origin is drawn by weight. Twenty candidate destinations are drawn by weight, and one is chosen with probability ∝ `exp(−distance / 5 km)`, excluding anything closer than 1.5 km.
+4. **Trip distribution (gravity):** an origin is drawn by weight. Twelve candidate destinations are drawn by weight, and one is chosen with probability ∝ `exp(−distance / 9 km)`, excluding anything closer than 1.5 km.
 5. **External traffic:** 12% of trips have one end at a boundary point (60% inbound, 40% outbound); 1% cross the area boundary to boundary. Boundary points are dead-end junctions within about 2 km of the study-area edge, weighted by lanes × speed² so that motorways dominate.
 6. **Vehicle types:** one passenger-car type. Vans, lorries, taxis, company buses and motorcycles are not separated.
 
@@ -52,7 +52,7 @@ SUMO runs in **mesoscopic** mode (`--mesosim`): each road is a chain of queues w
 | `--meso-minor-penalty` | 3 s | Delay when entering from a minor road |
 | `--meso-overtaking` | on | Faster vehicles may pass within a queue segment |
 | Routes | `duarouter`, contraction hierarchies | Every trip starts on its quickest free-flow route |
-| Rerouting device | 30% of vehicles, at departure and every 15 min | These drivers re-plan using recent travel times. A one-run approximation of route choice, not an equilibrium |
+| Rerouting device | 30% of vehicles, at departure and every 10 min | These drivers re-plan using recent travel times. A one-run approximation of route choice, not an equilibrium |
 | `--max-depart-delay` | 900 s | A trip that cannot enter a jammed road within 15 minutes is dropped |
 | `--seed` | 42 | Reproducible runs |
 
@@ -92,9 +92,14 @@ Bus runs come from the GTFS timetable for a Tuesday service day. Positions follo
 
 ## 9. Tuning history
 
-| Build | Change | Result for the typical weekday |
-| --- | --- | --- |
-| 1 | Distance parameter 9 km | Average trip 22 km; network speed fell all morning to about 24 km/h at 10:00 with over 110,000 vehicles still moving. Judged too congested: trips were too long for the reduced network |
-| 2 | Distance parameter 5 km, 20 candidates; routes pre-computed | See the latest run summary |
+All three builds used the real OpenStreetMap network (20,801 links). “Typical weekday” results:
 
-These are plausibility adjustments against another model's figures ([reference-figures.md](reference-figures.md)), not calibration against measurements.
+| Build | Settings | Result |
+| --- | --- | --- |
+| 1 | 490,000 trips, distance parameter 9 km | Average trip 22 km. Network speed fell all morning to about 24 km/h at 10:00, with over 110,000 vehicles still moving. Gridlocked |
+| 2 | 490,000 trips, distance parameter 5 km | Average trip 18 km, but trips concentrated on the signalised street grids. Worse: about 13 km/h at 10:00 |
+| 3 | 392,000 trips, distance parameter 9 km | Current build; see the latest run summary. In build 1 this demand level (then the “−20%” case) peaked near 55,000 vehicles moving at about 50 km/h, the same order as the third-party model |
+
+The scenarios scale from the build 3 total: “+20%” is about 470,000 trips, close to the gridlocked build 1.
+
+These are plausibility adjustments against another model's figures, not calibration against measurements. The gridlock in builds 1 and 2 also reflects model limits: 70% of drivers never leave their free-flow route, and local streets that would absorb traffic are missing.
