@@ -43,6 +43,8 @@ The trip list is generated once with a fixed random seed. Each trip carries a ra
 
 SUMO runs in **mesoscopic** mode (`--mesosim`): each road is a chain of queues with capacity and travel time, not individual car-following. This is fast enough to simulate the whole city for three scenarios in one pipeline run.
 
+**Sampling (`SIM_SAMPLE` = 0.25):** only one trip in four is simulated. To keep congestion realistic, each simulated vehicle takes four vehicles' worth of road space (length 27.5 m plus gap) and the mesoscopic headways are multiplied by four, which cuts road capacity to a quarter. Vehicle counts and trip totals are scaled back up by four in the output. On the test network, the sampled run matched the full run to within about 1 km/h on network speed. The three scenarios run in parallel.
+
 | Setting | Value | Why |
 | --- | --- | --- |
 | `--meso-tls-penalty` | 0.6 | Signal timings are not public; adds a generic delay at signals from the default green split |

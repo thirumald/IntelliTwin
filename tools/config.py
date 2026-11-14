@@ -33,8 +33,12 @@ SCENARIOS = [
     {"id": "low", "label": "Demand −20% (staggered hours)", "demand": 0.8},
 ]
 
+# Only this share of trips is simulated; road capacity and storage are scaled down to match and
+# results are scaled back up. This keeps routing time practical for a city-wide run.
+SIM_SAMPLE = 0.25
+
 # Share of vehicles whose full trajectory is exported for the moving dots.
-TRIP_SAMPLE = 0.01
+TRIP_SAMPLE = 0.01               # of all trips (i.e. TRIP_SAMPLE / SIM_SAMPLE of the simulated ones)
 SHAPE_TOLERANCE_M = 15.0
 
 # Mesoscopic simulation settings (signals: timings are not public, so a generic penalty is applied).

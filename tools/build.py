@@ -163,7 +163,8 @@ def make_demand(net, edges, out_dir, bld=None):
     slot_len = (C.SIM_END - C.SIM_BEGIN) / len(prof)
     depart = C.SIM_BEGIN + (slot + rng.random(n)) * slot_len
     level = rng.random(n) * max_mult          # trip is in a scenario when level < its demand multiplier
-    sampled = rng.random(n) < C.TRIP_SAMPLE
+    simulated = rng.random(n) < C.SIM_SAMPLE
+    sampled = simulated & (rng.random(n) < C.TRIP_SAMPLE / C.SIM_SAMPLE)
 
     order = np.argsort(depart)
     files, counts = {}, {}
@@ -171,14 +172,17 @@ def make_demand(net, edges, out_dir, bld=None):
         path = os.path.join(out_dir, f"trips_{sc['id']}.xml")
         k = 0
         with open(path, "w") as f:
-            f.write('<routes>\n<vType id="car" vClass="passenger"/>\n')
+            # One simulated vehicle stands for 1 / SIM_SAMPLE vehicles, so it takes that much road space.
+            f.write(f'<routes>\n<vType id="car" vClass="passenger" length="{7.5 / C.SIM_SAMPLE - 2.5:.1f}" minGap="2.5"/>\n')
             for i in order:
                 if level[i] >= sc["demand"] or orig[i] == dest[i]:
+                    continue
+                k += 1
+                if not simulated[i]:
                     continue
                 f.write(f'<trip id="{"s" if sampled[i] else "v"}{i}" type="car" depart="{depart[i]:.1f}" '
                         f'from="{ids[orig[i]]}" to="{ids[dest[i]]}" departLane="best" departSpeed="max"'
                         + ('><param key="has.vehroute.device" value="true"/></trip>\n' if sampled[i] else '/>\n'))
-                k += 1
             f.write("</routes>\n")
         files[sc["id"]], counts[sc["id"]] = path, k
     stats = {"internal": int((trip_type == 0).sum()), "external": int((trip_type == 1).sum()),
@@ -198,7 +202,11 @@ def simulate(net_file, trips_file, work, tag):
     cmd = [
         "sumo", "-n", net_file, "-r", trips_file, "-a", add,
         "--begin", str(C.SIM_BEGIN), "--end", str(C.SIM_END), "--seed", str(C.SEED),
-        "--mesosim", "--meso-tls-penalty", str(C.MESO_TLS_PENALTY),
+        "--mesosim",
+        # Headways stretched by 1 / SIM_SAMPLE so that capacity matches the sampled demand.
+        "--meso-tauff", f"{1.13 / C.SIM_SAMPLE:.2f}", "--meso-taufj", f"{1.13 / C.SIM_SAMPLE:.2f}",
+        "--meso-taujf", f"{1.73 / C.SIM_SAMPLE:.2f}", "--meso-taujj", f"{1.4 / C.SIM_SAMPLE:.2f}",
+        "--meso-tls-penalty", str(C.MESO_TLS_PENALTY),
         "--meso-tls-flow-penalty", str(C.MESO_TLS_FLOW_PENALTY),
         "--meso-minor-penalty", str(C.MESO_MINOR_PENALTY), "--meso-overtaking",
         "--device.rerouting.probability", str(C.REROUTE_PROBABILITY),
@@ -245,7 +253,7 @@ def export_edgedata(xml_file, edge_index, edges, n_bins, out_prefix):
                 ss = float(el.get("sampledSeconds", 0))
                 if ss > 0:
                     ratio[b, i] = min(100, round(100 * float(el.get("speed")) / ff[i]))
-                    occ[b, i] = ss
+                    occ[b, i] = ss / C.SIM_SAMPLE
             el.clear()
     ratio.tofile(out_prefix + "_speed.bin")
     np.minimum(np.round(occ / 10), 65535).astype("<u2").tofile(out_prefix + "_occ.bin")
@@ -314,7 +322,7 @@ def trip_stats(tripinfo_file):
             el.clear()
     if not n:
         return {"completed": 0}
-    return {"completed": n, "km": round(dist / n / 1000, 1), "min": round(dur / n / 60, 1),
+    return {"completed": round(n / C.SIM_SAMPLE), "km": round(dist / n / 1000, 1), "min": round(dur / n / 60, 1),
             "kmh": round(3.6 * dist / dur, 1), "min_lost": round(loss / n / 60, 1)}
 
 
@@ -406,7 +414,7 @@ def main():
         "sumo": subprocess.run(["sumo", "--version"], capture_output=True, text=True).stdout.splitlines()[0].strip(),
         "bbox": C.BBOX, "sim_begin": C.SIM_BEGIN, "sim_end": C.SIM_END,
         "display_begin": C.DISPLAY_BEGIN, "bin_seconds": C.BIN_SECONDS, "bins": n_bins,
-        "trip_sample": C.TRIP_SAMPLE,
+        "trip_sample": C.TRIP_SAMPLE, "sim_sample": C.SIM_SAMPLE,
         "network": {"edges": len(edges), "junctions": len(net.getNodes()), "signals": tls,
                     "km": round(sum(e.getLength() for e in edges) / 1000), "km_by_class": km_by_class},
         "demand": {"total_assumed": C.TOTAL_VEHICLE_TRIPS, **demand_stats},
