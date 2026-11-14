@@ -1,0 +1,19 @@
+<section id="architecture" data-transition="fade">
+<p class="eyebrow">Architecture</p>
+<h2>Built to take real feeds, not just a simulator</h2>
+<div class="flow" style="align-items:stretch;margin-top:48px">
+<div class="step"><b>SOURCES</b><span style="font-size:32px">Simulator today</span><p style="font-size:26px;color:#9aaabd;margin:12px 0 0;line-height:1.35">VISIONX events, ANPR and radar feeds, open data</p></div>
+<x-shape kind="arrow-right" style="width:48px;height:26px;background:#3bb8ff;align-self:center"></x-shape>
+<div class="step"><b>INGEST AND RULES</b><span style="font-size:32px">Incident lifecycle, fine rules</span><p style="font-size:26px;color:#9aaabd;margin:12px 0 0;line-height:1.35">Review workflow, audit trail</p></div>
+<x-shape kind="arrow-right" style="width:48px;height:26px;background:#3bb8ff;align-self:center"></x-shape>
+<div class="step"><b>ANALYTICS</b><span style="font-size:32px">Congestion, forecast</span><p style="font-size:26px;color:#9aaabd;margin:12px 0 0;line-height:1.35">Weekly profile, hotspots, black spots</p></div>
+<x-shape kind="arrow-right" style="width:48px;height:26px;background:#3bb8ff;align-self:center"></x-shape>
+<div class="step"><b>CONSOLE</b><span style="font-size:32px">Map and dashboards</span><p style="font-size:26px;color:#9aaabd;margin:12px 0 0;line-height:1.35">White-label, English and Arabic</p></div>
+</div>
+<div class="cards" style="margin-top:40px">
+<div class="card"><h3>Today</h3><p>One FastAPI service, in-memory state, web console with no build step.</p></div>
+<div class="card"><h3>Next</h3><p>Postgres persistence, event streaming, authentication and audit export.</p></div>
+</div>
+<div class="foot"><span>Commercial-safe stack: permissive licences only</span><span class="pg"></span></div>
+<aside>The simulator sits behind the same interfaces a real feed would use. The VISIONX bridge is the first real integration: wrong-way, line-count and ANPR events become IntelliTwin events.</aside>
+</section>

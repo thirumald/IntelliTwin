@@ -1,0 +1,57 @@
+body { font-family: 'IBM Plex Sans', Arial, sans-serif; }
+section { counter-increment: page; background: #0a1424; color: #e8eef6; padding: 128px 128px 160px; display: flex; flex-direction: column; }
+section.light { background: #eef3f9; color: #0a1424; }
+section.accent { background: linear-gradient(135deg, #00a3ff, #60d0ac); color: #03121f; }
+
+.eyebrow { font-size: 28px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #3bb8ff; margin: 0 0 20px; }
+.light .eyebrow { color: #0069b3; }
+.accent .eyebrow { color: #03121f; }
+h1 { font-size: 168px; font-weight: 600; line-height: 1; margin: 0; letter-spacing: -0.02em; }
+h2 { font-size: 72px; font-weight: 600; line-height: 1.08; margin: 0; letter-spacing: -0.01em; }
+.lead { font-size: 36px; line-height: 1.38; color: #9aaabd; margin: 28px 0 0; }
+.light .lead { color: #435468; }
+.accent .lead { color: #03121f; }
+.tw { color: #3bb8ff; font-weight: 400; }
+
+.split { display: flex; flex-direction: row; gap: 64px; align-items: center; flex: 1; }
+.split .txt { width: 580px; display: flex; flex-direction: column; }
+.split .pic { width: 1020px; height: 637px; object-fit: contain; border-radius: 16px; border: 1px solid #223754; background: #0f1d33; }
+.points { display: flex; flex-direction: column; gap: 20px; margin: 36px 0 0; }
+.points p { font-size: 30px; line-height: 1.35; color: #c9d5e3; margin: 0; padding-left: 28px; border-left: 4px solid #00a3ff; }
+.light .points p { color: #243346; }
+
+.cards { display: flex; flex-direction: row; gap: 32px; margin: 56px 0 0; }
+.card { flex: 1; background: #0f1d33; border: 1px solid #223754; border-radius: 20px; padding: 40px; }
+.light .card { background: #ffffff; border-color: #d3deec; }
+.card h3 { font-size: 40px; font-weight: 600; margin: 0 0 16px; }
+.card p { font-size: 30px; line-height: 1.38; color: #9aaabd; margin: 0; }
+.light .card p { color: #435468; }
+.card .num { font-size: 28px; font-weight: 600; color: #3bb8ff; margin: 0 0 14px; }
+.light .card .num { color: #0069b3; }
+
+.flow { display: flex; flex-direction: row; align-items: center; gap: 20px; margin: 56px 0 0; }
+.step { flex: 1; background: #0f1d33; border: 1px solid #223754; border-radius: 18px; padding: 28px 24px; }
+.step b { display: block; font-size: 24px; color: #3bb8ff; font-weight: 600; margin: 0 0 8px; }
+.step span { display: block; font-size: 36px; font-weight: 600; }
+
+.rows { display: flex; flex-direction: column; gap: 14px; margin: 28px 0 0; }
+.row { display: flex; flex-direction: row; gap: 36px; align-items: baseline; background: #ffffff; border: 1px solid #d3deec; border-radius: 18px; padding: 14px 32px; }
+.row .n { font-size: 36px; font-weight: 600; color: #0069b3; width: 64px; margin: 0; }
+.row h3 { font-size: 32px; font-weight: 600; margin: 0; width: 600px; }
+.row p { font-size: 26px; line-height: 1.3; color: #435468; margin: 0; flex: 1; }
+
+.foot { position: absolute; left: 128px; right: 128px; bottom: 64px; display: flex; flex-direction: row; justify-content: space-between; font-size: 24px; color: #8496ad; }
+.light .foot { color: #5b6b80; }
+.accent .foot { color: #03121f; }
+.pg::after { content: counter(page); }
+.pill { display: inline-block; font-size: 24px; font-weight: 600; padding: 8px 20px; border-radius: 40px; background: #0e3a57; color: #7fd0ff; margin: 0; }
+.pill.warn { background: #4a3a07; color: #fab219; }
+.two { display: flex; flex-direction: row; gap: 40px; margin: 44px 0 0; }
+.two figure { flex: 1; margin: 0; display: flex; flex-direction: column; gap: 16px; }
+.two img { width: 812px; height: 507px; object-fit: contain; border-radius: 14px; border: 1px solid #223754; background: #0f1d33; }
+.two p { font-size: 30px; color: #c9d5e3; margin: 0; }
+.col { flex: 1; background: #0f1d33; border: 1px solid #223754; border-radius: 20px; padding: 36px 40px; }
+.col h3 { font-size: 40px; font-weight: 600; margin: 0 0 8px; }
+.col .tag { font-size: 24px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #3bb8ff; margin: 0 0 22px; }
+.col li { font-size: 30px; line-height: 1.4; color: #c9d5e3; margin: 0 0 10px; }
+.col.done { border-color: #00a3ff; }
