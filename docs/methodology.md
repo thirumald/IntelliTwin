@@ -51,8 +51,8 @@ SUMO runs in **mesoscopic** mode (`--mesosim`): each road is a chain of queues w
 | `--meso-tls-flow-penalty` | 0.8 | Generic capacity loss at signals |
 | `--meso-minor-penalty` | 3 s | Delay when entering from a minor road |
 | `--meso-overtaking` | on | Faster vehicles may pass within a queue segment |
-| Routes | `duarouter`, contraction hierarchies | Every trip starts on its quickest free-flow route |
-| Rerouting device | 30% of vehicles, at departure and every 10 min | These drivers re-plan using recent travel times. A one-run approximation of route choice, not an equilibrium |
+| Routes at departure | SUMO routing engine, A* | Every trip is routed when it departs, using travel times averaged over recent minutes, so later drivers avoid roads that are already slow |
+| Rerouting device | 30% of vehicles, every 10 min | These drivers also re-plan while driving. A one-run approximation of route choice, not an equilibrium |
 | `--max-depart-delay` | 900 s | A trip that cannot enter a jammed road within 15 minutes is dropped |
 | `--seed` | 42 | Reproducible runs |
 
@@ -92,14 +92,17 @@ Bus runs come from the GTFS timetable for a Tuesday service day. Positions follo
 
 ## 9. Tuning history
 
-All three builds used the real OpenStreetMap network (20,801 links). “Typical weekday” results:
+All builds used the real OpenStreetMap network (20,801 links). “Typical weekday” results:
 
 | Build | Settings | Result |
 | --- | --- | --- |
-| 1 | 490,000 trips, distance parameter 9 km | Average trip 22 km. Network speed fell all morning to about 24 km/h at 10:00, with over 110,000 vehicles still moving. Gridlocked |
-| 2 | 490,000 trips, distance parameter 5 km | Average trip 18 km, but trips concentrated on the signalised street grids. Worse: about 13 km/h at 10:00 |
-| 3 | 392,000 trips, distance parameter 9 km | Current build; see the latest run summary. In build 1 this demand level (then the “−20%” case) peaked near 55,000 vehicles moving at about 50 km/h, the same order as the third-party model |
+| 1 | 490,000 trips, distance 9 km, traffic-aware routes at departure | Average trip 22 km. Speed fell all morning to about 24 km/h at 10:00 with over 110,000 vehicles moving. Gridlocked. The same build's “−20%” case (392,000 trips) peaked near 55,000 vehicles at about 50 km/h and began to recover |
+| 2 | 490,000 trips, distance 5 km, free-flow routes fixed in advance | About 13 km/h at 10:00. Worse |
+| 3 | 392,000 trips, distance 9 km, free-flow routes fixed in advance | About 15 km/h at 10:00. Still gridlocked |
+| 4 | 392,000 trips, distance 9 km, traffic-aware routes at departure | Current build; see the latest run summary |
 
-The scenarios scale from the build 3 total: “+20%” is about 470,000 trips, close to the gridlocked build 1.
+Findings: fixing every driver's route in advance on free-flowing roads (builds 2 and 3) was the main cause of gridlock, more than the trip total. Routing each trip at departure with recent travel times costs about 10 ms per trip, which is why a build takes about 45 minutes.
 
-These are plausibility adjustments against another model's figures, not calibration against measurements. The gridlock in builds 1 and 2 also reflects model limits: 70% of drivers never leave their free-flow route, and local streets that would absorb traffic are missing.
+The scenarios scale from the build 4 total: “+20%” is about 470,000 trips, close to the gridlocked build 1.
+
+These are plausibility adjustments against another model's figures ([reference-figures.md](reference-figures.md)), not calibration against measurements.
