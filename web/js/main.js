@@ -1,14 +1,15 @@
-import { h, $, api, post, store, startStore, onState, loadBrand, brand, applyBrand, lang, setLang, t, icon, hhmm, toast, reloadMeta } from "./core.js";
+import { h, $, api, post, send, session, can, modal, store, startStore, onState, loadBrand, brand, applyBrand, lang, setLang, t, icon, hhmm, toast, reloadMeta } from "./core.js";
 import { nav, incidentDrawer, violationDrawer } from "./details.js";
 
 const PAGES = {
   overview: () => import("./pages/overview.js"), map: () => import("./pages/map.js"), congestion: () => import("./pages/congestion.js"),
   incidents: () => import("./pages/incidents.js"), violations: () => import("./pages/violations.js"), operations: () => import("./pages/operations.js"),
   enforcement: () => import("./pages/enforcement.js"), settings: () => import("./pages/settings.js"),
+  users: () => import("./pages/admin.js").then(m => ({ render: m.renderUsers })), audit: () => import("./pages/admin.js").then(m => ({ render: m.renderAudit })),
 };
 const NAV = [
   ["Command", null], ["Overview", "overview", "grid"], ["Live map", "map", "map"], ["Congestion", "congestion", "traffic"], ["Incidents", "incidents", "alert"], ["Violations & fines", "violations", "receipt"],
-  ["Analytics", null], ["Operations", "operations", "shield"], ["Enforcement", "enforcement", "chart"], ["Admin", null], ["City & brand", "settings", "gear"],
+  ["Analytics", null], ["Operations", "operations", "shield"], ["Enforcement", "enforcement", "chart"], ["Admin", null], ["City & brand", "settings", "gear"], ["Users", "users", "users", "admin"], ["Audit log", "audit", "receipt", "admin"],
 ];
 let cleanup = null, current = null;
 
@@ -27,8 +28,27 @@ function buildTop() {
     b.lockup
       ? h("div", { class: "logo lockup" }, h("img", { src: b.logo, alt: "Presight, a G42 company", class: "plogo" }), h("span", { class: "vr" }), h("b", { class: "prod" }, "Intelli", h("i", null, "Twin")))
       : h("div", { class: "logo" }, h("img", { src: "/brand/mark.svg", alt: "" }), h("div", { class: "t" }, h("b", null, b.product), h("small", null, b.byline))),
-    citySel, h("span", { class: "chip" }, t("Simulated data")), h("span", { class: "spacer" }), clock, speeds, playBtn, story, reset, brandSel, langBtn);
+    citySel, h("span", { class: "chip" }, t("Simulated data")), h("span", { class: "spacer" }), clock, speeds, playBtn, story, reset, brandSel, langBtn, ...[userMenu()].filter(Boolean));
+  if (!can("operator")) top.querySelectorAll("#playbtn,#storybtn,.btn[title]").forEach(b => { b.disabled = true; b.title = t("Read-only role"); });
   if (store.state) paintTop(store.state);
+}
+function userMenu() {
+  const u = session.user;
+  if (!u || u.username === "demo") return null;
+  return h("div", { class: "usr" }, h("button", { class: "btn", "aria-haspopup": "menu", onclick: e => { const m = e.currentTarget.nextSibling; m.hidden = !m.hidden; } }, icon("user"), " ", u.name),
+    h("div", { class: "menu", hidden: true }, h("div", { class: "who" }, h("b", null, u.name), h("small", null, `${u.username} · ${u.role}`)),
+      h("button", { onclick: () => passwordDialog(false) }, t("Change password")),
+      h("button", { onclick: async () => { try { await send("POST", "/auth/logout"); } finally { location.replace("/login.html"); } } }, t("Sign out"))));
+}
+export function passwordDialog(forced, after) {
+  const cur = h("input", { type: "password", autocomplete: "current-password" }), nw = h("input", { type: "password", autocomplete: "new-password" }), nw2 = h("input", { type: "password", autocomplete: "new-password" }), err = h("div", { class: "ferr" });
+  const m = modal(forced ? t("Set a new password") : t("Change password"), [forced ? h("p", { class: "muted" }, t("You must set your own password before continuing.")) : null,
+    h("label", null, t("Current password"), cur), h("label", null, t("New password (min 10 characters)"), nw), h("label", null, t("Repeat new password"), nw2), err],
+    async () => {
+      if (nw.value !== nw2.value) { err.textContent = t("Passwords do not match"); return false; }
+      try { await send("POST", "/auth/password", { current: cur.value, new: nw.value }); session.user.must_change = false; toast(t("Password changed")); if (after) after(); return true; } catch (e) { err.textContent = e.message; return false; }
+    }, !forced);
+  cur.focus(); return m;
 }
 function markSpeed(x) { document.querySelectorAll(".seg button[data-x]").forEach(b => b.classList.toggle("on", Number(b.dataset.x) === Math.round(x))); }
 function paintTop(s) {
@@ -42,7 +62,8 @@ function paintTop(s) {
 
 function buildNav() {
   const nv = $("#nav"); nv.replaceChildren();
-  for (const [label, id, ic] of NAV) {
+  for (const [label, id, ic, need] of NAV) {
+    if (need && !can(need)) continue;
     if (!id) { nv.append(h("div", { class: "sep" }, t(label))); continue; }
     nv.append(h("a", { href: "#/" + id, "data-p": id, class: current === id ? "on" : "" }, icon(ic), h("span", { class: "lbl" }, t(label)), id === "incidents" ? h("span", { class: "badge-n" }, store.state ? store.state.incidents.length : 0) : null));
   }
@@ -66,8 +87,17 @@ async function route(force) {
   if (arg && page === "violations") violationDrawer(arg);
 }
 
+window.addEventListener("unhandledrejection", e => { const r = e.reason; if (r && r.status && r.status !== 401) { toast(r.message); e.preventDefault(); } });
+document.addEventListener("click", e => { if (!e.target.closest(".usr")) document.querySelectorAll(".usr .menu").forEach(m => m.hidden = true); });
+
 (async function boot() {
+  const me = await api("/auth/me");
+  session.user = me.user;
   setLang(lang.code);
+  if (session.user.must_change) {  // every other API call is refused until the password is changed
+    await loadBrand(); document.body.append(h("div", { class: "empty", style: { padding: "40px" } }, t("Set your password to continue")));
+    passwordDialog(true, () => location.reload()); return;
+  }
   await loadBrand();
   await startStore();
   buildTop(); buildNav();

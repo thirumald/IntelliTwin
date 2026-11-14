@@ -87,7 +87,9 @@ def test_forecast_shape_and_incident_awareness(eng):
     assert all(p["lo"] <= p["ratio"] <= p["hi"] for p in f["points"])
 
 
-def test_api_endpoints():
+def test_api_endpoints(monkeypatch, tmp_path):
+    monkeypatch.setenv("INTELLITWIN_AUTH", "off")
+    monkeypatch.setenv("INTELLITWIN_DATA", str(tmp_path))
     from intellitwin import app as appmod
 
     with TestClient(appmod.app) as c:

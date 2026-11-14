@@ -1,5 +1,5 @@
 // Detail drawers: incident (lifecycle + linked chain) and violation (evidence + fine workflow).
-import { h, api, post, t, num, money, hhmm, hhmmss, ymdhm, dur, pill, plate, SEV, VIOL_LABEL, toast, drawer, store, statusLabel } from "./core.js";
+import { h, api, post, t, num, money, hhmm, hhmmss, ymdhm, dur, pill, plate, SEV, VIOL_LABEL, toast, drawer, store, statusLabel, can } from "./core.js";
 
 const STAGES = ["detected", "verified", "dispatched", "on_scene", "clearing", "cleared"];
 const STAGE_LABEL = { detected: "Detected", verified: "Verified", dispatched: "Dispatched", on_scene: "On scene", clearing: "Clearing", cleared: "Cleared" };
@@ -14,7 +14,7 @@ export async function incidentDrawer(id) {
     let inc, chain;
     try { [inc, chain] = await Promise.all([api(`/incidents/${id}`), api(`/chain/${id}`)]); } catch { return; }
     const idx = STAGES.indexOf(inc.status);
-    const act = (a, label, cls = "") => h("button", { class: "btn sm " + cls, onclick: async () => { await post(`/incidents/${id}/${a}`); toast(t(label)); load(); } }, t(label));
+    const act = (a, label, cls = "") => h("button", { class: "btn sm " + cls, disabled: !can("operator"), onclick: async () => { await post(`/incidents/${id}/${a}`); toast(t(label)); load(); } }, t(label));
     host.replaceChildren(
       h("h2", null, `${inc.label} `, h("span", { class: "muted tnum" }, inc.id)),
       h("div", { class: "row" }, pill(inc.status), h("span", { class: "pill " + SEV[inc.severity][1] }, h("i"), t(SEV[inc.severity][0])), h("span", { class: "muted" }, `${inc.street} · ${inc.district_name}`)),
@@ -50,7 +50,7 @@ export async function violationDrawer(id) {
     let v;
     try { v = await api(`/violations/${id}`); } catch { host.replaceChildren(h("p", null, "Not found")); return; }
     const lbl = VIOL_LABEL()[v.type] || v.type;
-    const act = (a, label, cls = "", body) => h("button", { class: "btn " + cls, onclick: async () => { await post(`/violations/${id}/${a}`, body); toast(t(label)); load(); } }, t(label));
+    const act = (a, label, cls = "", body) => h("button", { class: "btn " + cls, disabled: !can("operator"), onclick: async () => { await post(`/violations/${id}/${a}`, body); toast(t(label)); load(); } }, t(label));
     const buttons = [];
     if (v.status === "in_review") buttons.push(act("approve", "Approve & issue fine", "primary"), act("reject", "Reject", "danger", { reason: "Evidence insufficient" }));
     if (["issued", "overdue"].includes(v.status)) buttons.push(act("pay", "Mark paid", "primary"), act("appeal", "Open appeal"));

@@ -299,7 +299,7 @@ class Engine:
         else:
             inc["next_at"] = at
 
-    def incident_action(self, iid: str, action: str) -> dict:
+    def incident_action(self, iid: str, action: str, who: str = "Operator") -> dict:
         with self.lock:
             inc = self.incidents[iid]
             to = {"verify": "verified", "dispatch": "dispatched", "arrive": "on_scene", "clear": "cleared"}.get(action)
@@ -310,7 +310,7 @@ class Engine:
             # walk through intermediate states so timestamps stay consistent
             while STATUSES.index(inc["status"]) < STATUSES.index(to):
                 self._set_status(inc, STATUSES[STATUSES.index(inc["status"]) + 1], self.now)
-            inc["notes"].append({"ts": self.now, "text": f"Operator action: {action}"})
+            inc["notes"].append({"ts": self.now, "text": f"{who}: {action}"})
             return inc
 
     # ------------------------------------------------------------------ violations & fines
@@ -438,14 +438,14 @@ class Engine:
         v["reviewer"] = who
         v["t"]["rejected"] = at
 
-    def violation_action(self, vid: str, action: str, reason: str | None = None) -> dict:
+    def violation_action(self, vid: str, action: str, reason: str | None = None, who: str = "Operator") -> dict:
         with self.lock:
             v = self.violations[vid]
             if action == "approve" and v["status"] == "in_review":
-                self._issue(v, self.now, reviewer="Operator")
+                self._issue(v, self.now, reviewer=who)
                 self.log("info", "fine", f"Fine {v['fine_ref']} issued: {v['fine']['amount']} {self.city.meta['currency']} to {v['vehicle']['plate']} ({v['type'].replace('_', ' ')})", vid)
             elif action == "reject" and v["status"] == "in_review":
-                self._reject(v, reason or "Rejected by operator", self.now, "Operator")
+                self._reject(v, reason or "Rejected by operator", self.now, who)
             elif action == "pay" and v["status"] in ("issued", "overdue"):
                 v["status"] = "paid"
                 v["t"]["paid"] = self.now

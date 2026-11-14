@@ -18,9 +18,17 @@ export const $ = (s, r = document) => r.querySelector(s);
 // ---------------------------------------------------------------- API
 export async function api(path, opts) {
   const r = await fetch("/api" + path, opts);
-  if (!r.ok) throw new Error((await r.text()) || r.statusText);
+  if (r.status === 401 && !path.startsWith("/auth/login")) { location.replace("/login.html?next=" + encodeURIComponent(location.pathname + location.hash)); throw new Error("Not signed in"); }
+  if (!r.ok) {
+    let msg = r.statusText, code = null;
+    try { const j = await r.json(); msg = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail); code = j.code || null; } catch {}
+    const e = new Error(msg); e.status = r.status; e.code = code; throw e;
+  }
   return r.json();
 }
+export const send = (method, path, body) => api(path, { method, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
+export const session = { user: null };
+export const can = role => !session.user || ({ viewer: 0, operator: 1, admin: 2 }[session.user.role] >= { viewer: 0, operator: 1, admin: 2 }[role]);
 export const post = (path, body) => api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
 
 // ---------------------------------------------------------------- store (polls /api/state)
@@ -123,6 +131,8 @@ export const pill = (s, text) => h("span", { class: "pill " + (STATUS_PILL[s] ||
 export const plate = p => h("span", { class: "plate" }, p);
 
 const ICONS = {
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2.5.6 4 2.6 4 6"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   map: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
   traffic: '<rect x="8" y="2" width="8" height="20" rx="3"/><circle cx="12" cy="7" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="17" r="1.5"/>',
@@ -134,6 +144,16 @@ const ICONS = {
   play: '<path d="M7 4v16l13-8z"/>', pause: '<path d="M7 4v16M17 4v16"/>', bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>', refresh: '<path d="M20 11a8 8 0 1 0-2 6M20 4v7h-7"/>',
 };
 export function icon(n) { const s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("class", "ic"); s.innerHTML = ICONS[n] || ""; return s; }
+
+export function modal(title, body, onOk, cancellable = true, okLabel = t("Save")) {
+  const scrim = h("div", { class: "scrim", style: { zIndex: 60 } });
+  const close = () => { scrim.remove(); box.remove(); document.removeEventListener("keydown", esc); };
+  const esc = e => { if (e.key === "Escape" && cancellable) close(); };
+  const ok = h("button", { class: "btn primary", onclick: async () => { ok.disabled = true; try { if (await onOk()) close(); } finally { ok.disabled = false; } } }, okLabel);
+  const box = h("div", { class: "modal", role: "dialog", "aria-modal": "true" }, h("h3", null, title), h("div", { class: "mbody" }, body), h("div", { class: "mfoot" }, cancellable ? h("button", { class: "btn", onclick: close }, t("Cancel")) : null, ok));
+  document.body.append(scrim, box); document.addEventListener("keydown", esc);
+  return { close, box };
+}
 
 export function toast(msg) { const el = h("div", { class: "toast" }, msg); document.body.append(el); setTimeout(() => el.remove(), 2600); }
 

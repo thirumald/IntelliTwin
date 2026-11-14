@@ -6,22 +6,29 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Body, FastAPI, HTTPException, Query, Response
+from fastapi import Body, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import __version__, analytics as an
+from . import __version__, analytics as an, auth as authmod
 from .city import list_cities
 from .engine import Engine, start_background
 from .evidence import render_frame, render_plate
 
 WEB = Path(__file__).resolve().parent.parent / "web"
 engine: Engine | None = None
+auth: authmod.Auth | None = None
+PUBLIC_API = {"/api/auth/login", "/api/health"}
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global engine
+    global engine, auth
+    auth = authmod.Auth()
+    if auth.bootstrap_note:
+        print("\n" + "=" * 72 + "\n  " + auth.bootstrap_note + "\n" + "=" * 72 + "\n", flush=True)
+    if not authmod.enabled():
+        print("WARNING: INTELLITWIN_AUTH=off, login is disabled and everyone is admin.", flush=True)
     engine = Engine(os.environ.get("INTELLITWIN_CITY", "abu_dhabi"), start=os.environ.get("INTELLITWIN_START", "07:20"))
     engine.set_speed(float(os.environ.get("INTELLITWIN_SPEED", "10")))
     start_background(engine)
@@ -29,6 +36,117 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="IntelliTwin", version=__version__, lifespan=lifespan)
+
+
+def _ip(request: Request) -> str:
+    return request.client.host if request.client else "-"
+
+
+@app.middleware("http")
+async def guard(request: Request, call_next):
+    path, method = request.url.path, request.method
+    request.state.user = None
+    request.state.token = request.cookies.get(authmod.COOKIE)
+    if not path.startswith("/api/"):
+        return await call_next(request)
+    if not authmod.enabled():
+        request.state.user = {"id": 0, "username": "demo", "name": "Demo (no login)", "role": "admin", "disabled": False, "must_change": False}
+        return await call_next(request)
+    user = auth.user_for(request.state.token) if auth else None
+    request.state.user = user
+    if path in PUBLIC_API:
+        return await call_next(request)
+    if user is None:
+        return JSONResponse({"detail": "Not signed in"}, status_code=401)
+    if method not in ("GET", "HEAD", "OPTIONS"):
+        origin = request.headers.get("origin")  # CSRF defence in depth on top of SameSite=Lax
+        if origin and origin.split("://", 1)[-1] != request.headers.get("host"):
+            return JSONResponse({"detail": "Cross-origin request blocked"}, status_code=403)
+    if user["must_change"] and not path.startswith("/api/auth/"):
+        return JSONResponse({"detail": "Password change required", "code": "password_change_required"}, status_code=403)
+    if path.startswith("/api/admin/") and user["role"] != "admin":
+        return JSONResponse({"detail": "Admin only"}, status_code=403)
+    if method not in ("GET", "HEAD", "OPTIONS") and not path.startswith("/api/auth/") and user["role"] == "viewer":
+        return JSONResponse({"detail": "Your role is read-only"}, status_code=403)
+    resp = await call_next(request)
+    if method == "POST" and path.startswith("/api/") and not path.startswith(("/api/auth/", "/api/admin/")) and resp.status_code < 400:
+        auth.log(user["username"], "action", path.removeprefix("/api/"), None, _ip(request))
+    return resp
+
+
+def U(request: Request) -> dict:
+    return request.state.user
+
+
+def _err(ex: authmod.AuthError):
+    raise HTTPException(ex.status, ex.msg)
+
+
+@app.post("/api/auth/login")
+def login(request: Request, response: Response, body: dict = Body(...)):
+    try:
+        token, user = auth.login(str(body.get("username", "")), str(body.get("password", "")), _ip(request))
+    except authmod.AuthError as ex:
+        _err(ex)
+    response.set_cookie(authmod.COOKIE, token, max_age=authmod.SESSION_TTL, httponly=True, samesite="lax",
+                        secure=request.url.scheme == "https", path="/")
+    return user
+
+
+@app.post("/api/auth/logout")
+def logout(request: Request, response: Response):
+    auth.logout(request.state.token, request.state.user, _ip(request))
+    response.delete_cookie(authmod.COOKIE, path="/")
+    return {"ok": True}
+
+
+@app.get("/api/auth/me")
+def me(request: Request):
+    return {"user": U(request), "auth": authmod.enabled()}
+
+
+@app.post("/api/auth/password")
+def change_password(request: Request, body: dict = Body(...)):
+    try:
+        auth.change_password(U(request), str(body.get("current", "")), str(body.get("new", "")), request.state.token, _ip(request))
+    except authmod.AuthError as ex:
+        _err(ex)
+    return {"ok": True}
+
+
+@app.get("/api/admin/users")
+def admin_users():
+    return {"users": auth.list_users(), "roles": list(authmod.ROLES)}
+
+
+@app.post("/api/admin/users")
+def admin_create(request: Request, body: dict = Body(...)):
+    try:
+        return auth.create_user(U(request), body.get("username", ""), body.get("name", ""), body.get("role", "viewer"), body.get("password", ""), _ip(request))
+    except authmod.AuthError as ex:
+        _err(ex)
+
+
+@app.patch("/api/admin/users/{uid}")
+def admin_update(uid: int, request: Request, body: dict = Body(...)):
+    try:
+        return auth.update_user(U(request), uid, body, _ip(request))
+    except authmod.AuthError as ex:
+        _err(ex)
+
+
+@app.delete("/api/admin/users/{uid}")
+def admin_delete(uid: int, request: Request):
+    try:
+        auth.delete_user(U(request), uid, _ip(request))
+    except authmod.AuthError as ex:
+        _err(ex)
+    return {"ok": True}
+
+
+@app.get("/api/admin/audit")
+def admin_audit(limit: int = 200, q: str | None = None):
+    return {"items": auth.audit(limit, q)}
 
 
 def E() -> Engine:
@@ -116,12 +234,12 @@ def incident(iid: str):
 
 
 @app.post("/api/incidents/{iid}/{action}")
-def incident_action(iid: str, action: str):
+def incident_action(iid: str, action: str, request: Request):
     e = E()
     if iid not in e.incidents:
         raise HTTPException(404, "unknown incident")
     try:
-        inc = e.incident_action(iid, action)
+        inc = e.incident_action(iid, action, U(request)["name"])
     except ValueError as ex:
         raise HTTPException(400, str(ex))
     with e.lock:
@@ -164,12 +282,12 @@ def violation(vid: str):
 
 
 @app.post("/api/violations/{vid}/{action}")
-def violation_action(vid: str, action: str, body: dict | None = Body(default=None)):
+def violation_action(vid: str, action: str, request: Request, body: dict | None = Body(default=None)):
     e = E()
     if vid not in e.violations:
         raise HTTPException(404, "unknown violation")
     try:
-        v = e.violation_action(vid, action, (body or {}).get("reason"))
+        v = e.violation_action(vid, action, (body or {}).get("reason"), U(request)["name"])
     except ValueError as ex:
         raise HTTPException(400, str(ex))
     with e.lock:

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in · IntelliTwin by Presight</title>
+<link rel="icon" href="/brand/mark.svg">
+<link rel="stylesheet" href="/css/app.css">
+<style>
+:root{--brand:#00a3ff;--brand2:#60d0ac;--brand-ink:#04121f;--brand-strong:#3bb8ff}
+body{display:grid;place-items:center;min-height:100vh;margin:0}
+.lg{width:min(400px,92vw);background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:28px 28px 22px;box-shadow:0 20px 60px #0008}
+.lg .brandrow{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.lg .brandrow img{height:30px;width:auto}.lg .brandrow .vr{width:1px;height:26px;background:var(--rule)}
+.lg .brandrow b{font-size:1.1rem}.lg .brandrow i{font-style:normal;color:var(--brand-strong)}
+.lg h1{font-size:1.15rem;margin:0 0 4px}.lg p.s{margin:0 0 18px;color:var(--muted);font-size:.875rem}
+.lg label{display:block;font-size:.8125rem;color:var(--muted);margin:12px 0 4px}
+.lg input{width:100%;box-sizing:border-box;background:var(--raised);border:1px solid var(--rule);border-radius:7px;padding:9px 11px;color:var(--ink);font:inherit}
+.lg input:focus{outline:2px solid var(--brand);border-color:transparent}
+.lg .btn{width:100%;margin-top:18px;padding:10px}
+.lg .err{color:#ff9b93;font-size:.8125rem;min-height:1.2em;margin-top:12px}
+.lg .foot{margin-top:16px;color:var(--faint);font-size:.75rem;text-align:center}
+</style>
+</head>
+<body>
+<form class="lg" id="f" autocomplete="on">
+  <div class="brandrow"><img src="/brand/presight-logo.svg" alt="Presight, a G42 company"><span class="vr"></span><b>Intelli<i>Twin</i></b></div>
+  <h1>Sign in</h1><p class="s">Traffic management and violations platform</p>
+  <label for="u">Username</label><input id="u" name="username" autocomplete="username" autofocus required>
+  <label for="p">Password</label><input id="p" name="password" type="password" autocomplete="current-password" required>
+  <div class="err" id="e" role="alert"></div>
+  <button class="btn primary" id="b" type="submit">Sign in</button>
+  <div class="foot">IntelliTwin by Presight · simulated demo data</div>
+</form>
+<script>
+const f=document.getElementById("f"),e=document.getElementById("e"),b=document.getElementById("b");
+fetch("/api/auth/me").then(r=>r.ok&&r.json()).then(j=>{if(j&&j.user)location.replace("/")}).catch(()=>{});
+f.addEventListener("submit",async ev=>{
+  ev.preventDefault(); e.textContent=""; b.disabled=true;
+  try{
+    const r=await fetch("/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:f.username.value,password:f.password.value})});
+    if(r.ok){const next=new URLSearchParams(location.search).get("next");location.replace(next&&next.startsWith("/")&&!next.startsWith("//")?next:"/");return}
+    const j=await r.json().catch(()=>({}));e.textContent=j.detail||"Sign-in failed";
+  }catch{e.textContent="Cannot reach the server"}
+  b.disabled=false;
+});
+</script>
+</body>
+</html>
