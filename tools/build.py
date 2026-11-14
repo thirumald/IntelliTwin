@@ -1,0 +1,412 @@
+#!/usr/bin/env python3
+"""IntelliTwin data pipeline: OSM roads → SUMO network → demand → mesoscopic simulation → static files.
+
+Usage: python tools/build.py --osm build/roads.osm --build build --out data
+See docs/ for the method, sources and file formats.
+"""
+import argparse
+import datetime as dt
+import json
+import math
+import os
+import struct
+import subprocess
+import sys
+import xml.etree.ElementTree as ET
+
+import numpy as np
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import config as C  # noqa: E402
+
+import sumolib  # noqa: E402
+
+
+def run(cmd):
+    print("+", " ".join(cmd), flush=True)
+    subprocess.run(cmd, check=True)
+
+
+# ---------------------------------------------------------------- network
+def build_network(osm_file, net_file):
+    run([
+        "netconvert", "--osm-files", osm_file, "-o", net_file,
+        "--geometry.remove", "--roundabouts.guess", "--ramps.guess",
+        "--junctions.join", "--tls.guess-signals", "--tls.discard-simple", "--tls.join",
+        "--keep-edges.by-vclass", "passenger", "--keep-edges.components", "1",
+        "--remove-edges.isolated", "--output.street-names", "--no-warnings",
+    ])
+
+
+def edge_class(edge):
+    t = (edge.getType() or "").replace("highway.", "")
+    return t.replace("_link", ""), t.endswith("_link")
+
+
+def load_edges(net):
+    edges = [e for e in net.getEdges() if e.allows("passenger")]
+    edges.sort(key=lambda e: e.getID())
+    return edges
+
+
+def simplify(points, tol):
+    """Douglas–Peucker on projected (metre) coordinates."""
+    if len(points) < 3:
+        return list(points)
+    keep = [False] * len(points)
+    keep[0] = keep[-1] = True
+    stack = [(0, len(points) - 1)]
+    while stack:
+        a, b = stack.pop()
+        ax, ay = points[a]
+        bx, by = points[b]
+        dx, dy = bx - ax, by - ay
+        norm = math.hypot(dx, dy) or 1e-9
+        worst, idx = 0.0, -1
+        for i in range(a + 1, b):
+            px, py = points[i]
+            d = abs(dy * (px - ax) - dx * (py - ay)) / norm
+            if d > worst:
+                worst, idx = d, i
+        if worst > tol:
+            keep[idx] = True
+            stack.extend([(a, idx), (idx, b)])
+    return [p for p, k in zip(points, keep) if k]
+
+
+def edge_shape(edge):
+    lanes = edge.getLanes()
+    return simplify(lanes[len(lanes) // 2].getShape(), C.SHAPE_TOLERANCE_M)
+
+
+# ---------------------------------------------------------------- demand
+def building_weights(net, edges, local, bld):
+    """Floor space of each building goes to the nearest ordinary street."""
+    from scipy.spatial import cKDTree
+    idx = np.flatnonzero(local)
+    mids = np.array([edges[i].getShape()[len(edges[i].getShape()) // 2] for i in idx])
+    xy = np.array([net.convertLonLat2XY(lo, la) for lo, la in zip(bld["lon"], bld["lat"])])
+    d, j = cKDTree(mids).query(xy, distance_upper_bound=C.BUILDING_SNAP_M)
+    ok = np.isfinite(d)
+    w = np.zeros(len(edges))
+    np.add.at(w, idx[j[ok]], bld["floor"][ok])
+    return w, float(ok.mean())
+
+
+def make_demand(net, edges, out_dir, bld=None):
+    """Write one trips file per scenario. Scenarios are nested subsets of the largest trip list."""
+    rng = np.random.default_rng(C.SEED)
+    max_mult = max(s["demand"] for s in C.SCENARIOS)
+    n = int(C.TOTAL_VEHICLE_TRIPS * max_mult)
+
+    ids = np.array([e.getID() for e in edges])
+    mid = np.array([e.getShape()[len(e.getShape()) // 2] for e in edges])
+    length = np.array([e.getLength() for e in edges])
+    lanes = np.array([e.getLaneNumber() for e in edges])
+    speed = np.array([e.getSpeed() for e in edges])
+    cls = [edge_class(e) for e in edges]
+    # Trips start and end on ordinary streets, not on motorways, trunks or ramps.
+    local = np.array([c in ("primary", "secondary", "tertiary") and not link for c, link in cls])
+    if local.sum() < 20:
+        local[:] = True
+    w_local = np.where(local, length * lanes, 0.0)
+    w_local /= w_local.sum()
+    snapped = None
+    if bld is not None:
+        w_b, snapped = building_weights(net, edges, local, bld)
+        if w_b.sum() > 0:
+            w_local = C.BUILDING_WEIGHT * w_b / w_b.sum() + (1 - C.BUILDING_WEIGHT) * w_local
+
+    # Boundary points: dead-end junctions close to the edge of the study area.
+    west, south, east, north = C.BBOX
+    m = C.FRINGE_MARGIN_DEG
+
+    def at_boundary(node):
+        nbrs = {e.getToNode().getID() for e in node.getOutgoing()} | {e.getFromNode().getID() for e in node.getIncoming()}
+        if len(nbrs) != 1:
+            return False
+        lon, lat = net.convertXY2LonLat(*node.getCoord())
+        return lon < west + m or lon > east - m or lat < south + m or lat > north - m
+
+    src = np.array([at_boundary(e.getFromNode()) for e in edges])
+    snk = np.array([at_boundary(e.getToNode()) for e in edges])
+    w_src = np.where(src, lanes * speed ** 2, 0.0)
+    w_snk = np.where(snk, lanes * speed ** 2, 0.0)
+    has_fringe = w_src.sum() > 0 and w_snk.sum() > 0
+    if has_fringe:
+        w_src /= w_src.sum()
+        w_snk /= w_snk.sum()
+
+    def gravity_dest(orig):
+        cand = rng.choice(len(edges), size=(len(orig), C.DEST_CANDIDATES), p=w_local)
+        d = np.hypot(mid[cand, 0] - mid[orig, 0][:, None], mid[cand, 1] - mid[orig, 1][:, None]) / 1000.0
+        p = np.exp(-d / C.GRAVITY_BETA_KM) * (d >= C.MIN_TRIP_KM) + 1e-12
+        p /= p.sum(axis=1, keepdims=True)
+        pick = (p.cumsum(axis=1) > rng.random((len(orig), 1))).argmax(axis=1)
+        return cand[np.arange(len(orig)), pick]
+
+    kind = rng.random(n)
+    orig = rng.choice(len(edges), size=n, p=w_local)
+    dest = gravity_dest(orig)
+    if has_fringe:
+        through = kind < C.THROUGH_SHARE
+        inbound = (kind >= C.THROUGH_SHARE) & (kind < C.THROUGH_SHARE + C.EXTERNAL_SHARE * 0.6)
+        outbound = (kind >= C.THROUGH_SHARE + C.EXTERNAL_SHARE * 0.6) & (kind < C.THROUGH_SHARE + C.EXTERNAL_SHARE)
+        orig[through | inbound] = rng.choice(len(edges), size=int((through | inbound).sum()), p=w_src)
+        dest[through | outbound] = rng.choice(len(edges), size=int((through | outbound).sum()), p=w_snk)
+        trip_type = np.where(through, 2, np.where(inbound | outbound, 1, 0))
+    else:
+        trip_type = np.zeros(n, dtype=int)
+
+    prof = np.array(C.DEPART_PROFILE, dtype=float)
+    slot = rng.choice(len(prof), size=n, p=prof / prof.sum())
+    slot_len = (C.SIM_END - C.SIM_BEGIN) / len(prof)
+    depart = C.SIM_BEGIN + (slot + rng.random(n)) * slot_len
+    level = rng.random(n) * max_mult          # trip is in a scenario when level < its demand multiplier
+    sampled = rng.random(n) < C.TRIP_SAMPLE
+
+    order = np.argsort(depart)
+    files, counts = {}, {}
+    for sc in C.SCENARIOS:
+        path = os.path.join(out_dir, f"trips_{sc['id']}.xml")
+        k = 0
+        with open(path, "w") as f:
+            f.write('<routes>\n<vType id="car" vClass="passenger"/>\n')
+            for i in order:
+                if level[i] >= sc["demand"] or orig[i] == dest[i]:
+                    continue
+                f.write(f'<trip id="{"s" if sampled[i] else "v"}{i}" type="car" depart="{depart[i]:.1f}" '
+                        f'from="{ids[orig[i]]}" to="{ids[dest[i]]}" departLane="best" departSpeed="max"'
+                        + ('><param key="has.vehroute.device" value="true"/></trip>\n' if sampled[i] else '/>\n'))
+                k += 1
+            f.write("</routes>\n")
+        files[sc["id"]], counts[sc["id"]] = path, k
+    stats = {"internal": int((trip_type == 0).sum()), "external": int((trip_type == 1).sum()),
+             "through": int((trip_type == 2).sum()), "generated": n,
+             "boundary_points": int(src.sum()), "trip_ends": "building floor space" if bld is not None else "road length × lanes",
+             "buildings_snapped_share": round(snapped, 3) if snapped is not None else None}
+    return files, counts, stats
+
+
+# ---------------------------------------------------------------- simulation
+def simulate(net_file, trips_file, work, tag):
+    add = os.path.join(work, f"edgedata_{tag}.add.xml")
+    out = {k: os.path.join(work, f"{k}_{tag}.xml") for k in ("edgedata", "vehroute", "tripinfo", "summary")}
+    with open(add, "w") as f:
+        f.write(f'<additional><edgeData id="ed" period="{C.BIN_SECONDS}" begin="{C.SIM_BEGIN}" '
+                f'file="{os.path.abspath(out["edgedata"])}" excludeEmpty="true"/></additional>\n')
+    run([
+        "sumo", "-n", net_file, "-r", trips_file, "-a", add,
+        "--begin", str(C.SIM_BEGIN), "--end", str(C.SIM_END), "--seed", str(C.SEED),
+        "--mesosim", "--meso-tls-penalty", str(C.MESO_TLS_PENALTY),
+        "--meso-tls-flow-penalty", str(C.MESO_TLS_FLOW_PENALTY),
+        "--meso-minor-penalty", str(C.MESO_MINOR_PENALTY), "--meso-overtaking",
+        "--device.rerouting.probability", str(C.REROUTE_PROBABILITY),
+        "--device.rerouting.period", "300", "--device.rerouting.pre-period", "300",
+        "--device.rerouting.adaptation-steps", "18", "--device.rerouting.threads", "2",
+        "--routing-algorithm", "astar",
+        "--ignore-route-errors", "--max-depart-delay", "900", "--time-to-teleport", "300",
+        "--device.vehroute.probability", "0",
+        "--vehroute-output", out["vehroute"], "--vehroute-output.exit-times",
+        "--vehroute-output.last-route", "--vehroute-output.write-unfinished",
+        "--tripinfo-output", out["tripinfo"], "--tripinfo-output.write-unfinished",
+        "--summary-output", out["summary"], "--summary-output.period", "300",
+        "--no-step-log", "--no-warnings", "--duration-log.statistics",
+    ])
+    return out
+
+
+# ---------------------------------------------------------------- export
+def write_paths(path, trips):
+    """Binary trajectories: uint32 count, uint32 offsets[count+1], float32 (lon, lat, t)[points]."""
+    offsets, flat = [0], []
+    for pts in trips:
+        flat.extend(pts)
+        offsets.append(len(flat))
+    with open(path, "wb") as f:
+        f.write(struct.pack("<I", len(trips)))
+        f.write(np.asarray(offsets, dtype="<u4").tobytes())
+        f.write(np.asarray(flat, dtype="<f4").reshape(-1, 3).tobytes() if flat else b"")
+
+
+def export_edgedata(xml_file, edge_index, edges, n_bins, out_prefix):
+    ratio = np.full((n_bins, len(edges)), 255, dtype=np.uint8)
+    occ = np.zeros((n_bins, len(edges)), dtype=np.float32)   # vehicle-seconds on the edge in the bin
+    ff = np.array([e.getSpeed() for e in edges])
+    b = None
+    for ev, el in ET.iterparse(xml_file, events=("start", "end")):
+        if ev == "start" and el.tag == "interval":
+            b = int((float(el.get("begin")) - C.SIM_BEGIN) // C.BIN_SECONDS)
+        elif ev == "end" and el.tag == "edge":
+            i = edge_index.get(el.get("id"))
+            if i is not None and b is not None and 0 <= b < n_bins and el.get("speed") is not None:
+                ss = float(el.get("sampledSeconds", 0))
+                if ss > 0:
+                    ratio[b, i] = min(100, round(100 * float(el.get("speed")) / ff[i]))
+                    occ[b, i] = ss
+            el.clear()
+    ratio.tofile(out_prefix + "_speed.bin")
+    np.minimum(np.round(occ / 10), 65535).astype("<u2").tofile(out_prefix + "_occ.bin")
+
+    kpis = []
+    for b in range(n_bins):
+        r = np.where(ratio[b] == 255, 100, ratio[b]) / 100.0
+        v = ff * r                                # m/s
+        vkt = (occ[b] * v).sum()                  # vehicle-metres
+        tot = occ[b].sum()
+        free = (occ[b] * r).sum()                 # seconds the same distance takes at free flow
+        kpis.append({
+            "speed": round(3.6 * vkt / tot, 1) if tot else None,
+            "vehicles": int(round(tot / C.BIN_SECONDS)),
+            "extra": round(100 * (tot / free - 1), 1) if free else 0,
+            "delay_h": round((tot - free) / 3600 * (3600 / C.BIN_SECONDS)),
+        })
+    return kpis
+
+
+def export_trips(vehroute_file, net, shapes, out_file):
+    trips = []
+    for ev, el in ET.iterparse(vehroute_file, events=("end",)):
+        if el.tag != "vehicle":
+            continue
+        route = el.find("route")
+        if route is None:
+            dist = el.find("routeDistribution")
+            route = dist.findall("route")[-1] if dist is not None else None
+        if route is not None and route.get("exitTimes"):
+            eids = route.get("edges").split()
+            exits = [float(x) for x in route.get("exitTimes").split()]
+            t0 = float(el.get("depart"))
+            pts = []
+            for eid, t1 in zip(eids, exits):
+                shp = shapes.get(eid)
+                if shp is None or t1 < 0:
+                    break
+                seg = [math.hypot(shp[k + 1][0] - shp[k][0], shp[k + 1][1] - shp[k][1]) for k in range(len(shp) - 1)]
+                total = sum(seg) or 1.0
+                acc = 0.0
+                for k, (x, y) in enumerate(shp):
+                    if k == 0 and pts:
+                        continue  # junction: the previous edge's last point carries this time
+                    if k > 0:
+                        acc += seg[k - 1]
+                    lon, lat = net.convertXY2LonLat(x, y)
+                    pts.append((lon, lat, t0 + (t1 - t0) * acc / total - C.SIM_BEGIN))
+                t0 = t1
+            if len(pts) >= 2:
+                trips.append(pts)
+        el.clear()
+    write_paths(out_file, trips)
+    return len(trips)
+
+
+def trip_stats(tripinfo_file):
+    n = dur = dist = loss = 0
+    for ev, el in ET.iterparse(tripinfo_file, events=("end",)):
+        if el.tag == "tripinfo":
+            if float(el.get("arrival", -1)) >= 0:
+                n += 1
+                dur += float(el.get("duration"))
+                dist += float(el.get("routeLength"))
+                loss += float(el.get("timeLoss"))
+            el.clear()
+    if not n:
+        return {"completed": 0}
+    return {"completed": n, "km": round(dist / n / 1000, 1), "min": round(dur / n / 60, 1),
+            "kmh": round(3.6 * dist / dur, 1), "min_lost": round(loss / n / 60, 1)}
+
+
+def export_roads(net, edges, out_file):
+    names, name_idx, rows = [], {}, []
+    km_by_class = {}
+    for e in edges:
+        cls, link = edge_class(e)
+        name = e.getName() or ""
+        if name not in name_idx:
+            name_idx[name] = len(names)
+            names.append(name)
+        coords = []
+        for x, y in edge_shape(e):
+            lon, lat = net.convertXY2LonLat(x, y)
+            coords += [round(lon, 5), round(lat, 5)]
+        rows.append({"n": name_idx[name], "c": C.CLASS_RANK.get(cls, 4), "k": 1 if link else 0,
+                     "l": e.getLaneNumber(), "s": round(e.getSpeed() * 3.6), "m": round(e.getLength()), "p": coords})
+        km_by_class[cls] = km_by_class.get(cls, 0) + e.getLength() / 1000
+    with open(out_file, "w", encoding="utf-8") as f:
+        json.dump({"names": names, "edges": rows}, f, ensure_ascii=False, separators=(",", ":"))
+    return {k: round(v) for k, v in km_by_class.items()}
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--osm", required=True)
+    ap.add_argument("--build", default="build")
+    ap.add_argument("--out", default="data")
+    ap.add_argument("--osm-timestamp", default="")
+    ap.add_argument("--scale", type=float, default=1.0, help="scale demand (for small test networks)")
+    args = ap.parse_args()
+    os.makedirs(args.build, exist_ok=True)
+    os.makedirs(args.out, exist_ok=True)
+    C.TOTAL_VEHICLE_TRIPS = int(C.TOTAL_VEHICLE_TRIPS * args.scale)
+
+    net_file = os.path.join(args.build, "net.net.xml")
+    build_network(args.osm, net_file)
+    net = sumolib.net.readNet(net_file)
+    edges = load_edges(net)
+    edge_index = {e.getID(): i for i, e in enumerate(edges)}
+    shapes = {e.getID(): edge_shape(e) for e in edges}
+    print(f"network: {len(edges)} edges, {len(net.getNodes())} junctions", flush=True)
+
+    km_by_class = export_roads(net, edges, os.path.join(args.out, "roads.json"))
+    bld, buildings = None, {"available": False, "reason": "not attempted"}
+    try:
+        import buildings as B
+        bld = B.load(args.build)
+        with open(os.path.join(args.out, "buildings.json"), "w") as f:
+            json.dump(bld["shown"], f, separators=(",", ":"))
+        buildings = {"available": True, "count": bld["count"], "shown": len(bld["shown"]),
+                     "measured_heights": bld["measured_heights"], "source": bld["source"]}
+    except Exception as exc:  # optional layer; demand falls back to road length × lanes
+        buildings = {"available": False, "reason": f"{type(exc).__name__}: {exc}"[:200]}
+    print("buildings:", buildings, flush=True)
+
+    trip_files, trip_counts, demand_stats = make_demand(net, edges, args.build, bld)
+
+    n_bins = (C.SIM_END - C.SIM_BEGIN) // C.BIN_SECONDS
+    scenarios = []
+    for sc in C.SCENARIOS:
+        out = simulate(net_file, trip_files[sc["id"]], args.build, sc["id"])
+        kpis = export_edgedata(out["edgedata"], edge_index, edges, n_bins, os.path.join(args.out, sc["id"]))
+        shown = export_trips(out["vehroute"], net, shapes, os.path.join(args.out, f"{sc['id']}_trips.bin"))
+        scenarios.append({**sc, "trips": trip_counts[sc["id"]], "shown_trips": shown,
+                          "stats": trip_stats(out["tripinfo"]), "bins": kpis})
+        print(sc["id"], scenarios[-1]["stats"], flush=True)
+
+    buses = {"available": False, "reason": "not attempted"}
+    try:
+        import gtfs_buses
+        buses = gtfs_buses.build(os.path.join(args.out, "buses.bin"), args.build)
+    except Exception as exc:  # the bus layer is optional; never fail the build for it
+        buses = {"available": False, "reason": f"{type(exc).__name__}: {exc}"[:200]}
+    print("buses:", buses, flush=True)
+
+    tls = sum(1 for n in net.getNodes() if n.getType() in ("traffic_light", "traffic_light_right_on_red"))
+    meta = {
+        "built": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "osm_timestamp": args.osm_timestamp.strip() or "unknown",
+        "sumo": subprocess.run(["sumo", "--version"], capture_output=True, text=True).stdout.splitlines()[0].strip(),
+        "bbox": C.BBOX, "sim_begin": C.SIM_BEGIN, "sim_end": C.SIM_END,
+        "display_begin": C.DISPLAY_BEGIN, "bin_seconds": C.BIN_SECONDS, "bins": n_bins,
+        "trip_sample": C.TRIP_SAMPLE,
+        "network": {"edges": len(edges), "junctions": len(net.getNodes()), "signals": tls,
+                    "km": round(sum(e.getLength() for e in edges) / 1000), "km_by_class": km_by_class},
+        "demand": {"total_assumed": C.TOTAL_VEHICLE_TRIPS, **demand_stats},
+        "scenarios": scenarios, "buses": buses, "buildings": buildings,
+    }
+    with open(os.path.join(args.out, "meta.json"), "w") as f:
+        json.dump(meta, f, indent=1)
+    print("done", flush=True)
+
+
+if __name__ == "__main__":
+    main()

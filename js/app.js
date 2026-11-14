@@ -1,46 +1,57 @@
-/* IntelliTwin UI — map, playback, forecast and what-if controls. */
+/* IntelliTwin — replays the SUMO pipeline output in data/ with MapLibre and deck.gl. */
 (function () {
   'use strict';
 
-  var M = window.TwinModel;
-  var COLORS = { free: '#2dd4a7', moderate: '#f5c542', heavy: '#f58a42', severe: '#ef4b5a' };
+  var RGB = { free: [45, 212, 167], moderate: [245, 197, 66], heavy: [245, 138, 66], severe: [239, 75, 90] };
   var LEVEL_LABEL = { free: 'Free flow', moderate: 'Moderate', heavy: 'Heavy', severe: 'Severe' };
-  var VEHICLES_PER_DOT = 45;   // one dot stands for this many vehicles
-  var MAX_DOTS = 70;           // per corridor direction
-  var VISUAL_WARP = 90;        // dots move this many times faster than real speed
-
+  var CLASS_NAME = ['Motorway', 'Trunk road', 'Primary road', 'Secondary road', 'Tertiary road'];
+  var CLASS_WIDTH = [16, 14, 11, 9, 7];           // metres
   var $ = function (id) { return document.getElementById(id); };
 
-  function wallClockMinutes() {
-    var d = new Date();
-    return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
-  }
-
-  var state = {
-    minutes: 450,            // simulated time of day, minutes since midnight
-    playing: true,
-    rate: 600,               // simulated seconds per real second
-    horizon: 0,              // forecast offset, minutes
-    scenario: { demand: 1, incident: null, rain: false }
-  };
-
-  function scenarioActive() {
-    var s = state.scenario;
-    return s.demand !== 1 || !!s.incident || s.rain;
-  }
-  function shownMinutes() { return (state.minutes + state.horizon) % 1440; }
-  function fmt(mins) {
-    mins = ((Math.floor(mins) % 1440) + 1440) % 1440;
-    var h = Math.floor(mins / 60), m = mins % 60;
+  function level(r) { return r >= 0.8 ? 'free' : r >= 0.6 ? 'moderate' : r >= 0.4 ? 'heavy' : 'severe'; }
+  function num(n) { return Math.round(n).toLocaleString('en-US'); }
+  function clock(sec) {
+    var m = Math.floor(sec / 60), h = Math.floor(m / 60) % 24; m = m % 60;
     return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
   }
-  function num(n) { return Math.round(n).toLocaleString('en-US'); }
+  function getJSON(url) { return fetch(url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(url); } return r.json(); }); }
+  function getBuf(url) { return fetch(url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(url); } return r.arrayBuffer(); }); }
 
-  /* ---------- Map ---------- */
-  var mapReady = false, popup = null, popupCorridor = null, map = null;
+  // Binary trajectories: uint32 count, uint32 offsets[count + 1], float32 (lon, lat, t)[points].
+  function parsePaths(buf) {
+    var n = new DataView(buf).getUint32(0, true);
+    var off = new Uint32Array(buf.slice(4, 4 + 4 * (n + 1)));
+    var f = new Float32Array(buf.slice(4 + 4 * (n + 1)));
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      var path = [], ts = [];
+      for (var k = off[i]; k < off[i + 1]; k++) { path.push([f[3 * k], f[3 * k + 1]]); ts.push(f[3 * k + 2]); }
+      out.push({ path: path, ts: ts });
+    }
+    return out;
+  }
 
+  var meta, edges = [], names = [], groups = [], scen = {}, buses = null, buildings = null;
+  var map = null, overlay = null, popup = null;
+  var state = { t: 0, playing: true, rate: 120, scenario: 'base', cars: true, buses: true, bld: false };
+  var t0 = 0, t1 = 0;      // display window, seconds since the simulation began
+
+  function scenarioMeta(id) { return meta.scenarios.filter(function (s) { return s.id === id; })[0]; }
+  function binOf(t) { return Math.max(0, Math.min(meta.bins - 1, Math.floor(t / meta.bin_seconds))); }
+  function ratioOf(d, bin, i) { var v = d.speed[bin * edges.length + i]; return v === 255 ? 1 : v / 100; }
+
+  function loadScenario(id) {
+    if (scen[id]) { return Promise.resolve(scen[id]); }
+    return Promise.all([getBuf('data/' + id + '_speed.bin'), getBuf('data/' + id + '_occ.bin'), getBuf('data/' + id + '_trips.bin')])
+      .then(function (r) {
+        scen[id] = { speed: new Uint8Array(r[0]), occ: new Uint16Array(r[1]), trips: parsePaths(r[2]) };
+        return scen[id];
+      });
+  }
+
+  /* ---------- map ---------- */
   function initMap() {
-    if (!window.maplibregl) { return; }
+    var b = meta.bbox;
     try {
       map = new maplibregl.Map({
         container: 'map',
@@ -48,354 +59,330 @@
           version: 8,
           sources: {
             base: {
-              type: 'raster',
-              tiles: ['a', 'b', 'c', 'd'].map(function (s) {
-                return 'https://' + s + '.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-              }),
-              tileSize: 256,
+              type: 'raster', tileSize: 256,
+              tiles: ['a', 'b', 'c', 'd'].map(function (s) { return 'https://' + s + '.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'; }),
               attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
             }
           },
           layers: [
             { id: 'bg', type: 'background', paint: { 'background-color': '#0a101c' } },
-            { id: 'base', type: 'raster', source: 'base', paint: { 'raster-opacity': 0.85 } }
+            { id: 'base', type: 'raster', source: 'base', paint: { 'raster-opacity': 0.7 } }
           ]
         },
-        center: [54.45, 24.44],
-        zoom: window.innerWidth < 860 ? 9.5 : 10.6,
-        minZoom: 8.5,
-        maxZoom: 16,
+        bounds: [[b[0], b[1]], [b[2], b[3]]],
+        fitBoundsOptions: { padding: 10 },
+        minZoom: 8, maxZoom: 17, maxPitch: 65,
         attributionControl: { compact: true }
       });
+      map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+      overlay = new deck.MapboxOverlay({ interleaved: false, layers: [] });
+      map.addControl(overlay);
     } catch (e) {
-      $('map').innerHTML = '<p style="padding:16px;color:#8fa0bd">The map needs WebGL, which is unavailable in this browser. The panels below still work.</p>';
-      map = null;
-      return;
+      $('map').innerHTML = '<p style="padding:16px;color:#8fa0bd">The map needs WebGL, which is unavailable in this browser. The panels still work.</p>';
+      map = null; overlay = null;
     }
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-
-    map.on('load', function () {
-      var colorExpr = ['match', ['get', 'level'],
-        'free', COLORS.free, 'moderate', COLORS.moderate, 'heavy', COLORS.heavy, 'severe', COLORS.severe, '#888'];
-      map.addSource('links', { type: 'geojson', data: linksGeoJSON() });
-      map.addSource('vehicles', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-      map.addLayer({
-        id: 'links-casing', type: 'line', source: 'links',
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#05080f', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 5, 14, 12], 'line-offset': ['get', 'offset'], 'line-opacity': 0.7 }
-      });
-      map.addLayer({
-        id: 'links', type: 'line', source: 'links',
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': colorExpr, 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2.5, 14, 7], 'line-offset': ['get', 'offset'] }
-      });
-      map.addLayer({
-        id: 'vehicles', type: 'circle', source: 'vehicles',
-        paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 1.6, 14, 4],
-          'circle-color': '#ffffff', 'circle-opacity': 0.9,
-          'circle-stroke-color': colorExpr, 'circle-stroke-width': 1
-        }
-      });
-      map.on('click', 'links', function (e) {
-        var f = e.features && e.features[0];
-        if (f) { openPopup(f.properties.id, e.lngLat); }
-      });
-      map.on('mouseenter', 'links', function () { map.getCanvas().style.cursor = 'pointer'; });
-      map.on('mouseleave', 'links', function () { map.getCanvas().style.cursor = ''; });
-      mapReady = true;
-    });
   }
 
-  function linksGeoJSON() {
-    var t = shownMinutes() / 60, feats = [];
-    M.CORRIDORS.forEach(function (c) {
-      var s = M.corridorState(c, t, state.scenario);
-      [[1, s.inbound], [-1, s.outbound]].forEach(function (pair) {
-        feats.push({
-          type: 'Feature',
-          properties: { id: c.id, dir: pair[0], level: M.level(pair[1].ratio), offset: pair[0] * 3 },
-          geometry: { type: 'LineString', coordinates: c.path }
-        });
-      });
-    });
-    return { type: 'FeatureCollection', features: feats };
-  }
-
-  function popupHTML(c) {
-    var s = M.corridorState(c, shownMinutes() / 60, state.scenario);
-    function row(label, l) {
-      return '<tr><td>' + label + '</td><td>' + Math.round(l.speed) + ' km/h · ' + l.minutes.toFixed(1) + ' min</td></tr>';
-    }
-    return '<div class="pop"><h3>' + c.name + '</h3><table>' +
-      row('Towards city', s.inbound) + row('Out of city', s.outbound) +
-      '<tr><td>Length</td><td>' + c.km.toFixed(1) + ' km</td></tr>' +
-      '<tr><td>Free-flow speed</td><td>' + c.ff + ' km/h</td></tr></table>' +
-      '<div class="muted">' + c.ar + ' · modelled at ' + fmt(shownMinutes()) + '</div></div>';
-  }
-
-  function openPopup(id, lngLat) {
-    var c = M.CORRIDORS.filter(function (x) { return x.id === id; })[0];
-    if (!c || !map) { return; }
+  function roadPopup(i, coordinate) {
+    if (!map) { return; }
+    var e = edges[i], d = scen[state.scenario], bin = binOf(state.t);
+    var r = ratioOf(d, bin, i), occ = d.occ[bin * edges.length + i] * 10 / meta.bin_seconds;
     if (popup) { popup.remove(); }
-    popupCorridor = c;
-    popup = new maplibregl.Popup({ closeButton: true, maxWidth: '280px' })
-      .setLngLat(lngLat || M.pointAt(c, 0.5))
-      .setHTML(popupHTML(c))
-      .addTo(map);
-    popup.on('close', function () { popupCorridor = null; });
+    var box = document.createElement('div');
+    box.className = 'pop';
+    box.innerHTML = '<h3></h3><table>' +
+      '<tr><td>Simulated speed</td><td>' + Math.round(e.s * r) + ' km/h</td></tr>' +
+      '<tr><td>Speed limit in model</td><td>' + e.s + ' km/h</td></tr>' +
+      '<tr><td>Vehicles on this link</td><td>' + occ.toFixed(occ < 10 ? 1 : 0) + '</td></tr>' +
+      '<tr><td>Lanes · length</td><td>' + e.l + ' · ' + num(e.m) + ' m</td></tr></table>' +
+      '<div class="muted">' + CLASS_NAME[e.c] + (e.k ? ' ramp' : '') + ' · ' + LEVEL_LABEL[level(r)] + ' · simulated at ' + clock(meta.sim_begin + state.t) + '</div>';
+    box.querySelector('h3').textContent = names[e.n] || 'Unnamed road';
+    popup = new maplibregl.Popup({ closeButton: true, maxWidth: '280px' }).setLngLat(coordinate).setDOMContent(box).addTo(map);
   }
 
-  /* ---------- Moving vehicles ---------- */
-  var fleets = [];
-  M.CORRIDORS.forEach(function (c, ci) {
-    [1, -1].forEach(function (dir) {
-      var phases = [];
-      for (var i = 0; i < MAX_DOTS; i++) {
-        // Deterministic low-discrepancy spacing so dots stay evenly spread.
-        phases.push(((i * 0.6180339887) + ci * 0.137 + (dir > 0 ? 0 : 0.5)) % 1);
-      }
-      fleets.push({ c: c, dir: dir, phases: phases, travelled: 0 });
-    });
-  });
-
-  function vehiclesGeoJSON(dtSeconds) {
-    var t = shownMinutes() / 60, feats = [];
-    fleets.forEach(function (f) {
-      var l = M.linkState(f.c, f.dir, t, state.scenario);
-      f.travelled = (f.travelled + (l.speed * VISUAL_WARP * dtSeconds / 3600) / f.c.km) % 1;
-      var n = Math.min(MAX_DOTS, Math.round(l.density * f.c.km / VEHICLES_PER_DOT));
-      var lvl = M.level(l.ratio);
-      for (var i = 0; i < n; i++) {
-        var frac = (f.phases[i] + f.travelled) % 1;
-        feats.push({
-          type: 'Feature',
-          properties: { level: lvl },
-          geometry: { type: 'Point', coordinates: M.pointAt(f.c, f.dir > 0 ? frac : 1 - frac) }
-        });
-      }
-    });
-    return { type: 'FeatureCollection', features: feats };
+  var roadLayer = null, roadKey = '';
+  function buildLayers() {
+    if (!overlay) { return; }
+    var d = scen[state.scenario];
+    if (!d) { return; }
+    var bin = binOf(state.t), key = state.scenario + ':' + bin;
+    if (key !== roadKey || !roadLayer) {
+      roadKey = key;
+      roadLayer = new deck.PathLayer({
+        id: 'roads', data: edges, pickable: true,
+        getPath: function (e) { return e.path; },
+        getColor: function (e) {
+          var lv = level(ratioOf(d, bin, e.i)), c = RGB[lv];
+          return [c[0], c[1], c[2], lv === 'free' ? 110 : 235];
+        },
+        getWidth: function (e) { return CLASS_WIDTH[e.c] * (e.k ? 0.6 : 1); },
+        widthUnits: 'meters', widthMinPixels: 1.2, capRounded: true, jointRounded: true,
+        updateTriggers: { getColor: key },
+        onClick: function (info) { if (info.object) { roadPopup(info.object.i, info.coordinate); } }
+      });
+    }
+    var layers = [];
+    if (state.bld && buildings) {
+      layers.push(new deck.PolygonLayer({
+        id: 'buildings', data: buildings, extruded: true, wireframe: false,
+        getPolygon: function (b) { return b.ring; }, getElevation: function (b) { return b.h; },
+        getFillColor: [72, 92, 128, 210], material: { ambient: 0.5, diffuse: 0.6, shininess: 8 },
+        visible: map.getZoom() >= 11.5
+      }));
+    }
+    layers.push(roadLayer);
+    var trail = Math.max(12, state.rate * 0.2);
+    if (state.cars) {
+      layers.push(new deck.TripsLayer({
+        id: 'cars', data: d.trips, getPath: function (v) { return v.path; }, getTimestamps: function (v) { return v.ts; },
+        getColor: [255, 255, 255], widthMinPixels: 3, capRounded: true, jointRounded: true,
+        trailLength: trail, currentTime: state.t, fadeTrail: true
+      }));
+    }
+    if (state.buses && buses) {
+      layers.push(new deck.TripsLayer({
+        id: 'buses', data: buses, getPath: function (v) { return v.path; }, getTimestamps: function (v) { return v.ts; },
+        getColor: [88, 166, 255], widthMinPixels: 5, capRounded: true, jointRounded: true,
+        trailLength: trail * 1.5, currentTime: state.t, fadeTrail: true
+      }));
+    }
+    overlay.setProps({ layers: layers });
   }
 
-  /* ---------- Panels ---------- */
-  function setDelta(el, diff, unit, higherIsBad, digits) {
-    if (!scenarioActive() || Math.abs(diff) < Math.pow(10, -(digits || 0)) / 2) { el.textContent = ''; el.className = 'k-delta'; return; }
+  /* ---------- panels ---------- */
+  function setDelta(el, diff, unit, higherIsBad) {
+    if (state.scenario === 'base' || Math.abs(diff) < 0.5) { el.textContent = ''; el.className = 'k-delta'; return; }
     var bad = higherIsBad ? diff > 0 : diff < 0;
-    el.textContent = (diff > 0 ? '▲ +' : '▼ −') + Math.abs(diff).toFixed(digits || 0) + unit + ' vs typical';
+    el.textContent = (diff > 0 ? '▲ +' : '▼ −') + num(Math.abs(diff)) + unit + ' vs typical';
     el.className = 'k-delta ' + (bad ? 'bad' : 'good');
   }
 
+  function slowestRoads(d, bin) {
+    var n = edges.length, rows = [];
+    groups.forEach(function (g) {
+      var occ = 0, free = 0, dist = 0;
+      for (var k = 0; k < g.idx.length; k++) {
+        var i = g.idx[k], o = d.occ[bin * n + i];
+        if (!o) { continue; }
+        var r = ratioOf(d, bin, i);
+        occ += o; free += o * r; dist += o * r * edges[i].s;
+      }
+      if (occ * 10 / meta.bin_seconds >= 15) {         // at least 15 vehicles on the road
+        rows.push({ g: g, ratio: free / occ, speed: dist / occ, vehicles: occ * 10 / meta.bin_seconds });
+      }
+    });
+    rows.sort(function (a, b) { return a.ratio - b.ratio; });
+    return rows.slice(0, 8);
+  }
+
   function renderPanels() {
-    var t = shownMinutes() / 60;
-    var net = M.networkState(t, state.scenario);
-    var base = M.networkState(t, M.DEFAULT_SCENARIO);
+    var sm = scenarioMeta(state.scenario), base = scenarioMeta('base') || sm;
+    var bin = binOf(state.t), k = sm.bins[bin], kb = base.bins[bin], d = scen[state.scenario];
+    $('viewLabel').textContent = sm.label;
+    $('kSpeed').innerHTML = (k.speed == null ? '–' : Math.round(k.speed)) + '<small>km/h</small>';
+    $('kCong').innerHTML = '+' + Math.round(k.extra) + '<small>%</small>';
+    $('kVeh').textContent = num(k.vehicles);
+    $('kDelay').innerHTML = num(k.delay_h) + '<small>veh-h</small>';
+    setDelta($('dSpeed'), (k.speed || 0) - (kb.speed || 0), ' km/h', false);
+    setDelta($('dCong'), k.extra - kb.extra, ' pts', true);
+    setDelta($('dVeh'), k.vehicles - kb.vehicles, '', true);
+    setDelta($('dDelay'), k.delay_h - kb.delay_h, ' veh-h', true);
 
-    $('clock').textContent = fmt(state.minutes);
-    $('viewLabel').textContent = state.horizon
-      ? 'Forecast for ' + fmt(shownMinutes()) + ' (+' + state.horizon + ' min)'
-      : 'Showing ' + fmt(shownMinutes());
-
-    $('kSpeed').innerHTML = net.avgSpeed.toFixed(0) + '<small>km/h</small>';
-    $('kCong').innerHTML = '+' + net.congestion.toFixed(0) + '<small>%</small>';
-    $('kVeh').textContent = num(net.vehicles);
-    $('kDelay').innerHTML = num(net.delayHours) + '<small>veh-h</small>';
-    setDelta($('dSpeed'), net.avgSpeed - base.avgSpeed, ' km/h', false, 0);
-    setDelta($('dCong'), net.congestion - base.congestion, ' pts', true, 0);
-    setDelta($('dVeh'), net.vehicles - base.vehicles, '', true, 0);
-    setDelta($('dDelay'), net.delayHours - base.delayHours, ' veh-h', true, 0);
-
-    var rows = net.rows.slice().sort(function (a, b) { return a.state.worst.ratio - b.state.worst.ratio; });
-    var worst = rows[0];
-    var later = M.networkState(((state.minutes + 30) % 1440) / 60, state.scenario);
-    var trend = later.avgSpeed - M.networkState(state.minutes / 60, state.scenario).avgSpeed;
-    var trendText = Math.abs(trend) < 1.5 ? 'holding steady over the next 30 minutes'
-      : (trend < 0 ? 'slowing by about ' + Math.abs(trend).toFixed(0) + ' km/h in the next 30 minutes'
-        : 'recovering by about ' + trend.toFixed(0) + ' km/h in the next 30 minutes');
-    $('insight').textContent = 'Slowest corridor: ' + worst.corridor.name + ' at ' +
-      Math.round(worst.state.worst.speed) + ' km/h ' + (worst.state.worstDir > 0 ? 'towards the city' : 'out of the city') +
-      '. Network speed is ' + trendText + '.';
+    var rows = d ? slowestRoads(d, bin) : [];
+    var later = sm.bins[Math.min(meta.bins - 1, bin + 6)];
+    var trend = (later.speed || 0) - (k.speed || 0);
+    var trendText = Math.abs(trend) < 1.5 ? 'holds steady' : (trend < 0 ? 'drops about ' + Math.abs(trend).toFixed(0) + ' km/h' : 'recovers about ' + trend.toFixed(0) + ' km/h');
+    $('insight').textContent = (rows.length ? 'Slowest named road: ' + rows[0].g.name + ' at ' + Math.round(rows[0].speed) + ' km/h. ' : '') +
+      'Over the following 30 simulated minutes network speed ' + trendText + '.';
 
     var list = $('corridors');
     list.innerHTML = '';
     rows.forEach(function (r) {
-      var w = r.state.worst, lvl = M.level(w.ratio);
-      var li = document.createElement('li');
-      var b = document.createElement('button');
+      var lv = level(r.ratio), li = document.createElement('li'), b = document.createElement('button');
       b.type = 'button';
-      b.innerHTML = '<span class="dot ' + lvl + '"></span>' +
-        '<span><span class="c-name">' + r.corridor.name + '</span><br><span class="c-sub">' + LEVEL_LABEL[lvl] +
-        ' · ' + (r.state.worstDir > 0 ? 'towards city' : 'out of city') +
-        (w.delay >= 0.5 ? ' · +' + w.delay.toFixed(0) + ' min delay' : '') +
-        (state.scenario.incident === r.corridor.id ? ' · incident' : '') + '</span></span>' +
-        '<span class="c-speed">' + Math.round(w.speed) + '<small>km/h</small></span>';
-      b.addEventListener('click', function () { locate(r.corridor); });
-      li.appendChild(b);
-      list.appendChild(li);
+      b.innerHTML = '<span class="dot ' + lv + '"></span><span><span class="c-name"></span><br><span class="c-sub">' + LEVEL_LABEL[lv] +
+        ' · ' + Math.round(r.ratio * 100) + '% of limit · ' + num(r.vehicles) + ' vehicles</span></span>' +
+        '<span class="c-speed">' + Math.round(r.speed) + '<small>km/h</small></span>';
+      b.querySelector('.c-name').textContent = r.g.name;
+      b.addEventListener('click', function () { locate(r.g); });
+      li.appendChild(b); list.appendChild(li);
     });
-
-    if (popup && popupCorridor) { popup.setHTML(popupHTML(popupCorridor)); }
+    if (!rows.length) { list.innerHTML = '<li class="muted">No named road has enough traffic at this time.</li>'; }
     drawChart();
   }
 
-  function locate(c) {
+  function locate(g) {
     if (!map) { return; }
-    var lng = c.path.map(function (p) { return p[0]; }), lat = c.path.map(function (p) { return p[1]; });
-    map.fitBounds([[Math.min.apply(null, lng), Math.min.apply(null, lat)], [Math.max.apply(null, lng), Math.max.apply(null, lat)]],
-      { padding: { top: 70, bottom: 110, left: 50, right: 50 }, maxZoom: 13.5, duration: 800 });
-    openPopup(c.id);
+    map.fitBounds(g.bounds, { padding: { top: 70, bottom: 120, left: 40, right: 40 }, maxZoom: 14, duration: 800 });
     if (window.matchMedia('(max-width: 860px)').matches) { window.scrollTo({ top: 0, behavior: 'smooth' }); }
   }
 
-  /* ---------- 24-hour chart ---------- */
-  var series = { base: [], scen: [] };
-  function rebuildSeries() {
-    series.base = []; series.scen = [];
-    for (var i = 0; i <= 96; i++) {
-      var t = i / 4;
-      series.base.push(M.networkState(t, M.DEFAULT_SCENARIO).avgSpeed);
-      series.scen.push(M.networkState(t, state.scenario).avgSpeed);
-    }
+  function fact(label, sub, value) {
+    return '<tr><td>' + label + (sub ? '<span class="sub">' + sub + '</span>' : '') + '</td><td>' + value + '</td></tr>';
   }
 
+  function renderFacts() {
+    var sm = scenarioMeta(state.scenario), s = sm.stats || {}, nw = meta.network, kc = nw.km_by_class || {};
+    var bs = meta.buses || {}, bl = meta.buildings || {};
+    $('winLabel').textContent = clock(meta.sim_begin) + '–' + clock(meta.sim_end);
+    $('tripFacts').innerHTML =
+      fact('Vehicle trips simulated', 'assumed total, not counted', num(sm.trips)) +
+      fact('Trips completed in the window', '', num(s.completed || 0)) +
+      fact('Average trip', 'inside the study area', (s.km || '–') + ' km · ' + (s.min || '–') + ' min') +
+      fact('Average trip speed', '', (s.kmh || '–') + ' km/h') +
+      fact('Average time lost', 'against free-flowing roads', (s.min_lost || '–') + ' min') +
+      fact('Trip ends placed by', '', meta.demand.trip_ends);
+    $('builtLabel').textContent = 'Built ' + meta.built;
+    $('netFacts').innerHTML =
+      fact('Roads in the model', 'motorway to tertiary, by direction', num(nw.km) + ' km') +
+      fact('Motorway · trunk', '', num(kc.motorway || 0) + ' · ' + num(kc.trunk || 0) + ' km') +
+      fact('Primary · secondary · tertiary', '', num(kc.primary || 0) + ' · ' + num(kc.secondary || 0) + ' · ' + num(kc.tertiary || 0) + ' km') +
+      fact('Road links · junctions', '', num(nw.edges) + ' · ' + num(nw.junctions)) +
+      fact('Traffic signals', 'positions from OpenStreetMap; timings generic', num(nw.signals)) +
+      fact('Bus runs in the window', bs.available ? num(bs.lines) + ' lines, from the timetable' : 'timetable not loaded in this build', bs.available ? num(bs.runs) : '–') +
+      fact('Building footprints', bl.available ? num(bl.shown) + ' largest drawn' : 'not loaded in this build', bl.available ? num(bl.count) : '–') +
+      fact('Road data date', 'OpenStreetMap via Geofabrik', String(meta.osm_timestamp).slice(0, 10));
+  }
+
+  /* ---------- chart ---------- */
   function drawChart() {
-    var cv = $('chart'), dpr = window.devicePixelRatio || 1;
-    var w = cv.clientWidth, h = cv.clientHeight;
-    if (!w) { return; }
+    var cv = $('chart'), dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+    if (!w || !meta) { return; }
     if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
     var g = cv.getContext('2d');
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.clearRect(0, 0, w, h);
-    var padL = 30, padR = 8, padT = 8, padB = 20;
-    var all = series.base.concat(series.scen);
-    var top = Math.ceil(Math.max.apply(null, all) / 20) * 20;
-    var bottom = Math.max(0, Math.floor(Math.min.apply(null, all) / 20) * 20);
-    if (top === bottom) { top += 20; }
-    function x(i) { return padL + (w - padL - padR) * (i / 96); }
+    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+    var b0 = binOf(t0), b1 = meta.bins - 1;
+    function series(id) { return scenarioMeta(id).bins.slice(b0, b1 + 1).map(function (x) { return x.speed || 0; }); }
+    var base = series(scenarioMeta('base') ? 'base' : state.scenario), cur = series(state.scenario), all = base.concat(cur);
+    var top = Math.ceil(Math.max.apply(null, all) / 10) * 10, bottom = Math.max(0, Math.floor(Math.min.apply(null, all) / 10) * 10 - 10);
+    if (top <= bottom) { top = bottom + 10; }
+    var padL = 30, padR = 8, padT = 8, padB = 20, n = cur.length;
+    function x(i) { return padL + (w - padL - padR) * (n > 1 ? i / (n - 1) : 0); }
     function y(v) { return padT + (h - padT - padB) * (1 - (v - bottom) / (top - bottom)); }
-
-    g.font = '10.5px system-ui, sans-serif';
-    g.fillStyle = '#8fa0bd'; g.strokeStyle = '#22314d'; g.lineWidth = 1;
+    g.font = '10.5px system-ui, sans-serif'; g.fillStyle = '#8fa0bd'; g.strokeStyle = '#22314d'; g.lineWidth = 1;
     g.textAlign = 'right'; g.textBaseline = 'middle';
-    for (var v = bottom; v <= top; v += (top - bottom) / 2) {
-      g.beginPath(); g.moveTo(padL, y(v)); g.lineTo(w - padR, y(v)); g.stroke();
-      g.fillText(Math.round(v), padL - 6, y(v));
-    }
+    [bottom, (top + bottom) / 2, top].forEach(function (v) {
+      g.beginPath(); g.moveTo(padL, y(v)); g.lineTo(w - padR, y(v)); g.stroke(); g.fillText(Math.round(v), padL - 6, y(v));
+    });
     g.textAlign = 'center'; g.textBaseline = 'top';
-    [0, 6, 12, 18, 24].forEach(function (hr) { g.fillText((hr < 10 ? '0' : '') + hr + ':00', Math.min(Math.max(x(hr * 4), padL + 14), w - padR - 14), h - padB + 6); });
-
+    for (var s = Math.ceil((meta.sim_begin + t0) / 3600) * 3600; s <= meta.sim_end; s += 3600) {
+      var xi = x((s - meta.sim_begin - b0 * meta.bin_seconds) / meta.bin_seconds);
+      g.fillText(clock(s), Math.min(Math.max(xi, padL + 14), w - padR - 14), h - padB + 6);
+    }
     function line(arr, color, dash, width) {
-      g.beginPath();
-      arr.forEach(function (v, i) { if (i) { g.lineTo(x(i), y(v)); } else { g.moveTo(x(i), y(v)); } });
+      g.beginPath(); arr.forEach(function (v, i) { if (i) { g.lineTo(x(i), y(v)); } else { g.moveTo(x(i), y(v)); } });
       g.strokeStyle = color; g.lineWidth = width; g.setLineDash(dash); g.stroke(); g.setLineDash([]);
     }
-    line(series.base, '#6f84a8', [4, 4], 1.5);
-    line(series.scen, COLORS.free, [], 2);
-
-    var nowX = x(state.minutes / 15), shownX = x(shownMinutes() / 15);
-    if (state.horizon && shownX > nowX) {
-      g.fillStyle = 'rgba(45, 212, 167, 0.12)';
-      g.fillRect(nowX, padT, shownX - nowX, h - padT - padB);
-    }
-    g.strokeStyle = '#ffffff'; g.lineWidth = 1.5;
-    g.beginPath(); g.moveTo(shownX, padT); g.lineTo(shownX, h - padB); g.stroke();
-    var cur = M.networkState(shownMinutes() / 60, state.scenario).avgSpeed;
-    g.fillStyle = '#ffffff';
-    g.beginPath(); g.arc(shownX, y(cur), 3.5, 0, Math.PI * 2); g.fill();
+    line(base, '#6f84a8', [4, 4], 1.5);
+    line(cur, 'rgb(45,212,167)', [], 2);
+    var pos = (state.t - b0 * meta.bin_seconds) / meta.bin_seconds - 0.5, mx = x(Math.max(0, Math.min(n - 1, pos)));
+    g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(mx, padT); g.lineTo(mx, h - padB); g.stroke();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(mx, y(cur[Math.max(0, Math.min(n - 1, Math.round(pos)))]), 3.5, 0, Math.PI * 2); g.fill();
   }
 
-  /* ---------- Controls ---------- */
-  function segmented(id, attr, onPick) {
-    var box = $(id);
-    box.addEventListener('click', function (e) {
-      var b = e.target.closest('button');
-      if (!b) { return; }
-      Array.prototype.forEach.call(box.children, function (c) {
-        c.classList.toggle('on', c === b);
-        c.setAttribute('aria-checked', c === b ? 'true' : 'false');
-      });
-      onPick(Number(b.getAttribute(attr)));
-    });
-    return function select(value) {
-      Array.prototype.forEach.call(box.children, function (c) {
-        var on = Number(c.getAttribute(attr)) === value;
-        c.classList.toggle('on', on);
-        c.setAttribute('aria-checked', on ? 'true' : 'false');
-      });
-    };
-  }
-
-  function setPlaying(p) {
-    state.playing = p;
-    $('play').textContent = p ? '❚❚' : '▶';
-    $('play').setAttribute('aria-label', p ? 'Pause' : 'Play');
-  }
-
+  /* ---------- controls ---------- */
   var dirty = true;
-  function refresh(rebuild) { if (rebuild) { rebuildSeries(); } dirty = true; }
+  function setPlaying(p) {
+    state.playing = p; $('play').textContent = p ? '❚❚' : '▶'; $('play').setAttribute('aria-label', p ? 'Pause' : 'Play');
+  }
+  function wireControls() {
+    $('rate').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) { return; }
+      Array.prototype.forEach.call($('rate').children, function (c) { c.classList.toggle('on', c === b); c.setAttribute('aria-checked', c === b ? 'true' : 'false'); });
+      state.rate = Number(b.getAttribute('data-rate')); setPlaying(true);
+    });
+    $('play').addEventListener('click', function () { setPlaying(!state.playing); });
+    var slider = $('time');
+    slider.min = t0; slider.max = t1; slider.step = 30;
+    slider.addEventListener('input', function () { state.t = Number(slider.value); dirty = true; });
+    $('tilt').addEventListener('click', function () {
+      var on = $('tilt').getAttribute('aria-pressed') !== 'true';
+      $('tilt').setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (map) { map.easeTo({ pitch: on ? 55 : 0, duration: 600 }); }
+    });
+    var sel = $('scenario');
+    meta.scenarios.forEach(function (s) { var o = document.createElement('option'); o.value = s.id; o.textContent = s.label; sel.appendChild(o); });
+    sel.value = state.scenario;
+    sel.addEventListener('change', function () {
+      var id = sel.value; sel.disabled = true;
+      loadScenario(id).then(function () { state.scenario = id; roadLayer = null; renderFacts(); dirty = true; })
+        .catch(function () { sel.value = state.scenario; }).then(function () { sel.disabled = false; });
+    });
+    $('showCars').addEventListener('change', function (e) { state.cars = e.target.checked; });
+    $('showBuses').addEventListener('change', function (e) { state.buses = e.target.checked; });
+    $('showBld').addEventListener('change', function (e) {
+      state.bld = e.target.checked;
+      if (state.bld && !buildings) {
+        getJSON('data/buildings.json').then(function (rows) {
+          buildings = rows.map(function (r) {
+            var ring = []; for (var i = 0; i < r[1].length; i += 2) { ring.push([r[1][i], r[1][i + 1]]); }
+            return { h: r[0], ring: ring };
+          });
+          if (map && map.getZoom() < 12) { map.easeTo({ zoom: 12.5, pitch: 50 }); $('tilt').setAttribute('aria-pressed', 'true'); }
+        }).catch(function () { $('bldNote').textContent = '(could not load)'; });
+      }
+    });
+    window.addEventListener('resize', drawChart);
+  }
 
-  var selectRate = segmented('rate', 'data-rate', function (r) {
-    state.rate = r;
-    if (r === 1) { state.minutes = wallClockMinutes(); }
-    setPlaying(true);
-    refresh();
-  });
-  segmented('horizon', 'data-h', function (hz) { state.horizon = hz; refresh(); });
-
-  $('play').addEventListener('click', function () { setPlaying(!state.playing); });
-  $('time').addEventListener('input', function (e) {
-    state.minutes = Number(e.target.value);
-    if (state.rate === 1) { state.rate = 600; selectRate(600); setPlaying(false); }
-    refresh();
-  });
-  $('now').addEventListener('click', function () {
-    state.minutes = wallClockMinutes(); state.rate = 1; selectRate(1); setPlaying(true); refresh();
-  });
-
-  var incidentSel = $('incident');
-  M.CORRIDORS.forEach(function (c) {
-    var o = document.createElement('option');
-    o.value = c.id; o.textContent = c.name;
-    incidentSel.appendChild(o);
-  });
-  incidentSel.addEventListener('change', function () { state.scenario.incident = incidentSel.value || null; refresh(true); });
-  $('demand').addEventListener('input', function (e) {
-    state.scenario.demand = Number(e.target.value) / 100;
-    $('demandVal').textContent = e.target.value + '%';
-    refresh(true);
-  });
-  $('rain').addEventListener('change', function (e) { state.scenario.rain = e.target.checked; refresh(true); });
-  $('reset').addEventListener('click', function () {
-    state.scenario = { demand: 1, incident: null, rain: false };
-    $('demand').value = 100; $('demandVal').textContent = '100%'; incidentSel.value = ''; $('rain').checked = false;
-    refresh(true);
-  });
-  window.addEventListener('resize', drawChart);
-
-  /* ---------- Main loop ---------- */
-  var last = performance.now(), lastMinuteShown = -1;
+  /* ---------- main loop ---------- */
+  var last = performance.now(), lastBin = -1, lastLabel = '';
   function frame(now) {
-    var dt = Math.min((now - last) / 1000, 0.25);
-    last = now;
-    if (state.playing) {
-      state.minutes = state.rate === 1 ? wallClockMinutes() : (state.minutes + dt * state.rate / 60) % 1440;
-    }
-    var minute = Math.floor(state.minutes);
-    if (minute !== lastMinuteShown || dirty) {
-      lastMinuteShown = minute; dirty = false;
-      $('time').value = minute;
-      renderPanels();
-      if (mapReady) { map.getSource('links').setData(linksGeoJSON()); }
-    }
-    if (mapReady) { map.getSource('vehicles').setData(vehiclesGeoJSON(dt)); }
+    var dt = Math.min((now - last) / 1000, 0.25); last = now;
+    if (state.playing) { state.t += dt * state.rate; if (state.t >= t1) { state.t = t0; } }
+    var bin = binOf(state.t), label = clock(meta.sim_begin + state.t);
+    if (bin !== lastBin || dirty) { lastBin = bin; dirty = false; renderPanels(); }
+    if (label !== lastLabel) { lastLabel = label; $('clock').textContent = label; $('time').value = Math.round(state.t); drawChart(); }
+    buildLayers();
     requestAnimationFrame(frame);
   }
 
-  // Start in the morning peak so the first view is informative.
-  rebuildSeries();
-  initMap();
-  renderPanels();
-  requestAnimationFrame(frame);
+  /* ---------- start ---------- */
+  getJSON('data/meta.json').then(function (m) {
+    meta = m;
+    t0 = meta.display_begin - meta.sim_begin; t1 = meta.sim_end - meta.sim_begin; state.t = t0;
+    return getJSON('data/roads.json');
+  }).then(function (roads) {
+    names = roads.names;
+    var byName = {};
+    edges = roads.edges.map(function (e, i) {
+      var path = [];
+      for (var k = 0; k < e.p.length; k += 2) { path.push([e.p[k], e.p[k + 1]]); }
+      e.i = i; e.path = path;
+      var name = names[e.n];
+      if (name && !e.k) {
+        var g = byName[name] = byName[name] || { name: name, idx: [], m: 0, bounds: [[180, 90], [-180, -90]] };
+        g.idx.push(i); g.m += e.m;
+        path.forEach(function (p) {
+          g.bounds[0][0] = Math.min(g.bounds[0][0], p[0]); g.bounds[0][1] = Math.min(g.bounds[0][1], p[1]);
+          g.bounds[1][0] = Math.max(g.bounds[1][0], p[0]); g.bounds[1][1] = Math.max(g.bounds[1][1], p[1]);
+        });
+      }
+      return e;
+    });
+    groups = Object.keys(byName).map(function (k) { return byName[k]; }).filter(function (g) { return g.m >= 2000; });
+    state.scenario = scenarioMeta('base') ? 'base' : meta.scenarios[0].id;
+    return loadScenario(state.scenario);
+  }).then(function () {
+    initMap();
+    wireControls();
+    $('carNote').textContent = '(1 dot ≈ ' + Math.round(1 / meta.trip_sample) + ' vehicles)';
+    if (meta.buildings && meta.buildings.available) {
+      $('bldRow').hidden = false;
+      $('bldNote').textContent = '(' + num(meta.buildings.shown) + ' largest, heights mostly estimated)';
+    }
+    renderFacts();
+    requestAnimationFrame(frame);
+    if (meta.buses && meta.buses.available) {
+      getBuf('data/buses.bin').then(function (buf) {
+        buses = parsePaths(buf); $('busRow').hidden = false; $('legendBus').hidden = false;
+        $('busNote').textContent = '(' + num(meta.buses.runs) + ' runs)';
+      }).catch(function () {});
+    }
+  }).catch(function (err) {
+    if (window.console) { console.warn('IntelliTwin data not loaded:', err && err.message); }
+    $('nodata').hidden = false;
+  });
 
-  window.IntelliTwin = { state: state };
+  window.IntelliTwin = { state: state, getMap: function () { return map; } };
 })();

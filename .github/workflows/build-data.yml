@@ -1,0 +1,68 @@
+name: Build twin data
+
+# Downloads the open data, runs the SUMO simulation and commits the static files in data/.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/**'
+      - '.github/workflows/build-data.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-data-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq osmium-tool
+          pip install -q -r tools/requirements.txt
+      - name: Cache OpenStreetMap extract
+        uses: actions/cache@v4
+        with:
+          path: build/gcc-states.osm.pbf
+          key: geofabrik-gcc-${{ github.run_id }}
+          restore-keys: geofabrik-gcc-
+      - name: Fetch and filter OpenStreetMap roads
+        run: bash tools/fetch_osm.sh build
+      - name: Build network, simulate, export
+        env:
+          MOBILITY_DATABASE_REFRESH_TOKEN: ${{ secrets.MOBILITY_DATABASE_REFRESH_TOKEN }}
+        run: python tools/build.py --osm build/roads.osm --build build --out data --osm-timestamp "$(cat build/osm_timestamp.txt)"
+      - name: Summary
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          m = json.load(open('data/meta.json'))
+          print('### IntelliTwin data build')
+          print('network:', m['network'])
+          print('\ndemand:', m['demand'])
+          for s in m['scenarios']:
+              print(f"\n**{s['id']}** trips {s['trips']} stats {s['stats']}")
+              print('speed by 30 min:', [b['speed'] for b in s['bins']][::6])
+              print('vehicles by 30 min:', [b['vehicles'] for b in s['bins']][::6])
+          print('\nbuses:', m['buses'])
+          print('\nbuildings:', m['buildings'])
+          PY
+          ls -lh data
+      - name: Commit data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          git diff --cached --quiet && exit 0
+          git commit -m "Rebuild twin data [skip ci]"
+          git pull --rebase -q origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

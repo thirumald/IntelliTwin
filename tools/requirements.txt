@@ -1,0 +1,5 @@
+eclipse-sumo==1.28.0
+sumolib
+numpy
+scipy
+pyproj
