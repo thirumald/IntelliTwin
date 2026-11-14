@@ -29,14 +29,23 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq osmium-tool
           pip install -q -r tools/requirements.txt
-      - name: Cache OpenStreetMap extract
-        uses: actions/cache@v4
+      - name: Week number for the OpenStreetMap cache
+        id: week
+        run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+      - name: Restore OpenStreetMap extract
+        id: osmcache
+        uses: actions/cache/restore@v4
         with:
           path: build/gcc-states.osm.pbf
-          key: geofabrik-gcc-${{ github.run_id }}
-          restore-keys: geofabrik-gcc-
+          key: geofabrik-gcc-${{ steps.week.outputs.week }}
       - name: Fetch and filter OpenStreetMap roads
         run: bash tools/fetch_osm.sh build
+      - name: Save OpenStreetMap extract
+        if: steps.osmcache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: build/gcc-states.osm.pbf
+          key: geofabrik-gcc-${{ steps.week.outputs.week }}
       - name: Build network, simulate, export
         env:
           MOBILITY_DATABASE_REFRESH_TOKEN: ${{ secrets.MOBILITY_DATABASE_REFRESH_TOKEN }}

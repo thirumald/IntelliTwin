@@ -10,7 +10,7 @@ CLASSES="$(python3 -c 'import sys; sys.path.insert(0, "tools"); import config; p
 
 mkdir -p "$BUILD"
 if [ ! -s "$BUILD/gcc-states.osm.pbf" ]; then
-  curl -fL --retry 3 --retry-delay 10 -o "$BUILD/gcc-states.osm.pbf" "$URL"
+  curl -fL --retry 6 --retry-all-errors --retry-delay 30 --connect-timeout 30 -o "$BUILD/gcc-states.osm.pbf" "$URL"
 fi
 
 osmium fileinfo -g header.option.osmosis_replication_timestamp "$BUILD/gcc-states.osm.pbf" > "$BUILD/osm_timestamp.txt" || echo "unknown" > "$BUILD/osm_timestamp.txt"
