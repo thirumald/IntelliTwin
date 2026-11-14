@@ -22,9 +22,9 @@ TOTAL_VEHICLE_TRIPS = 490_000    # all vehicle trips departing 06:30–10:00, ty
 DEPART_PROFILE = [0.55, 0.75, 0.95, 1.05, 1.10, 1.10, 1.05, 1.00, 0.92, 0.85, 0.78, 0.72, 0.66, 0.60]
 EXTERNAL_SHARE = 0.12            # trips with one end at the study-area boundary
 THROUGH_SHARE = 0.01             # boundary-to-boundary trips
-GRAVITY_BETA_KM = 9.0            # deterrence: P(dest) ∝ weight × exp(-distance / beta)
+GRAVITY_BETA_KM = 5.0            # deterrence: P(dest) ∝ weight × exp(-distance / beta)
 MIN_TRIP_KM = 1.5
-DEST_CANDIDATES = 12
+DEST_CANDIDATES = 20
 
 # Scenarios: name → demand multiplier. All are nested subsets of one trip list.
 SCENARIOS = [
@@ -46,7 +46,7 @@ MESO_TLS_PENALTY = 0.6
 MESO_TLS_FLOW_PENALTY = 0.8
 MESO_MINOR_PENALTY = 3
 REROUTE_PROBABILITY = 0.3      # share of drivers who re-plan their route while driving
-REROUTE_PERIOD = 600            # seconds between re-plans
+REROUTE_PERIOD = 900            # seconds between re-plans
 SEED = 42
 
 # Bus timetable (optional). Integrated Transport Centre GTFS, Mobility Database feed mdb-1329.

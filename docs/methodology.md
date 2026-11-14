@@ -27,13 +27,13 @@ Speed limits and lane counts come from OSM tags where present and from SUMO's de
 
 No traffic counts and no census commuting table are public for Abu Dhabi. The demand is therefore an assumption, built as follows.
 
-1. **Total (`TOTAL_VEHICLE_TRIPS`):** 490,000 vehicle trips departing 06:30–10:00. This is set to the same order as the only other public estimate found for the city (see [reference-figures.md](reference-figures.md)). It is the single most influential number in the model.
+1. **Total (`TOTAL_VEHICLE_TRIPS`):** 490,000 vehicle trips departing 06:30–10:00. This is set to the same order as the only other public estimate found for the city (see [reference-figures.md](reference-figures.md)). It is the single most influential number in the model, together with the distance parameter below.
 2. **Departure profile (`DEPART_PROFILE`):** relative departures per 15 minutes, rising to a peak around 07:15–08:00 and tapering after.
 3. **Trip ends:** each ordinary street link (primary, secondary, tertiary; not motorways, trunks or ramps) gets a weight.
    - With building data: 80% from the floor space of buildings whose nearest street link it is (within 600 m), 20% from link length × lanes.
    - Without building data: link length × lanes.
    - Homes and workplaces are not distinguished, because open land-use data is too sparse. Origins and destinations use the same weights.
-4. **Trip distribution (gravity):** an origin is drawn by weight. Twelve candidate destinations are drawn by weight, and one is chosen with probability ∝ `exp(−distance / 9 km)`, excluding anything closer than 1.5 km.
+4. **Trip distribution (gravity):** an origin is drawn by weight. Twenty candidate destinations are drawn by weight, and one is chosen with probability ∝ `exp(−distance / 5 km)`, excluding anything closer than 1.5 km.
 5. **External traffic:** 12% of trips have one end at a boundary point (60% inbound, 40% outbound); 1% cross the area boundary to boundary. Boundary points are dead-end junctions within about 2 km of the study-area edge, weighted by lanes × speed² so that motorways dominate.
 6. **Vehicle types:** one passenger-car type. Vans, lorries, taxis, company buses and motorcycles are not separated.
 
@@ -51,7 +51,8 @@ SUMO runs in **mesoscopic** mode (`--mesosim`): each road is a chain of queues w
 | `--meso-tls-flow-penalty` | 0.8 | Generic capacity loss at signals |
 | `--meso-minor-penalty` | 3 s | Delay when entering from a minor road |
 | `--meso-overtaking` | on | Faster vehicles may pass within a queue segment |
-| Rerouting device | 30% of vehicles, every 10 min | Every driver starts on the quickest route given recent travel times; 30% re-plan while driving. A one-run approximation of route choice |
+| Routes | `duarouter`, contraction hierarchies | Every trip starts on its quickest free-flow route |
+| Rerouting device | 30% of vehicles, at departure and every 15 min | These drivers re-plan using recent travel times. A one-run approximation of route choice, not an equilibrium |
 | `--max-depart-delay` | 900 s | A trip that cannot enter a jammed road within 15 minutes is dropped |
 | `--seed` | 42 | Reproducible runs |
 
@@ -88,3 +89,12 @@ Trip statistics (average length, duration, speed, time lost) come from SUMO's tr
 ## 8. Buses
 
 Bus runs come from the GTFS timetable for a Tuesday service day. Positions follow the route shape where the feed has one, at constant speed between consecutive timetabled stops; otherwise they move in straight lines between stops. Buses do not load the simulated roads.
+
+## 9. Tuning history
+
+| Build | Change | Result for the typical weekday |
+| --- | --- | --- |
+| 1 | Distance parameter 9 km | Average trip 22 km; network speed fell all morning to about 24 km/h at 10:00 with over 110,000 vehicles still moving. Judged too congested: trips were too long for the reduced network |
+| 2 | Distance parameter 5 km, 20 candidates; routes pre-computed | See the latest run summary |
+
+These are plausibility adjustments against another model's figures ([reference-figures.md](reference-figures.md)), not calibration against measurements.

@@ -193,6 +193,14 @@ def make_demand(net, edges, out_dir, bld=None):
 
 
 # ---------------------------------------------------------------- simulation
+def preroute(net_file, trips_file, work, tag):
+    """Quickest free-flow route for every trip, computed once with contraction hierarchies (fast)."""
+    routes = os.path.join(work, f"routes_{tag}.rou.xml")
+    run(["duarouter", "-n", net_file, "-r", trips_file, "-o", routes, "--routing-algorithm", "CH",
+         "--routing-threads", str(os.cpu_count() or 2), "--ignore-errors", "--no-warnings", "--no-step-log"])
+    return routes
+
+
 def simulate(net_file, trips_file, work, tag):
     add = os.path.join(work, f"edgedata_{tag}.add.xml")
     out = {k: os.path.join(work, f"{k}_{tag}.xml") for k in ("edgedata", "vehroute", "tripinfo", "summary")}
@@ -385,7 +393,8 @@ def main():
     n_bins = (C.SIM_END - C.SIM_BEGIN) // C.BIN_SECONDS
     scenarios = []
     # The scenarios are independent, so their simulations run side by side.
-    running = {sc["id"]: simulate(net_file, trip_files[sc["id"]], args.build, sc["id"]) for sc in C.SCENARIOS}
+    routes = {sc["id"]: preroute(net_file, trip_files[sc["id"]], args.build, sc["id"]) for sc in C.SCENARIOS}
+    running = {sc["id"]: simulate(net_file, routes[sc["id"]], args.build, sc["id"]) for sc in C.SCENARIOS}
     for sc in C.SCENARIOS:
         out, proc, log = running[sc["id"]]
         code = proc.wait()
