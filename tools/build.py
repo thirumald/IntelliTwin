@@ -334,12 +334,29 @@ def trip_stats(tripinfo_file):
             "kmh": round(3.6 * dist / dur, 1), "min_lost": round(loss / n / 60, 1)}
 
 
-def export_roads(net, edges, out_file):
+def osm_names(osm_file):
+    """English street name per OSM way, falling back to the local name."""
+    out = {}
+    for ev, el in ET.iterparse(osm_file, events=("end",)):
+        if el.tag == "way":
+            tags = {t.get("k"): t.get("v") for t in el.findall("tag")}
+            name = tags.get("name:en") or tags.get("int_name") or tags.get("name") or tags.get("ref") or ""
+            if name:
+                out[el.get("id")] = name
+            el.clear()
+        elif el.tag == "node":
+            el.clear()
+    return out
+
+
+def export_roads(net, edges, out_file, way_names=None):
     names, name_idx, rows = [], {}, []
+    way_names = way_names or {}
     km_by_class = {}
     for e in edges:
         cls, link = edge_class(e)
-        name = e.getName() or ""
+        way = e.getID().lstrip("-").split("#")[0]
+        name = way_names.get(way) or e.getName() or ""
         if name not in name_idx:
             name_idx[name] = len(names)
             names.append(name)
@@ -375,7 +392,7 @@ def main():
     shapes = {e.getID(): edge_shape(e) for e in edges}
     print(f"network: {len(edges)} edges, {len(net.getNodes())} junctions", flush=True)
 
-    km_by_class = export_roads(net, edges, os.path.join(args.out, "roads.json"))
+    km_by_class = export_roads(net, edges, os.path.join(args.out, "roads.json"), osm_names(args.osm))
     bld, buildings = None, {"available": False, "reason": "not attempted"}
     try:
         import buildings as B

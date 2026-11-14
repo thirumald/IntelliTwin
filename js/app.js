@@ -100,12 +100,16 @@
     popup = new maplibregl.Popup({ closeButton: true, maxWidth: '280px' }).setLngLat(coordinate).setDOMContent(box).addTo(map);
   }
 
-  var roadLayer = null, roadKey = '';
+  var roadLayer = null, roadKey = '', drawnSig = '';
   function buildLayers() {
     if (!overlay) { return; }
     var d = scen[state.scenario];
     if (!d) { return; }
     var bin = binOf(state.t), key = state.scenario + ':' + bin;
+    // Skip the redraw when nothing visible has changed (for example while paused).
+    var sig = [key, state.t, state.rate, state.cars, state.buses && !!buses, state.bld && !!buildings, map.getZoom() >= 11.5].join('|');
+    if (sig === drawnSig && roadLayer) { return; }
+    drawnSig = sig;
     if (key !== roadKey || !roadLayer) {
       roadKey = key;
       roadLayer = new deck.PathLayer({

@@ -21,7 +21,7 @@ All parameters named here live in `tools/config.py`.
 | `--keep-edges.by-vclass passenger` | Keeps only roads open to cars |
 | `--keep-edges.components 1`, `--remove-edges.isolated` | Keeps the largest connected network |
 
-Speed limits and lane counts come from OSM tags where present and from SUMO's defaults for the road class otherwise.
+Street names use the OSM English name (`name:en`) where one exists, then the local name. Speed limits and lane counts come from OSM tags where present and from SUMO's defaults for the road class otherwise.
 
 ## 3. Demand (assumed)
 
