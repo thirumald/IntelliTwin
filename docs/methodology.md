@@ -49,7 +49,7 @@ SUMO runs in **mesoscopic** mode (`--mesosim`): each road is a chain of queues w
 | `--meso-tls-flow-penalty` | 0.8 | Generic capacity loss at signals |
 | `--meso-minor-penalty` | 3 s | Delay when entering from a minor road |
 | `--meso-overtaking` | on | Faster vehicles may pass within a queue segment |
-| Rerouting device | 70% of vehicles, every 5 min | Drivers pick the quickest route given recent travel times, a one-run approximation of route choice |
+| Rerouting device | 30% of vehicles, every 10 min | Every driver starts on the quickest route given recent travel times; 30% re-plan while driving. A one-run approximation of route choice |
 | `--max-depart-delay` | 900 s | A trip that cannot enter a jammed road within 15 minutes is dropped |
 | `--seed` | 42 | Reproducible runs |
 

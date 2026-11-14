@@ -41,7 +41,8 @@ SHAPE_TOLERANCE_M = 15.0
 MESO_TLS_PENALTY = 0.6
 MESO_TLS_FLOW_PENALTY = 0.8
 MESO_MINOR_PENALTY = 3
-REROUTE_PROBABILITY = 0.7
+REROUTE_PROBABILITY = 0.3      # share of drivers who re-plan their route while driving
+REROUTE_PERIOD = 600            # seconds between re-plans
 SEED = 42
 
 # Bus timetable (optional). Integrated Transport Centre GTFS, Mobility Database feed mdb-1329.

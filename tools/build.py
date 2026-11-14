@@ -195,15 +195,15 @@ def simulate(net_file, trips_file, work, tag):
     with open(add, "w") as f:
         f.write(f'<additional><edgeData id="ed" period="{C.BIN_SECONDS}" begin="{C.SIM_BEGIN}" '
                 f'file="{os.path.abspath(out["edgedata"])}" excludeEmpty="true"/></additional>\n')
-    run([
+    cmd = [
         "sumo", "-n", net_file, "-r", trips_file, "-a", add,
         "--begin", str(C.SIM_BEGIN), "--end", str(C.SIM_END), "--seed", str(C.SEED),
         "--mesosim", "--meso-tls-penalty", str(C.MESO_TLS_PENALTY),
         "--meso-tls-flow-penalty", str(C.MESO_TLS_FLOW_PENALTY),
         "--meso-minor-penalty", str(C.MESO_MINOR_PENALTY), "--meso-overtaking",
         "--device.rerouting.probability", str(C.REROUTE_PROBABILITY),
-        "--device.rerouting.period", "300", "--device.rerouting.pre-period", "300",
-        "--device.rerouting.adaptation-steps", "18", "--device.rerouting.threads", "2",
+        "--device.rerouting.period", str(C.REROUTE_PERIOD), "--device.rerouting.pre-period", "300",
+        "--device.rerouting.adaptation-steps", "18",
         "--routing-algorithm", "astar",
         "--ignore-route-errors", "--max-depart-delay", "900", "--time-to-teleport", "300",
         "--device.vehroute.probability", "0",
@@ -212,8 +212,10 @@ def simulate(net_file, trips_file, work, tag):
         "--tripinfo-output", out["tripinfo"], "--tripinfo-output.write-unfinished",
         "--summary-output", out["summary"], "--summary-output.period", "300",
         "--no-step-log", "--no-warnings", "--duration-log.statistics",
-    ])
-    return out
+    ]
+    print("+", " ".join(cmd), flush=True)
+    log = open(os.path.join(work, f"sumo_{tag}.log"), "w")
+    return out, subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT), log
 
 
 # ---------------------------------------------------------------- export
@@ -374,8 +376,15 @@ def main():
 
     n_bins = (C.SIM_END - C.SIM_BEGIN) // C.BIN_SECONDS
     scenarios = []
+    # The scenarios are independent, so their simulations run side by side.
+    running = {sc["id"]: simulate(net_file, trip_files[sc["id"]], args.build, sc["id"]) for sc in C.SCENARIOS}
     for sc in C.SCENARIOS:
-        out = simulate(net_file, trip_files[sc["id"]], args.build, sc["id"])
+        out, proc, log = running[sc["id"]]
+        code = proc.wait()
+        log.close()
+        print(open(log.name).read()[-1500:], flush=True)
+        if code != 0:
+            raise RuntimeError(f"sumo failed for scenario {sc['id']} (exit {code})")
         kpis = export_edgedata(out["edgedata"], edge_index, edges, n_bins, os.path.join(args.out, sc["id"]))
         shown = export_trips(out["vehroute"], net, shapes, os.path.join(args.out, f"{sc['id']}_trips.bin"))
         scenarios.append({**sc, "trips": trip_counts[sc["id"]], "shown_trips": shown,
