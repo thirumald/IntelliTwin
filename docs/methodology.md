@@ -99,7 +99,7 @@ All builds used the real OpenStreetMap network (20,801 links). “Typical weekda
 | 1 | 490,000 trips, distance 9 km, traffic-aware routes at departure | Average trip 22 km. Speed fell all morning to about 24 km/h at 10:00 with over 110,000 vehicles moving. Gridlocked. The same build's “−20%” case (392,000 trips) peaked near 55,000 vehicles at about 50 km/h and began to recover |
 | 2 | 490,000 trips, distance 5 km, free-flow routes fixed in advance | About 13 km/h at 10:00. Worse |
 | 3 | 392,000 trips, distance 9 km, free-flow routes fixed in advance | About 15 km/h at 10:00. Still gridlocked |
-| 4 | 392,000 trips, distance 9 km, traffic-aware routes at departure | Current build; see the latest run summary |
+| 4 | 392,000 trips, distance 9 km, traffic-aware routes at departure | Current build. Not gridlocked: vehicles moving level off near 56,000 from 08:30. Network speed is about 50 km/h at 09:00 but keeps easing to about 36 km/h at 10:00 instead of recovering. Average trip 22.8 km at 59.5 km/h, 7.8 minutes lost. The “−20%” case recovers fully; the “+20%” case reaches about 93,000 vehicles and 26 km/h |
 
 Findings: fixing every driver's route in advance on free-flowing roads (builds 2 and 3) was the main cause of gridlock, more than the trip total. Routing each trip at departure with recent travel times costs about 10 ms per trip, which is why a build takes about 45 minutes.
 
