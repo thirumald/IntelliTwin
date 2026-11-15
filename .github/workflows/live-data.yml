@@ -1,0 +1,54 @@
+name: Live data
+
+# Fetches NASA FIRMS fire detections, N2YO satellite orbits and aisstream.io vessel positions, and publishes
+# them as small JSON files on the "live-data" branch. The site reads them from there, so the API keys stay in
+# GitHub and the main branch gets no data commits. Keys: repository secrets (or variables) FIRMS_API_KEY,
+# N2YO_API_KEY and AIS_API_KEY.
+on:
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/scripts/live_data.py', '.github/workflows/live-data.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: live-data
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -q websockets
+      - name: Start from the files already published
+        run: |
+          mkdir -p out
+          if git fetch -q --depth 1 origin live-data 2>/dev/null; then git --work-tree=out checkout -q FETCH_HEAD -- . ; git reset -q; fi
+          ls -la out
+      - name: Fetch
+        env:
+          FIRMS_API_KEY: ${{ secrets.FIRMS_API_KEY || vars.FIRMS_API_KEY }}
+          N2YO_API_KEY: ${{ secrets.N2YO_API_KEY || vars.N2YO_API_KEY }}
+          AIS_API_KEY: ${{ secrets.AIS_API_KEY || vars.AIS_API_KEY }}
+        run: python .github/scripts/live_data.py out
+      - name: Publish on the live-data branch
+        run: |
+          cd out
+          rm -rf .git
+          git init -q -b live-data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          printf '%s\n' '# IntelliTwin live data' '' 'Written by the "Live data" workflow. One commit, replaced on every run.' > README.md
+          git add -A
+          git commit -q -m "Live data $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" live-data
+          cat status.json
