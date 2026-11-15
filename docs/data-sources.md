@@ -44,15 +44,16 @@ Access: the pipeline first tries the Mobility Database API if the repository sec
 
 Buses are **not** part of the traffic simulation. They follow the timetable and do not interact with simulated traffic.
 
-## 4. Base map tiles — OpenStreetMap
+## 4. Base map — OpenStreetMap data, OpenFreeMap vector tiles
 
 | | |
 | --- | --- |
-| Provider | OpenStreetMap standard tile layer |
-| Loaded | At run time by the browser, from `tile.openstreetmap.org` |
-| Licence | Map data ODbL; attribution “© OpenStreetMap contributors” (shown on the map) |
-| Display | The app dims and desaturates the tiles to suit its dark theme |
-| Usage policy | The OpenStreetMap Foundation's tile servers are for light use only and carry no service guarantee: <https://operations.osmfoundation.org/policies/tiles/>. For a public or client-facing deployment with real traffic, switch to a commercial OSM-based tile provider or self-hosted tiles by changing the tile address in `js/app.js` |
+| Provider | OpenFreeMap public instance, “dark” style: `https://tiles.openfreemap.org/styles/dark` |
+| Data | OpenStreetMap (ODbL), OpenMapTiles schema. Attribution is shown on the map |
+| Loaded | At run time by the browser |
+| 3D buildings | The app extrudes the `building` layer of the vector tiles using its `render_height` attribute |
+| Fallback | If the vector style cannot be loaded within 8 seconds, the app switches to OpenStreetMap's standard raster tiles (`tile.openstreetmap.org`), dimmed for the dark theme |
+| Terms | OpenFreeMap is a free, donation-funded public service without a service guarantee. OpenStreetMap's own raster tile servers are for light use only: <https://operations.osmfoundation.org/policies/tiles/>. For a client-facing deployment, self-host the tiles or use a commercial provider and change the style address in `js/app.js` |
 
 ## Branding
 
@@ -67,6 +68,7 @@ SCAD figures are **not downloaded or used by the pipeline**. They are quoted in 
 | Source | Why not |
 | --- | --- |
 | Traffic counts | None are public for Abu Dhabi |
+| Accident records, fines, camera locations | None are public; the app shows generated, illustrative figures instead (see [methodology.md](methodology.md), section 10) |
 | Signal timings | Not public; a generic penalty is used instead |
 | Census commuting table | Not public |
 | Live traffic (for example TomTom) | Needs a commercial API key and a key-protecting proxy; a possible extension |
@@ -74,4 +76,4 @@ SCAD figures are **not downloaded or used by the pipeline**. They are quoted in 
 
 ## Attribution text for deployments
 
-> Roads and base map © OpenStreetMap contributors (ODbL). Buildings: Microsoft Global ML Building Footprints. Bus timetable: Integrated Transport Centre Abu Dhabi GTFS via the Mobility Database. Simulation: Eclipse SUMO. Rendering: deck.gl, MapLibre GL JS.
+> Roads and base map data © OpenStreetMap contributors (ODbL); vector tiles by OpenFreeMap. Buildings: Microsoft Global ML Building Footprints. Bus timetable: Integrated Transport Centre Abu Dhabi GTFS via the Mobility Database. Simulation: Eclipse SUMO. Rendering: deck.gl, MapLibre GL JS.

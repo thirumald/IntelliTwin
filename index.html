@@ -30,9 +30,21 @@
   </label>
   <div class="topbar-right">
     <span class="badge" title="Traffic is simulated from assumptions, not observed">Simulated, not observed</span>
-    <span class="clock" id="clock" aria-live="off">--:--</span>
+    <span class="now"><span class="now-date" id="dateLabel"></span><span class="clock" id="clock" aria-live="off">--:--</span></span>
   </div>
 </header>
+
+<div class="modebar" role="group" aria-label="Live or historical view">
+  <div class="seg small" id="mode" role="radiogroup" aria-label="View mode">
+    <button data-mode="live" role="radio" aria-checked="true" class="on">Live</button>
+    <button data-mode="hist" role="radio" aria-checked="false">Historical</button>
+  </div>
+  <span class="hist" id="histControls" hidden>
+    <input type="date" id="hDate" aria-label="Date">
+    <select id="hHour" aria-label="Hour, 24-hour clock"></select><span aria-hidden="true">:</span><select id="hMin" aria-label="Minute"></select>
+  </span>
+  <span class="mode-note" id="modeNote"></span>
+</div>
 
 <main class="layout">
   <section class="map-wrap" aria-label="Traffic map">
@@ -42,34 +54,66 @@
       <p>Run the “Build twin data” workflow in GitHub Actions, or follow <a href="docs/operations.md">docs/operations.md</a> to build it locally.</p>
     </div>
 
-    <div class="sites" id="sites" role="group" aria-label="Major sites"></div>
+    <div class="sites" id="sites" role="group" aria-label="Major sites"><button type="button" class="mini" id="sitesMin" title="Show or hide the site shortcuts">Sites</button></div>
+    <button type="button" class="panel-open-btn" id="panelOpen" hidden>Dashboard</button>
 
-    <div class="legend" aria-label="Legend">
+    <div class="legend" id="legend" aria-label="Legend">
+      <button type="button" class="mini" id="legendMin" title="Show or hide the legend">Legend</button>
       <span><i class="sw free"></i>Free ≥80% of limit</span>
       <span><i class="sw moderate"></i>Moderate 60–80%</span>
       <span><i class="sw heavy"></i>Heavy 40–60%</span>
       <span><i class="sw severe"></i>Severe &lt;40%</span>
-      <span><i class="pt car"></i>Simulated vehicles</span>
+      <span><i class="pt car"></i>Vehicles (zoom in for 3D)</span>
       <span id="legendBus" hidden><i class="pt bus"></i>Timetabled bus</span>
+      <span><i class="pt acc"></i>Accident (illustrative)</span>
+      <span><i class="pt site"></i>Enforcement site (illustrative)</span>
     </div>
+
+    <button id="chatOpen" class="chat-open" aria-expanded="false" aria-controls="chat">Ask IntelliTwin</button>
+    <section id="chat" class="chat" hidden aria-label="IntelliTwin assistant">
+      <header><div><strong>IntelliTwin assistant</strong><span>Built-in agent · answers from the simulation in this page</span></div><button id="chatClose" class="btn small" aria-label="Close assistant">Close</button></header>
+      <div id="chatLog" class="chat-log" aria-live="polite"></div>
+      <div id="chatChips" class="chat-chips">
+        <button type="button">How is traffic now?</button>
+        <button type="button">Which roads are slowest?</button>
+        <button type="button">Show accidents</button>
+        <button type="button">How many fines?</button>
+        <button type="button">Go to Yas Island</button>
+        <button type="button">Compare the demand cases</button>
+      </div>
+      <form id="chatForm" autocomplete="off"><input id="chatInput" type="text" placeholder="Ask about traffic, roads, accidents, fines…" aria-label="Question"><button class="btn" type="submit">Send</button></form>
+    </section>
 
     <div class="timeline" role="group" aria-label="Time controls">
       <button id="play" class="btn icon" aria-label="Pause">❚❚</button>
       <div class="seg" id="rate" role="radiogroup" aria-label="Playback speed">
+        <button data-rate="1" role="radio" aria-checked="false" title="Real time">1×</button>
         <button data-rate="30" role="radio" aria-checked="false">30×</button>
         <button data-rate="120" role="radio" aria-checked="true" class="on">120×</button>
         <button data-rate="600" role="radio" aria-checked="false">600×</button>
       </div>
+      <span class="sim-clock" id="simClock" title="Time in the simulated morning">--:--</span>
       <input id="time" type="range" min="0" max="100" step="1" value="0" aria-label="Time of morning">
       <button id="tilt" class="btn" aria-pressed="false">3D</button>
+      <button id="fullView" class="btn" aria-pressed="false" title="Minimise or restore the panel, legend and site shortcuts">Full view</button>
       <button id="orbit" class="btn" aria-pressed="false" title="Slowly circle the camera around the view">Orbit</button>
     </div>
   </section>
 
   <aside class="panel" aria-label="Network intelligence">
-    <section class="card">
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Views">
+      <button role="tab" data-tab="dash" aria-selected="true" class="on">Dashboard</button>
+      <button role="tab" data-tab="cong" aria-selected="false">Congestion</button>
+      <button role="tab" data-tab="acc" aria-selected="false">Accidents</button>
+      <button role="tab" data-tab="fines" aria-selected="false">Fines</button>
+      <button role="tab" data-tab="model" aria-selected="false">Model</button>
+      <button type="button" class="mini" id="panelMin" title="Minimise this panel" aria-label="Minimise panel">Minimise</button>
+    </nav>
+
+    <!-- Dashboard -->
+    <section class="card" data-tab="dash">
       <div class="card-head">
-        <h2>Network</h2>
+        <h2>Network now</h2>
         <span class="muted" id="viewLabel"></span>
       </div>
       <div class="kpis">
@@ -77,13 +121,15 @@
         <div class="kpi"><span class="k-label">Extra travel time</span><span class="k-value" id="kCong">–</span><span class="k-delta" id="dCong"></span></div>
         <div class="kpi"><span class="k-label">Vehicles moving</span><span class="k-value" id="kVeh">–</span><span class="k-delta" id="dVeh"></span></div>
         <div class="kpi"><span class="k-label">Delay per hour</span><span class="k-value" id="kDelay">–</span><span class="k-delta" id="dDelay"></span></div>
+        <button class="kpi link" data-goto="acc"><span class="k-label">Accidents since 06:30 <em>illustrative</em></span><span class="k-value" id="kAcc">–</span><span class="k-delta" id="dAcc"></span></button>
+        <button class="kpi link" data-goto="fines"><span class="k-label">Fines since 06:30 <em>illustrative</em></span><span class="k-value" id="kFines">–</span><span class="k-delta" id="dFines"></span></button>
       </div>
       <p class="insight" id="insight"></p>
     </section>
 
-    <section class="card">
+    <section class="card" data-tab="dash">
       <div class="card-head">
-        <h2>Scenario</h2>
+        <h2>Scenario and layers</h2>
         <span class="muted">Pre-simulated</span>
       </div>
       <label class="field">
@@ -91,11 +137,13 @@
         <select id="scenario"></select>
       </label>
       <label class="check"><input id="showCars" type="checkbox" checked><span>Vehicles <span class="muted" id="carNote"></span></span></label>
+      <label class="check"><input id="showAcc" type="checkbox" checked><span>Accidents <span class="muted">(illustrative)</span></span></label>
+      <label class="check"><input id="showSites" type="checkbox" checked><span>Enforcement sites <span class="muted">(illustrative)</span></span></label>
       <label class="check" id="busRow" hidden><input id="showBuses" type="checkbox" checked><span>Buses from the timetable <span class="muted" id="busNote"></span></span></label>
-      <label class="check" id="bldRow" hidden><input id="showBld" type="checkbox"><span>Buildings <span class="muted" id="bldNote"></span></span></label>
+      <label class="check" id="bldRow" hidden><input id="showBld" type="checkbox"><span>More buildings, Microsoft footprints <span class="muted" id="bldNote"></span></span></label>
     </section>
 
-    <section class="card">
+    <section class="card" data-tab="dash">
       <div class="card-head">
         <h2>Morning profile</h2>
         <span class="muted">Network speed, km/h</span>
@@ -108,7 +156,12 @@
       </div>
     </section>
 
-    <section class="card">
+    <!-- Congestion -->
+    <section class="card" data-tab="cong" hidden>
+      <div class="card-head"><h2>Congestion by road class</h2><span class="muted">Share of vehicles in heavy or severe traffic</span></div>
+      <div class="bars" id="classBars"></div>
+    </section>
+    <section class="card" data-tab="cong" hidden>
       <div class="card-head">
         <h2>Slowest roads now</h2>
         <span class="muted">Tap to locate</span>
@@ -116,28 +169,61 @@
       <ol class="corridors" id="corridors"></ol>
     </section>
 
-    <section class="card">
+    <!-- Accidents -->
+    <section class="card" data-tab="acc" hidden>
+      <p class="notice"><strong>Illustrative, not real records.</strong> No accident data is public for Abu Dhabi. These are generated from the simulated traffic to show how the view works.</p>
+      <div class="kpis three">
+        <div class="kpi"><span class="k-label">Since 06:30</span><span class="k-value" id="aTotal">–</span></div>
+        <div class="kpi"><span class="k-label">Active now</span><span class="k-value" id="aActive">–</span></div>
+        <div class="kpi"><span class="k-label">With injury</span><span class="k-value" id="aInjury">–</span></div>
+      </div>
+    </section>
+    <section class="card" data-tab="acc" hidden>
+      <div class="card-head"><h2>Accident log</h2><span class="muted">Latest first · tap to locate</span></div>
+      <ol class="corridors" id="accList"></ol>
+    </section>
+
+    <!-- Fines -->
+    <section class="card" data-tab="fines" hidden>
+      <p class="notice"><strong>Illustrative, not real records.</strong> No enforcement data is public. Violations are generated from simulated flow at 60 assumed sites, and the fine values are placeholders, not the official tariff.</p>
+      <div class="kpis">
+        <div class="kpi"><span class="k-label">Fines since 06:30</span><span class="k-value" id="fTotal">–</span></div>
+        <div class="kpi"><span class="k-label">Value</span><span class="k-value" id="fValue">–</span></div>
+      </div>
+    </section>
+    <section class="card" data-tab="fines" hidden>
+      <div class="card-head"><h2>By violation type</h2><span class="muted">Count · assumed fine</span></div>
+      <div class="bars" id="typeBars"></div>
+    </section>
+    <section class="card" data-tab="fines" hidden>
+      <div class="card-head"><h2>Busiest enforcement sites</h2><span class="muted">Tap to locate</span></div>
+      <ol class="corridors" id="siteList"></ol>
+    </section>
+
+    <!-- Model -->
+    <section class="card" data-tab="model" hidden>
       <div class="card-head"><h2>The simulated morning</h2><span class="muted" id="winLabel"></span></div>
       <table class="facts" id="tripFacts"></table>
     </section>
-
-    <section class="card">
+    <section class="card" data-tab="model" hidden>
       <div class="card-head"><h2>What is built</h2><span class="muted" id="builtLabel"></span></div>
       <table class="facts" id="netFacts"></table>
     </section>
-
-    <section class="card about">
+    <section class="card about" data-tab="model" hidden>
       <h2>About this demonstrator</h2>
-      <p>IntelliTwin replays a morning peak simulated with Eclipse SUMO on the OpenStreetMap road network of Abu Dhabi city. The roads are real; the <strong>traffic is simulated from assumptions</strong>, not observed. No traffic counts are public for Abu Dhabi, so the model is not calibrated or validated.</p>
+      <p>IntelliTwin replays a morning peak simulated with Eclipse SUMO on the OpenStreetMap road network of Abu Dhabi city. The roads are real; the <strong>traffic is simulated from assumptions</strong>, not observed. No traffic counts are public for Abu Dhabi, so the model is not calibrated or validated. Accidents and fines are illustrative only.</p>
       <p>It is an independent demonstrator, not an official model of any UAE authority, and must not be used for planning, investment, operational, legal or safety decisions.</p>
       <p>Sources, method, file formats and limits are in the <a href="docs/README.md">docs folder</a>.</p>
-      <p class="muted">Roads © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL). Base map tiles © OpenStreetMap contributors. Buildings: Microsoft Global ML Building Footprints. Bus timetable: Integrated Transport Centre GTFS. Software: Eclipse SUMO, deck.gl, MapLibre GL JS.</p>
+      <p class="muted">Roads © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL). Base map: OpenStreetMap data, vector tiles by OpenFreeMap. Buildings: Microsoft Global ML Building Footprints. Bus timetable: Integrated Transport Centre GTFS. Software: Eclipse SUMO, deck.gl, MapLibre GL JS.</p>
     </section>
   </aside>
 </main>
 
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/deck.gl.min.js"></script>
+<script src="js/events.js"></script>
+<script src="js/vehicles3d.js"></script>
 <script src="js/app.js"></script>
+<script src="js/assistant.js"></script>
 </body>
 </html>

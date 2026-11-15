@@ -26,6 +26,10 @@ The traffic shown is simulated, not observed. Results are indicative and must no
 | Simulation detail | Mesoscopic queues, not individual car-following; no lane changing, no junction geometry effects |
 | Buses | Drawn from a timetable that may be several years old; they do not interact with traffic |
 | Buildings | Machine-detected footprints; most heights are estimated from footprint size |
+| Accidents and fines | Illustrative only, generated from the simulated traffic. Not real records, sites or fine values |
+| Live and historical | No live feed and no stored history; both modes replay the one simulated morning (07:00–10:00) |
+| Vehicles on the map | Drawn to match each link's simulated count and speed; not tracked vehicles |
+| Assistant | Rule-based, limited to the data in the page; not a language model |
 | Scenarios | Demand scaling only. No incident, closure, weather or event scenarios yet |
 | Days | One typical weekday. No Friday, weekend, Ramadan or school-holiday patterns |
 | Speed limits | From OpenStreetMap tags or class defaults; the enforcement buffer common in Abu Dhabi is not represented |

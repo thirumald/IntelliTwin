@@ -26,7 +26,10 @@ There is no server-side component at run time. The simulation runs once, at buil
 
 | Path | Purpose |
 | --- | --- |
-| `index.html`, `css/`, `js/app.js` | The static application |
+| `index.html`, `css/`, `js/app.js` | The static application: map, playback, panels |
+| `js/vehicles3d.js` | Individual vehicles: per-link placement and the 3D car mesh |
+| `js/events.js` | Illustrative accidents and fines generated from the simulation |
+| `js/assistant.js` | The built-in assistant |
 | `vendor/` | MapLibre GL JS 4.7.1 and deck.gl 9.0.38, vendored so the app needs no CDN |
 | `data/` | Pipeline output read by the app (committed by the workflow) |
 | `tools/config.py` | Every tunable number: study area, time window, demand, scenarios |
@@ -46,7 +49,7 @@ There is no server-side component at run time. The simulation runs once, at buil
 | Numerics | NumPy, SciPy, pyproj | BSD / MIT |
 | Map rendering | MapLibre GL JS | BSD-3-Clause |
 | Data layers | deck.gl (`PathLayer`, `TripsLayer`, `PolygonLayer`, `MapboxOverlay`) | MIT |
-| Base map tiles | OpenStreetMap standard raster tiles, dimmed in the app | See [data-sources.md](data-sources.md) |
+| Base map | OpenFreeMap vector tiles (OpenStreetMap data) with extruded buildings; OSM raster fallback | See [data-sources.md](data-sources.md) |
 
 ## Run-time behaviour of the app
 

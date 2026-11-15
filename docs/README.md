@@ -9,6 +9,7 @@ Technical and data-source documentation for the IntelliTwin Abu Dhabi mobility t
 | [methodology.md](methodology.md) | Network build, demand estimation, simulation settings, scenarios, KPIs, all assumptions |
 | [data-format.md](data-format.md) | The static files in `data/` that the app reads |
 | [operations.md](operations.md) | Running the pipeline on GitHub Actions or locally, configuration, secrets, deployment |
+| [assistant.md](assistant.md) | The built-in assistant and how to connect a language model |
 | [limitations.md](limitations.md) | Calibration status, known limits, disclaimer |
 | [reference-figures.md](reference-figures.md) | Published and third-party figures used as benchmarks |
 
@@ -21,6 +22,7 @@ IntelliTwin is a static web application. A build pipeline downloads the OpenStre
 - Eclipse SUMO: <https://eclipse.dev/sumo/>
 - deck.gl: <https://deck.gl/>
 - MapLibre GL JS: <https://maplibre.org/>
+- OpenFreeMap (vector tiles from OpenStreetMap data): <https://openfreemap.org/>
 - Microsoft Global ML Building Footprints: <https://github.com/microsoft/GlobalMLBuildingFootprints>
 - Mobility Database (GTFS catalogue): <https://mobilitydatabase.org/>
 - Geofabrik OpenStreetMap extracts: <https://download.geofabrik.de/>

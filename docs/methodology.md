@@ -82,15 +82,39 @@ Per link and 5-minute bin, SUMO reports mean speed and vehicle-seconds present.
 
 Trip statistics (average length, duration, speed, time lost) come from SUMO's trip records for trips completed inside the window.
 
-## 7. Moving vehicles in the app
+## 7. Vehicles in the app
 
-1% of vehicles (`TRIP_SAMPLE`) have their full path recorded with the time they leave each link. The app draws these as moving dots; one dot stands for about 100 vehicles. Positions within a link are interpolated at constant speed.
+The app draws **one vehicle for every vehicle the simulation has on each road link**. For each link and 5-minute bin, the number present is the simulated vehicle-seconds divided by the bin length. Those vehicles are spaced along the link, spread across its lanes, and moved at the link's simulated speed. Zoomed out they are dots; from zoom 14.3 they are 3D cars on the links near the view centre.
+
+The counts and speeds are the simulation's. The individual cars are drawn to match them: they are not tracked vehicles, they do not carry a route from link to link, and their colours are decorative. The pipeline still exports a 1% sample of true simulated trajectories (`*_trips.bin`), which the app no longer loads.
 
 ## 8. Buses
 
 Bus runs come from the GTFS timetable for a Tuesday service day. Positions follow the route shape where the feed has one, at constant speed between consecutive timetabled stops; otherwise they move in straight lines between stops. Buses do not load the simulated roads.
 
-## 9. Tuning history
+## 9. Live and historical modes
+
+The model holds one simulated weekday morning. There is no live traffic feed and no recorded history.
+
+- **Live:** the header shows the current Abu Dhabi date and time. Between 07:00 and 10:00 the twin follows the clock at real-time speed; outside those hours it replays the modelled morning and says so.
+- **Historical:** a date and a 24-hour time can be chosen. Every date replays the same modelled morning for the selected demand case; a time outside 07:00–10:00 shows the nearest modelled time. The on-screen note states this.
+
+Storing real history would need a feed (for example floating-car speeds or detector counts) and a time-series store behind the app.
+
+## 10. Illustrative accidents and fines
+
+No accident or enforcement data is public for Abu Dhabi. So that the dashboard has these views, `js/events.js` generates them in the browser, deterministically, from the simulated traffic. **They are not real records and the app labels them “illustrative” wherever they appear.**
+
+| Item | How it is generated |
+| --- | --- |
+| Accidents | 45 for the typical weekday (06:30–10:00), an arbitrary demo figure. Each is placed on a link and time in proportion to vehicle-kilometres, weighted up where traffic is slow. Other demand cases scale with their own exposure. Severity is drawn 78% damage only, 17% minor injury, 5% serious; duration 15–45 minutes |
+| Enforcement sites | 60 assumed sites: the busiest named links (at most two per road). They are not real camera locations |
+| Violations | Drawn per site and 5-minute bin from the simulated flow passing it, by type: speeding (mostly when traffic flows freely), red light, lane discipline, phone use, seat belt, tailgating. The rates are invented for the demo |
+| Fine values | Placeholders (AED 400–1,000 by type), not the official tariff |
+
+To replace them with real data, load real records in place of `TwinEvents.generate()`; the dashboard, map layers and assistant read the same structure.
+
+## 11. Tuning history
 
 All builds used the real OpenStreetMap network (20,801 links). “Typical weekday” results:
 
