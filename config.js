@@ -24,7 +24,8 @@ window.INTELLITWIN_CONFIG = {
   /* ---- Start-up view ------------------------------------------------------------------------- */
   // Interface style: 'government' (navy and gold, square corners, labelled side menu) or 'enterprise' (compact icon rail).
   // Visitors can switch with the Style button in the status bar.
-  ui: { style: 'government' },
+  // menu: 'minimised' (icons only, with a button to expand) or 'expanded'.
+  ui: { style: 'government', menu: 'minimised' },
 
   start: {
     mode: 'live',               // 'live' = start at the Abu Dhabi clock and play at the rate below; 'replay' = today from now, as Historical
@@ -138,6 +139,37 @@ sampleVideos: [
       { id: '200', name: 'Mussafah – Yas Island', from: [54.5000, 24.3550], to: [54.6031, 24.4672], headwayMin: 20 },
       { id: '210', name: 'Khalifa City – Masdar City', from: [54.5770, 24.4200], to: [54.6170, 24.4290], headwayMin: 15 },
       { id: '300', name: 'Downtown – Al Maryah Island', from: [54.3570, 24.4870], to: [54.3900, 24.5020], headwayMin: 8 }
+    ]
+  },
+
+  /* ---- Taxis and on-demand shuttles (synthetic) ----------------------------------------------- */
+  // Example fleets. Taxis move along corridors between the ranks; shuttles circulate inside their zones.
+  taxis: {
+    count: 260,                   // taxis drawn
+    speedKmh: 32,
+    hiredSharePeak: 0.7, hiredShareDay: 0.5, hiredShareNight: 0.25,   // share of taxis carrying a passenger
+    bookingShare: 0.1,            // share driving to a booking
+    ranks: [
+      { name: 'Downtown', at: [54.3570, 24.4870], bays: 10 },
+      { name: 'Corniche', at: [54.3400, 24.4750], bays: 8 },
+      { name: 'Emirates Palace', at: [54.3170, 24.4615], bays: 8 },
+      { name: 'Al Maryah Island', at: [54.3900, 24.5020], bays: 10 },
+      { name: 'Al Reem Island', at: [54.4050, 24.4980], bays: 8 },
+      { name: 'Grand Mosque', at: [54.4750, 24.4128], bays: 12 },
+      { name: 'ADNEC', at: [54.4370, 24.4180], bays: 12 },
+      { name: 'Mussafah', at: [54.5000, 24.3550], bays: 8 },
+      { name: 'Khalifa City', at: [54.5770, 24.4200], bays: 6 },
+      { name: 'Yas Island', at: [54.6031, 24.4672], bays: 12 },
+      { name: 'Airport', at: [54.6511, 24.4330], bays: 20 }
+    ]
+  },
+  shuttles: {
+    seats: 12, speedKmh: 24,
+    zones: [
+      { name: 'Yas Island', at: [54.6031, 24.4672], radiusM: 2600, vehicles: 6, waitMin: 8 },
+      { name: 'Saadiyat Island', at: [54.4330, 24.5400], radiusM: 2600, vehicles: 5, waitMin: 10 },
+      { name: 'Khalifa City', at: [54.5770, 24.4200], radiusM: 2800, vehicles: 6, waitMin: 9 },
+      { name: 'Al Reem Island', at: [54.4050, 24.4980], radiusM: 1500, vehicles: 4, waitMin: 6 }
     ]
   },
 

@@ -29,6 +29,18 @@
   }
   setStyle(style, false);
   if (styleBtn) { styleBtn.addEventListener('click', function () { setStyle(style === 'government' ? 'enterprise' : 'government', true); }); }
+  // Side menu: minimised to icons by default (ui.menu), with a button to expand it. The choice is remembered in this browser.
+  var railBtn = document.getElementById('railToggle'), railMin = (cfg.menu || 'minimised') !== 'expanded';
+  try { var savedMenu = localStorage.getItem('itw-menu'); if (savedMenu) { railMin = savedMenu === 'min'; } } catch (e3) { /* storage unavailable */ }
+  function setRail(min, save) {
+    railMin = min; document.body.classList.toggle('rail-min', min);
+    if (railBtn) { railBtn.setAttribute('aria-expanded', min ? 'false' : 'true'); railBtn.title = min ? 'Expand the menu' : 'Minimise the menu'; }
+    if (save) { try { localStorage.setItem('itw-menu', min ? 'min' : 'open'); } catch (e4) { /* storage unavailable */ } }
+    var T2 = window.IntelliTwin, m2 = T2 && T2.getMap && T2.getMap();
+    if (m2) { setTimeout(function () { m2.resize(); }, 60); }
+  }
+  setRail(railMin, false);
+  if (railBtn) { railBtn.addEventListener('click', function (e) { e.stopPropagation(); setRail(!railMin, true); }); }
   new MutationObserver(sync).observe(tabs, { subtree: true, attributes: true, attributeFilter: ['class'], characterData: true, childList: true });
   new MutationObserver(sync).observe(layout, { attributes: true, attributeFilter: ['class'] });
   sync();

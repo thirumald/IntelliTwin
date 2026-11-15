@@ -48,5 +48,5 @@ The traffic shown is simulated, not observed. Results are indicative and must no
 4. Current GTFS and staff-transport data.
 5. A demand model that separates homes, jobs, schools and freight.
 6. An equilibrium assignment with documented convergence.
-- **Buses are invented.** The bus routes, stops, timetable and delays are an example network, not the Integrated Transport Centre's services (see [buses.md](buses.md)).
+- **Public transport is invented.** Bus routes, stops, timetables and delays, taxis, taxi ranks and on-demand shuttles are example data, not real services or vehicle positions (see [buses.md](buses.md)).
 - **Live is not a live feed.** Live starts at the Abu Dhabi clock and, at the default 30×, runs ahead of it; all traffic in it is synthetic.

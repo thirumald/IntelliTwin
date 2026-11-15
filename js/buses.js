@@ -31,8 +31,19 @@
       if (!out || out.metres < 1500) { return; }
       [out, back].forEach(function (leg, dir) {
         if (!leg) { return; }
-        var cum = measure(leg.path), len = cum[cum.length - 1], stops = [];
-        for (var d = 0; d <= len; d += B.stopSpacingM) { stops.push(d); }
+        var cum = measure(leg.path), len = cum[cum.length - 1], stops = [], edges = C.edges(), names = C.names(), ends = def.name.split(' – ');
+        if (dir === 1) { ends.reverse(); }
+        // Each stop takes the name of the road it stands on, with a number where a road has several stops.
+        var linkEnd = [], run = 0, seen = {}, li = 0;
+        leg.links.forEach(function (i) { run += edges[i].m; linkEnd.push(run); });
+        for (var d = 0; d <= len; d += B.stopSpacingM) {
+          while (li < linkEnd.length - 1 && linkEnd[li] * len / (run || 1) < d) { li++; }
+          var road = names[edges[leg.links[li]].n] || 'Unnamed road'; seen[road] = (seen[road] || 0) + 1;
+          stops.push({ d: d, code: def.id + (dir ? 'B' : 'A') + C.pad(stops.length + 1), road: road, n: seen[road] });
+        }
+        stops.forEach(function (st, k) {
+          st.name = k === 0 ? ends[0] + ' terminus' : k === stops.length - 1 && len - st.d < B.stopSpacingM ? ends[1] + ' terminus' : st.road + (seen[st.road] > 1 ? ' ' + st.n : '');
+        });
         routes.push({ id: def.id, name: dir === 0 ? def.name : def.name.split(' – ').reverse().join(' – '), dir: dir, key: def.id + ':' + dir, headway: def.headwayMin,
           path: leg.path, links: leg.links, cum: cum, len: len, stops: stops, minutes: len / 1000 / B.scheduleKmh * 60 });
       });
@@ -59,7 +70,8 @@
     for (var dep = first, guard = 0; dep <= t && guard < 400; guard++) {
       var hw = headwayAt(r, dep) * 60; if (!hw) { break; }
       var prog = (t - dep) / (dur + late);
-      if (prog >= 0 && prog < 1) { var pos = pointAt(r, prog * r.len); out.push({ p: pos.p, yaw: pos.yaw, route: r, dep: dep, prog: prog }); }
+      // The bus number is the route, the direction and the running number of the departure that day.
+      if (prog >= 0 && prog < 1) { var pos = pointAt(r, prog * r.len); out.push({ p: pos.p, yaw: pos.yaw, route: r, dep: dep, prog: prog, no: r.id + (r.dir ? 'B' : 'A') + '-' + C.pad(guard + 1), late: late / 60 }); }
       dep += hw;
     }
     return out;
@@ -72,6 +84,52 @@
       dep += hw;
     }
     return out;
+  }
+
+  // Next arrival (seconds of the day) of any bus at a stop of route r, or null when none is due today.
+  function nextArrival(r, st, t) {
+    var dur = r.minutes * 60, late = delayMin(r) * 60, best = null;
+    busesOn(r, t).forEach(function (b) { if (b.prog * r.len <= st.d) { var eta = t + (st.d / r.len - b.prog) * (dur + late); if (best === null || eta < best) { best = eta; } } });
+    if (best === null) { var nd = nextDepartures(r, t, 1); if (nd.length) { best = nd[0] + st.d / r.len * (dur + late); } }
+    return best;
+  }
+  function nextStop(b) { var d = b.prog * b.route.len, st = b.route.stops; for (var i = 0; i < st.length; i++) { if (st[i].d >= d) { return st[i]; } } return st[st.length - 1]; }
+
+  /* ---------- live tracking: the map follows one vehicle (a bus here; taxis and shuttles use it too) ---------- */
+  var tracked = null, lastCentre = null;
+  // item: { label, sub, find: function (t) -> { p, rows: [[label, value]...] } or null }
+  function track(item) {
+    tracked = item || null; lastCentre = null;
+    $('trackCard').setAttribute('data-locked', tracked ? '0' : '1'); $('trackCard').hidden = !tracked;
+    if (tracked) {
+      var now = tracked.find(state.t), map = T.getMap();
+      if (now && map) { map.easeTo({ center: [now.p[0], now.p[1]], zoom: Math.max(map.getZoom(), 15.5), duration: 700 }); }
+      C.showTab('bus'); if (T.audit) { T.audit('Tracking ' + tracked.label); }
+    }
+    renderTrack(); C.redraw();
+  }
+  function renderTrack() {
+    if (!tracked) { return; }
+    var now = tracked.find(state.t);
+    $('trackTitle').textContent = 'Tracking ' + tracked.label;
+    $('trackFacts').innerHTML = now ? now.rows.map(function (r) { return C.fact(r[0], r[2] || '', r[1]); }).join('') : C.fact('Status', '', 'No longer in service');
+  }
+  function follow() {
+    if (!tracked) { return; }
+    var now = tracked.find(state.t), map = T.getMap();
+    if (!now || !map || map.isEasing()) { return; }
+    if (lastCentre && Math.hypot((now.p[0] - lastCentre[0]) * kx, (now.p[1] - lastCentre[1]) * ky) < 3) { return; }
+    lastCentre = [now.p[0], now.p[1]]; map.jumpTo({ center: lastCentre });
+  }
+  function trackBus(b) {
+    var r = b.route, dep = b.dep;
+    track({ label: 'bus ' + b.no, find: function (t) {
+      var list = busesOn(r, t), me = null; list.forEach(function (x) { if (x.dep === dep) { me = x; } });
+      if (!me) { return null; }
+      var st = nextStop(me), eta = nextArrival(r, st, t);
+      return { p: me.p, rows: [['Route', r.id + ' · ' + r.name], ['Next stop', st.name + ' (' + st.code + ')', eta ? 'due ' + clock(eta) : ''], ['Journey done', Math.round(me.prog * 100) + '%', 'left the first stop at ' + clock(dep)],
+        ['Delay', me.late < 1 ? 'on time' : Math.round(me.late) + ' min late', 'from traffic on the route']] };
+    } });
   }
 
   function select(r) {
@@ -115,13 +173,35 @@
         C.fact('Stops', 'about every ' + B.stopSpacingM + ' m', selected.stops.length) +
         C.fact('Timetabled journey', 'at ' + B.scheduleKmh + ' km/h including stops', Math.round(selected.minutes) + ' min') +
         C.fact('Delay now', 'from traffic on the route', late < 1 ? 'on time' : Math.round(late) + ' min') +
+        C.fact('Buses on the route now', 'tap one below to track it', busesOn(selected, t).length) +
         C.fact('Service hours', '', C.pad(Math.floor(B.firstHour)) + ':' + C.pad(Math.round((B.firstHour % 1) * 60)) + '–' + C.pad(Math.floor(B.lastHour)) + ':' + C.pad(Math.round((B.lastHour % 1) * 60)));
+      var fl = $('busFleet'); fl.innerHTML = '';
+      busesOn(selected, t).forEach(function (b) {
+        var st = nextStop(b);
+        fl.appendChild(C.listButton(b.late >= B.onTimeWithinMin ? 'heavy' : 'free', 'Bus ' + b.no, 'Next stop: ' + st.name + ' · ' + (b.late < 1 ? 'on time' : Math.round(b.late) + ' min late'), Math.round(b.prog * 100) + '<small>%</small>', function () { trackBus(b); }));
+      });
+      if (!fl.children.length) { fl.innerHTML = '<li class="muted">No buses on this route at this hour.</li>'; }
+      var sl = $('busStops'); sl.innerHTML = '';
+      selected.stops.forEach(function (st) {
+        var eta = nextArrival(selected, st, t), pos = pointAt(selected, st.d).p;
+        sl.appendChild(C.listButton('site', st.name, 'Stop ' + st.code + ' · ' + (st.d / 1000).toFixed(1) + ' km from the start', eta ? clock(eta) : '–', function () {
+          if (T.getMap()) { T.getMap().easeTo({ center: [pos[0], pos[1]], zoom: 16, duration: 700 }); }
+          C.showPopup(pos, st.name, [['Stop number', st.code], ['Route', selected.id + ' · ' + selected.name], ['Next bus', eta ? clock(eta) : 'none today']], 'Synthetic stop on a synthetic timetable');
+        }));
+      });
     }
+    renderTrack();
   }
 
   C.addLayers(function (ctx) {
-    if (!show || !routes.length) { return []; }
+    follow();
     var out = [], t = state.t, stamp = selected ? selected.key : '';
+    if (tracked) {
+      // A ring marks the vehicle being tracked.
+      var tn = tracked.find(t);
+      if (tn) { out.push(new deck.ScatterplotLayer({ id: 'track-ring', data: [tn.p], radiusUnits: 'pixels', filled: false, stroked: true, lineWidthUnits: 'pixels', getPosition: function (p) { return p; }, getRadius: 20, getLineColor: [210, 171, 82], getLineWidth: 3 })); }
+    }
+    if (!show || !routes.length) { return out; }
     out.push(new deck.PathLayer({
       id: 'bus-routes', data: routes.filter(function (r) { return r.dir === 0 || r === selected; }), pickable: true,
       getPath: function (r) { return r.path; }, getColor: function (r) { return r === selected ? [255, 255, 255, 255] : [57, 135, 229, selected ? 70 : 150]; },
@@ -129,19 +209,25 @@
       updateTriggers: { getColor: stamp, getWidth: stamp }, onClick: function (info) { if (info.object) { C.showTab('bus'); select(info.object); } }
     }));
     if (selected && ctx.zoom >= 12.5) {
-      out.push(new deck.ScatterplotLayer({ id: 'bus-stops', data: selected.stops.map(function (d) { return pointAt(selected, d).p; }), radiusUnits: 'pixels', stroked: true, lineWidthUnits: 'pixels',
-        getPosition: function (p) { return p; }, getRadius: 4, getFillColor: [255, 255, 255], getLineColor: BLUE, getLineWidth: 2 }));
+      var stopData = selected.stops.map(function (st) { return { st: st, p: pointAt(selected, st.d).p }; });
+      out.push(new deck.ScatterplotLayer({ id: 'bus-stops', data: stopData, pickable: true, radiusUnits: 'pixels', stroked: true, lineWidthUnits: 'pixels',
+        getPosition: function (o) { return o.p; }, getRadius: 5, getFillColor: [255, 255, 255], getLineColor: BLUE, getLineWidth: 2,
+        onClick: function (info) { if (info.object) { var o = info.object, eta = nextArrival(selected, o.st, state.t); C.showPopup(o.p, o.st.name, [['Stop number', o.st.code], ['Route', selected.id + ' · ' + selected.name], ['Next bus', eta ? clock(eta) : 'none today']], 'Synthetic stop on a synthetic timetable'); } } }));
+      if (ctx.zoom >= 14.5) {
+        out.push(new deck.TextLayer({ id: 'bus-stop-names', data: stopData, getPosition: function (o) { return o.p; }, getText: function (o) { return o.st.name; }, getSize: 11, getColor: [235, 240, 250],
+          getPixelOffset: [0, -14], background: true, getBackgroundColor: [12, 31, 63, 220], backgroundPadding: [4, 2], fontFamily: 'system-ui, sans-serif', characterSet: 'auto' }));
+      }
     }
     var fleet = []; routes.forEach(function (r) { fleet = fleet.concat(busesOn(r, t)); });
     if (ctx.zoom >= window.TwinCars.MIN_ZOOM) {
       var scale = ctx.zoom >= 17 ? 1.3 : ctx.zoom >= 16 ? 2 : ctx.zoom >= 15 ? 3 : 4.5, props = { data: fleet, getPosition: function (b) { return b.p; }, getOrientation: function (b) { return [0, b.yaw, 0]; }, getScale: [2.9, 1.45, 2.2], sizeScale: scale };
-      out.push(new deck.SimpleMeshLayer(Object.assign({ id: 'syn-buses', mesh: window.TwinCars.MESH, getColor: function (b) { return b.route === selected ? HI : [70, 150, 235]; }, updateTriggers: { getColor: stamp } }, props)));
+      out.push(new deck.SimpleMeshLayer(Object.assign({ id: 'syn-buses', mesh: window.TwinCars.MESH, pickable: true, onClick: function (info) { if (info.object) { trackBus(info.object); } }, getColor: function (b) { return b.route === selected ? HI : [70, 150, 235]; }, updateTriggers: { getColor: stamp } }, props)));
       out.push(new deck.SimpleMeshLayer(Object.assign({ id: 'syn-buses-dark', mesh: window.TwinCars.MESH_DARK, getColor: [22, 30, 46] }, props)));
     } else {
-      out.push(new deck.ScatterplotLayer({ id: 'syn-buses', data: fleet, pickable: true, radiusUnits: 'pixels', stroked: true, lineWidthUnits: 'pixels',
+      out.push(new deck.ScatterplotLayer({ id: 'syn-bus-dots', data: fleet, pickable: true, radiusUnits: 'pixels', stroked: true, lineWidthUnits: 'pixels',
         getPosition: function (b) { return b.p; }, getRadius: ctx.zoom < 11.5 ? 3.5 : 5, getFillColor: function (b) { return b.route === selected ? HI : [70, 150, 235]; }, getLineColor: [8, 20, 44], getLineWidth: 1.5,
         updateTriggers: { getFillColor: stamp },
-        onClick: function (info) { if (info.object) { var b = info.object; C.showPopup(b.p, 'Bus on route ' + b.route.id, [['Route', b.route.name], ['Left the first stop', clock(b.dep)], ['Journey done', Math.round(b.prog * 100) + '%']], 'Synthetic bus on a synthetic timetable'); } } }));
+        onClick: function (info) { if (info.object) { trackBus(info.object); } } }));
     }
     return out;
   });
@@ -150,8 +236,10 @@
     setup(); render();
     $('showSynBuses').addEventListener('change', function (e) { show = e.target.checked; C.redraw(); });
     $('busClear').addEventListener('click', function () { select(null); });
+    $('trackStop').addEventListener('click', function () { track(null); });
+    T.getMap() && T.getMap().on('dragstart', function () { if (tracked) { track(null); } });
     C.onMinute(render);
   });
 
-  T.buses = { routes: function () { return routes; }, select: select, inService: function () { var n = 0; routes.forEach(function (r) { n += busesOn(r, state.t).length; }); return n; } };
+  T.buses = { routes: function () { return routes; }, select: select, track: track, tracking: function () { return tracked; }, busesOn: busesOn, nextArrival: nextArrival, inService: function () { var n = 0; routes.forEach(function (r) { n += busesOn(r, state.t).length; }); return n; } };
 })();

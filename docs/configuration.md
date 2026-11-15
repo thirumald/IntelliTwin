@@ -9,6 +9,7 @@ All settings are in `config.js` at the repository root. Every value has a workin
 | Section | Key | Default | What it does |
 | --- | --- | --- | --- |
 | `ui` | `style` | `'government'` | Interface style: `'government'` (navy and gold, square corners, larger text, labelled side menu) or `'enterprise'` (compact icon rail). The Style button in the status bar switches it for that browser |
+| | `menu` | `'minimised'` | Side menu on opening: `'minimised'` (icons only) or `'expanded'`. The menu button at its top switches it for that browser |
 | `start` | `mode`, `rate` | `'live'`, 30 | Opening mode and speed. `'live'` starts at the Abu Dhabi clock and plays at `rate` (30× by default, so it runs ahead of the clock; choose 1× to stay locked to it). `'replay'` opens today's synthetic day as Historical |
 | | `fullView` | `true` | Open with the panel, legend and site shortcuts minimised |
 | | `focus`, `orbit` | `'most-congested-site'`, `true` | Open with the most congested major site selected in the site chips, in a tilted 3D view with the camera orbiting. `'most-congested'` opens on the slowest road instead; `'all'` on the whole area |
@@ -34,6 +35,8 @@ All settings are in `config.js` at the repository root. Every value has a workin
 | | `pushSeconds` | 8 | Seconds before a notification closes by itself. 0 keeps it until it is closed with × |
 | | `pushPosition` | `'top-right'` | Corner of the map for notifications: `'top-right'` or `'top-left'` |
 | | `pushMaxVisible` | 3 | Most notifications on screen at once |
+| `taxis` | `count`, `speedKmh`, `hiredSharePeak/Day/Night`, `bookingShare`, `ranks` | 260, 32, 0.7/0.5/0.25, 0.1, 11 ranks | Synthetic taxi fleet and taxi ranks (name, position, bays) |
+| `shuttles` | `seats`, `speedKmh`, `zones` | 12, 24, 4 zones | Synthetic on-demand shuttle zones: name, centre, radius, vehicles, usual wait |
 | `vehicles` | `mix` | six types | Assumed shares of vehicle types for display and reporting |
 | `people` | `perKmByClass` | `[0, 0, 6, 12, 16]` | Synthetic walkers per km of street by road class, before the time-of-day factor |
 | `environment` | `sensors`, `syntheticSensors`, `radiusM` | `[]`, 18, 400 | Environmental sensors: real positions or a number of synthetic ones; traffic radius used for readings |
