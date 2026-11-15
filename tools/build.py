@@ -542,7 +542,7 @@ def main():
     km_by_class = export_roads(net, edges, os.path.join(args.out, "roads.json"), osm_names(args.osm))
     bld, buildings = None, {"available": False, "reason": "not attempted"}
     try:
-        if args.no_buildings or args.mode == "synthetic":
+        if args.no_buildings:
             raise RuntimeError("skipped for this build")
         import buildings as B
         bld = B.load(args.build)

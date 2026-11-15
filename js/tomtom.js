@@ -41,8 +41,34 @@
         }
       } catch (e) { /* the style is still loading; the style.load handler applies it again */ }
     };
-    apply(); state.liveFlow = !!(on && has()); $('ttCredit').hidden = !(state.liveFlow || incidents.length || stations.ev.length || stations.fuel.length);
+    apply(); state.liveFlow = !!(on && has()); syncFlow(); $('ttCredit').hidden = !(state.liveFlow || incidents.length || stations.ev.length || stations.fuel.length);
     C.redraw();
+  }
+
+  // The Scenario and layers card: the demand case list gets a "Live traffic now (TomTom)" entry, kept in step with the check boxes.
+  var LIVE = 'tomtom-live', lastScenario = '';
+  function syncFlow() {
+    var on = !!state.liveFlow, sel = $('scenario');
+    $('showTomTom').checked = on; $('lyTtFlow').checked = on;
+    if (sel) {
+      if (on) { if (sel.value !== LIVE) { lastScenario = sel.value; } sel.value = LIVE; }
+      else if (sel.value === LIVE) { sel.value = lastScenario || state.scenario; }
+    }
+    $('scenSrc').textContent = on ? 'Live, TomTom' : 'Pre-simulated';
+    var n = $('lyTtNote'); n.hidden = !on && !lastError;
+    n.textContent = on ? 'Road colours are TomTom live traffic for this moment. Vehicles, forecasts and what-if results still come from the twin’s simulation.' : lastError;
+  }
+  // Turn the live flow on only when TomTom accepts the key, so a refused key never leaves the map without road colours.
+  function tryFlow() {
+    if (!has()) { return; }
+    var c = T.getMap().getCenter(), z = 10, n = Math.pow(2, z), x = Math.floor((c.lng + 180) / 360 * n), s = Math.sin(c.lat * Math.PI / 180), y = Math.floor((0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * n);
+    fetch(BASE + '/traffic/map/4/tile/flow/' + (TT.flowStyle || 'relative0') + '/' + z + '/' + x + '/' + y + '.png?key=' + encodeURIComponent(key())).then(function (r) {
+      if (!r.ok) { throw new Error(r.status === 403 ? 'TomTom refused the key (403). Check the key, its allowed sites and that Traffic is enabled for it.' : r.status === 429 ? 'The TomTom key has used up its request limit (429).' : 'TomTom returned an error (' + r.status + ').'); }
+      lastError = ''; flowLayer(true);
+    }).catch(function (e) {
+      lastError = /TomTom/.test(String(e && e.message)) ? e.message : 'TomTom could not be reached from this browser.';
+      flowLayer(false); status(); if (C.notice) { C.notice('TomTom live traffic', lastError + ' Showing the twin’s simulated traffic.'); }
+    });
   }
 
   /* ---------------------------------------------------------------- live incidents */
@@ -59,6 +85,7 @@
     }).catch(function () { renderIncidents(); return []; });
   }
   function renderIncidents() {
+    $('lyTtIncN').textContent = incidentsAt ? '(' + incidents.length + ' now)' : '';
     $('ttIncNote').textContent = !has() ? 'Add a TomTom key in Reports to see live incidents.' : lastError ? lastError : incidentsAt ? incidents.length + ' live incidents · updated ' + new Date(incidentsAt).toLocaleTimeString('en-GB', { hour12: false, timeZone: (CFG.time || {}).timeZone || 'Asia/Dubai' }) : 'Loading…';
     $('ttIncCount').textContent = has() && incidentsAt ? incidents.length : '–';
     $('dLiveInc').textContent = has() && incidentsAt ? incidents.length : '–';
@@ -101,8 +128,8 @@
         return { kind: kind, name: (r.poi || {}).name || 'Station', brand: (((r.poi || {}).brands || [])[0] || {}).name || '', at: [r.position.lon, r.position.lat], address: (r.address || {}).freeformAddress || '', km: (r.dist || 0) / 1000, connectors: con.length, kw: kw, types: con.map(function (x) { return x.connectorType; }).filter(function (v, i, a) { return a.indexOf(v) === i; }), avail: ((r.dataSources || {}).chargingAvailability || {}).id || '' };
       });
       note.textContent = stations[kind].length + ' found within ' + Math.round((TT.searchRadiusM || 15000) / 1000) + ' km of the map centre · live from TomTom';
-      renderStations(kind); $('ttCredit').hidden = false; C.redraw();
-    }).catch(function () { note.textContent = lastError || 'The stations could not be loaded.'; });
+      renderStations(kind); $('ttCredit').hidden = false; $(kind === 'ev' ? 'lyTtEvN' : 'lyTtFuelN').textContent = '(' + stations[kind].length + ' near the map centre)'; C.redraw();
+    }).catch(function () { note.textContent = lastError || 'The stations could not be loaded.'; $(kind === 'ev' ? 'lyTtEvN' : 'lyTtFuelN').textContent = '(could not load)'; });
   }
   function openStation(s) {
     if (T.getMap()) { T.getMap().easeTo({ center: s.at, zoom: 15, duration: 700 }); }
@@ -148,7 +175,7 @@
         onClick: function (info) { if (info.object) { var x = info.object; C.showPopup(x.at, x.kind, [['From', x.from || '–'], ['To', x.to || '–'], ['Detail', x.what || '–'], ['Delay', x.delayMin ? x.delayMin + ' min' : 'none reported']], 'Live incident from TomTom'); } } }));
     }
     ['ev', 'fuel'].forEach(function (kind) {
-      if (stations[kind].length && K.tabOpen('bus')) {
+      if (stations[kind].length && (K.tabOpen('bus') || $(kind === 'ev' ? 'lyTtEv' : 'lyTtFuel').checked)) {
         out.push(new deck.ScatterplotLayer({ id: 'tt-' + kind, data: stations[kind], pickable: true, radiusUnits: 'pixels', stroked: true, lineWidthUnits: 'pixels', getPosition: function (s) { return s.at; }, getRadius: 7, getFillColor: kind === 'ev' ? [12, 163, 12] : [201, 133, 0], getLineColor: [255, 255, 255], getLineWidth: 2.5, onClick: function (info) { if (info.object) { openStation(info.object); } } }));
       }
     });
@@ -160,7 +187,7 @@
     var mine = ''; try { mine = localStorage.getItem(STORE) || ''; } catch (e) { /* storage unavailable */ }
     $('ttStatus').textContent = on ? (lastError || (mine ? 'A TomTom key is set in this browser. Live data is on.' : 'A TomTom key is set in the site configuration. Live data is on.')) : 'No TomTom key is set. Live data is off.';
     $('ttKey').value = ''; $('ttKey').placeholder = mine ? 'Key saved in this browser (hidden)' : on ? 'A key is set in the site configuration' : 'Paste the TomTom API key';
-    ['showTomTom', 'ttSpeedBtn', 'ttEvBtn', 'ttFuelBtn', 'ttIncBtn'].forEach(function (id) { $(id).disabled = !on; });
+    ['showTomTom', 'ttSpeedBtn', 'ttEvBtn', 'ttFuelBtn', 'ttIncBtn', 'lyTtFlow', 'lyTtInc', 'lyTtEv', 'lyTtFuel'].forEach(function (id) { $(id).disabled = !on; });
     Array.prototype.forEach.call(document.querySelectorAll('.tt-need'), function (el) { el.hidden = on; });
     $('ttKeyRemove').hidden = !mine;
   }
@@ -169,16 +196,35 @@
     status(); renderIncidents();
     $('ttKeySave').addEventListener('click', function () { var k = $('ttKey').value.trim(); if (!k) { return; } try { localStorage.setItem(STORE, k); } catch (e) { /* storage unavailable */ } status(); loadIncidents(); if (T.audit) { T.audit('TomTom key set in this browser'); } });
     $('ttKeyRemove').addEventListener('click', function () { try { localStorage.removeItem(STORE); } catch (e) { /* storage unavailable */ } $('showTomTom').checked = false; flowLayer(false); incidents = []; incidentsAt = 0; status(); renderIncidents(); C.redraw(); });
-    $('showTomTom').addEventListener('change', function (e) { flowLayer(e.target.checked); });
-    $('showTtInc').addEventListener('change', function () { C.redraw(); });
+    $('showTomTom').addEventListener('change', function (e) { if (e.target.checked) { tryFlow(); } else { flowLayer(false); } });
+    $('lyTtFlow').addEventListener('change', function (e) { if (e.target.checked) { tryFlow(); } else { flowLayer(false); } });
+    $('showTtInc').addEventListener('change', function (e) { $('lyTtInc').checked = e.target.checked; C.redraw(); });
+    $('lyTtInc').addEventListener('change', function (e) { $('showTtInc').checked = e.target.checked; C.redraw(); });
+    [['lyTtEv', 'ev'], ['lyTtFuel', 'fuel']].forEach(function (p) {
+      $(p[0]).addEventListener('change', function (e) { if (e.target.checked && !stations[p[1]].length) { loadStations(p[1]); } C.redraw(); });
+    });
+    // "Live traffic now (TomTom)" in the demand case list.
+    var sel = $('scenario');
+    if (sel && has()) {
+      var o = document.createElement('option'); o.value = LIVE; o.textContent = 'Live traffic now (TomTom)'; sel.appendChild(o);
+      document.addEventListener('change', function (e) {
+        if (e.target !== sel) { return; }
+        if (sel.value === LIVE) { e.stopPropagation(); tryFlow(); }
+        else if (state.liveFlow) { lastScenario = sel.value; flowLayer(false); }
+      }, true);
+    }
     $('ttIncBtn').addEventListener('click', loadIncidents);
     $('ttSpeedBtn').addEventListener('click', loadSpeeds);
     $('ttEvBtn').addEventListener('click', function () { loadStations('ev'); });
     $('ttFuelBtn').addEventListener('click', function () { loadStations('fuel'); });
-    var map = T.getMap(); if (map) { map.on('style.load', function () { if ($('showTomTom').checked) { flowLayer(true); } }); }
+    // The base map style can be replaced at any time (theme, map type, Google session); put the live layer back when it goes.
+    var map = T.getMap(); if (map) { map.on('styledata', function () { if (state.liveFlow && !map.getLayer('tt-flow')) { setTimeout(function () { if (state.liveFlow && !map.getLayer('tt-flow')) { flowLayer(true); } }, 0); } }); }
     if (has()) {
       loadIncidents(); setInterval(function () { if (!document.hidden) { loadIncidents(); } }, (TT.incidentRefreshSec || 120) * 1000);
-      if (TT.flowOnStart) { $('showTomTom').checked = true; flowLayer(true); }
+      var L = CFG.layers || {};
+      $('lyTtInc').checked = $('showTtInc').checked = L.tomtomIncidents !== false;
+      if (L.tomtomTraffic !== undefined ? L.tomtomTraffic : TT.flowOnStart) { tryFlow(); }
+      ['Ev', 'Fuel'].forEach(function (k) { if (L['tomtom' + k]) { $('lyTt' + k).checked = true; loadStations(k.toLowerCase()); } });
     }
     C.onMinute(watchRoute); setInterval(watchRoute, 1500);
   });

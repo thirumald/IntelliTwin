@@ -93,10 +93,12 @@ window.INTELLITWIN_CONFIG = {
 
   // Check options: which map layers are switched on when the app opens. Each can still be changed on screen.
   layers: {
-    vehicles: true, people: true, accidents: true, enforcementSites: true, buildings3d: false,
+    vehicles: true, people: true, accidents: true, enforcementSites: true, buildings3d: true,
     cameras: true, detectors: false, messageSigns: true, signals: true, responseBases: true,
     railway: true, cycleTracks: true, criticalZones: true, environmentSensors: true,
-    buses: true, taxis: true, shuttles: true, ships: true, aircraft: true
+    buses: true, taxis: true, shuttles: true, ships: true, aircraft: true,
+    // Live TomTom layers (need tomtom.key). tomtomTraffic replaces the twin's road colours with TomTom's live flow.
+    tomtomTraffic: true, tomtomIncidents: true, tomtomEv: false, tomtomFuel: false
   },
 
   start: {
@@ -254,7 +256,7 @@ sampleVideos: [
   // The key is published here by the owner's decision: this file is public, so the key can be read by anyone.
   // Keep it restricted to this site's address in the TomTom developer dashboard, with a daily limit.
   // Set key to null to go back to a per-browser key (Reports, TomTom live data).
-  tomtom: { key: 'Pvsf76Td6268Z6caVrXErIOkh6fq526I', flowStyle: 'relative0', flowThickness: 6, flowOnStart: false, incidentRefreshSec: 120, searchRadiusM: 15000, maxSites: 20 },
+  tomtom: { key: 'Pvsf76Td6268Z6caVrXErIOkh6fq526I', flowStyle: 'relative0', flowThickness: 6, flowOnStart: true, incidentRefreshSec: 120, searchRadiusM: 15000, maxSites: 20 },
 
   /* ---- Ships and aircraft (synthetic) ----------------------------------------------------------- */
   // Example movements. The sea lanes and flight paths are approximate lines for demonstration, not

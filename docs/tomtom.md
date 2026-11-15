@@ -36,3 +36,20 @@ This site and its repository are public. The key in `config.js` can be read and 
 - Results are shown live and are not saved, in line with TomTom's terms for search results.
 - Some services depend on the plan of the key. If a feature returns "The key was refused (403)", that product is not enabled for the key.
 - The integration was tested with simulated TomTom responses, not with live calls, because the build environment cannot reach TomTom. Check each feature once with the real key.
+
+## Scenario and layers
+
+With a key set, the **Scenario and layers** card on the Dashboard includes TomTom data:
+
+| Option | What it does |
+| --- | --- |
+| Demand case: **Live traffic now (TomTom)** | Colours the roads with TomTom's live flow in place of the twin's simulated colours. Choosing any other demand case returns to the simulation |
+| Live traffic, TomTom | The same switch as a check option |
+| Live incidents, TomTom | Live incidents on the map |
+| EV charging stations, TomTom / Fuel stations, TomTom | Stations near the map centre |
+
+Defaults are set in `config.js` under `layers`: `tomtomTraffic`, `tomtomIncidents`, `tomtomEv`, `tomtomFuel`.
+Vehicles, forecasts and what-if results always come from the twin's simulation; only the road colours are live.
+
+Before the live flow is switched on the app checks that TomTom accepts the key. If it does not, the twin's
+simulated traffic stays on and a notification gives the reason (refused key, request limit, not reachable).

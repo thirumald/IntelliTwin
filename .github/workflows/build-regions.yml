@@ -86,7 +86,7 @@ jobs:
         run: |
           rm -rf "out/${{ matrix.region }}"
           python tools/build.py --osm build/roads.osm --build build --out "out/${{ matrix.region }}" --extra build/extra.osm \
-            --osm-timestamp "$(cat build/osm_timestamp.txt)" --region "${{ matrix.region }}" --mode "$MODE" --no-buildings
+            --osm-timestamp "$(cat build/osm_timestamp.txt)" --region "${{ matrix.region }}" --mode "$MODE"
       - name: Summary
         run: |
           python - <<'PY' >> "$GITHUB_STEP_SUMMARY"

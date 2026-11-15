@@ -51,6 +51,16 @@
   function clock(sec) { sec = ((Math.floor(sec) % DAY) + DAY) % DAY; return pad(Math.floor(sec / 3600)) + ':' + pad(Math.floor(sec % 3600 / 60)); }
   // Data files are read from the selected region's folder.
   function rdir(url) { return url.indexOf('data/') === 0 ? REGION.dataDir + url.slice(5) : url; }
+  // A small service message in the notification corner (base map or live data problems), closed by hand.
+  var noticed = {};
+  function notice(title, text) {
+    var box = document.getElementById('toasts'); if (!box || noticed[title + text]) { return; } noticed[title + text] = 1;
+    var t = document.createElement('div'); t.className = 'toast sev2'; t.setAttribute('role', 'status');
+    t.innerHTML = '<div class="toast-body"><strong></strong><span></span></div><button type="button" class="toast-close" aria-label="Close notification" title="Close">\u00D7</button>';
+    t.querySelector('strong').textContent = title; t.querySelector('span').textContent = text;
+    t.querySelector('.toast-close').addEventListener('click', function () { t.remove(); });
+    box.appendChild(t);
+  }
   function getJSON(url) { url = rdir(url); return fetch(url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(url); } return r.json(); }); }
   function getBuf(url) { url = rdir(url); return fetch(url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(url); } return r.arrayBuffer(); }); }
 
@@ -225,7 +235,11 @@
         var body = { mapType: type === 'roadmap' ? 'roadmap' : 'satellite', language: 'en-US', region: 'AE', scale: 'scaleFactor2x', highDpi: true };
         if (type === 'roadmap') { body.styles = gStyles[th]; } else if (type === 'hybrid') { body.layerTypes = ['layerRoadmap']; }
         return fetch('https://tile.googleapis.com/v1/createSession?key=' + encodeURIComponent(gKey()), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-          .then(function (r) { if (!r.ok) { throw new Error('Google Maps refused the key or the Map Tiles API is not enabled for it (' + r.status + ').'); } return r.json(); })
+          .then(function (r) {
+            if (r.ok) { return r.json(); }
+            // Pass on Google's own reason (API not enabled, referrer not allowed, billing …) so the fix is clear.
+            return r.json().catch(function () { return {}; }).then(function (j) { var why = ((j.error || {}).message || '').replace(/\s+/g, ' ').slice(0, 220); throw new Error('Google Maps did not open (' + r.status + ')' + (why ? ': ' + why : '. Check that the Map Tiles API is enabled for the key and that this site is allowed.')); });
+          })
           .then(function (j) { gSessions[id] = { token: j.session, expiry: Number(j.expiry) || now + 3600 }; return gSessions[id]; });
       };
       var gStyle = function (sess, th) {
@@ -288,7 +302,8 @@
             done = true; gNow = sess; map.setStyle(gStyle(sess, theme)); gCredit(); baseStatus(); dirty = true; roadLayer = null;
           }).catch(function (err) {
             if (seq !== loadSeq) { return; }
-            baseStatus(String(err && err.message) + ' Showing OpenStreetMap instead.'); osmBase();
+            var why = String(err && err.message || 'Google Maps could not be reached.') + ' Showing OpenStreetMap instead.';
+            baseStatus(why); notice('Base map', why); osmBase();
           });
           dirty = true; roadLayer = null;
           return;
@@ -459,7 +474,7 @@
       });
     }
     var layers = [], minute = Math.floor(state.t / 60);
-    if (state.bld && buildings) {
+    if (state.bld && buildings && !g3d.on) {
       layers.push(new deck.PolygonLayer({
         id: 'buildings', data: buildings, extruded: true, wireframe: false,
         getPolygon: function (b) { return b.ring; }, getElevation: function (b) { return b.h; },
@@ -942,7 +957,7 @@
       startFocus: function () { return startFocus; }, theme: function () { return theme; }, setTheme: function (th) { setTheme(th); }, peopleInView: function () { return peopleInView; }, zones: function () { return zones; }, onZones: function (fn) { if (zones) { fn(zones); } else { zoneHooks.push(fn); } },
       railKm: function () { return (meta.extra || {}).rail_km || 0; }, cycleKm: function () { return (meta.extra || {}).cycle_km || 0; }, setPlaying: setPlaying,
       onReady: function (fn) { if (meta && day) { fn(); } else { readyHooks.push(fn); } }, redraw: redraw, setClosure: setClosure,
-      closure: function () { return fx; }, region: REGION, getJSON: getJSON, sites: function () { return SITES; }, showTab: showTab, onTab: function (fn) { tabHooks.push(fn); }, prettyDate: prettyDate, daySeriesKpi: function (id) { var d = id === state.scenario ? day : baseDay, bins = scenarioMeta(id).bins, out = []; for (var s = 0; s < SLOTS; s++) { out.push(bins[d.map[s]]); } return out; }
+      closure: function () { return fx; }, region: REGION, getJSON: getJSON, notice: notice, sites: function () { return SITES; }, showTab: showTab, onTab: function (fn) { tabHooks.push(fn); }, prettyDate: prettyDate, daySeriesKpi: function (id) { var d = id === state.scenario ? day : baseDay, bins = scenarioMeta(id).bins, out = []; for (var s = 0; s < SLOTS; s++) { out.push(bins[d.map[s]]); } return out; }
     },
     // Used by js/assistant.js to read the data and operate the twin.
     api: {
@@ -1014,7 +1029,10 @@
     initMap();
     wireControls();
     $('carNote').textContent = '(every vehicle; zoom in for 3D)';
-    if (meta.buildings && meta.buildings.available) { $('bldRow').hidden = false; $('bldNote').textContent = '(' + num(meta.buildings.shown) + ' largest, heights estimated)'; }
+    if (meta.buildings && meta.buildings.available) {
+      $('bldRow').hidden = false; $('bldNote').textContent = '(' + num(meta.buildings.shown) + ' largest, heights estimated)';
+      if ((CFG.layers || {}).buildings3d !== false) { $('showBld').checked = true; $('showBld').dispatchEvent(new Event('change')); }
+    }
     renderFacts();
     setMode('live');
     // Start-up view from config.js: replay speed, full view, and the camera on the most congested road.

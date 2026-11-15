@@ -47,3 +47,9 @@ Google's terms require its attribution on the map. The app shows "Google Maps" w
 ## Tested how
 
 The integration was tested with simulated Google responses, not with live calls, because the build environment cannot reach Google. Check the road map, satellite and 3D options once with the real key.
+
+## If Google Maps does not appear
+
+When Google refuses to open a map session the app shows OpenStreetMap and a notification with Google's own reason.
+The usual causes: the **Map Tiles API** is not enabled for the key's project, billing is not active on the project,
+or the key's website restriction does not include the site address. The same message is under Reports, Base map.
