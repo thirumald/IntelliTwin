@@ -41,6 +41,16 @@
   }
   setRail(railMin, false);
   if (railBtn) { railBtn.addEventListener('click', function (e) { e.stopPropagation(); setRail(!railMin, true); }); }
+  // Version check: if a newer page has been published than the copy the browser cached, load the new one once.
+  // (An old page with newer scripts is what produced a blank "data not built" screen.)
+  (function () {
+    var mine = (document.querySelector('script[src*="js/shell.js"]') || {}).src || '', cur = (mine.match(/[?&]v=(\w+)/) || [])[1];
+    if (!cur || !window.fetch || location.protocol === 'file:') { return; }
+    fetch('index.html?check=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (html) {
+      var latest = (html.match(/js\/shell\.js\?v=(\w+)/) || [])[1];
+      if (latest && latest !== cur && location.search.indexOf('r=' + latest) < 0) { location.replace(location.pathname + '?r=' + latest); }
+    }).catch(function () { /* offline: keep the page as it is */ });
+  })();
   new MutationObserver(sync).observe(tabs, { subtree: true, attributes: true, attributeFilter: ['class'], characterData: true, childList: true });
   new MutationObserver(sync).observe(layout, { attributes: true, attributeFilter: ['class'] });
   sync();

@@ -77,6 +77,15 @@
 
   // Theme colours for canvas drawing, read from the stylesheet so charts follow the dark and light themes.
   function cssVar(name, fallback) { var v = getComputedStyle(document.body).getPropertyValue(name).trim(); return v || fallback; }
+  // Run one module's hook; a fault in one module must not stop the others or blank the app.
+  var faults = {};
+  function safe(fn, arg) {
+    try { return fn(arg); } catch (err) {
+      var k = String(err && err.message);
+      if (!faults[k] && window.console) { faults[k] = 1; console.warn('IntelliTwin module error:', k); }
+      return null;
+    }
+  }
   function scenarioMeta(id) { return meta.scenarios.filter(function (s) { return s.id === id; })[0]; }
   function slotOf(t) { return Math.max(0, Math.min(SLOTS - 1, Math.floor((((t % DAY) + DAY) % DAY) / SLOT))); }
   function binOf(t) { return day.map[slotOf(t)]; }
@@ -410,7 +419,7 @@
         onClick: function (info) { if (info.object) { sitePopup(info.object); } }
       }));
     }
-    layerProviders.forEach(function (fn) { var extra = fn({ zoom: zoom, minute: minute, bin: bin }); if (extra) { layers = layers.concat(extra); } });
+    layerProviders.forEach(function (fn) { var extra = safe(fn, { zoom: zoom, minute: minute, bin: bin }); if (extra) { layers = layers.concat(extra); } });
     if (state.acc && ev) {
       var seen = ev.accidents.filter(function (a) { return a.t <= state.t; });
       layers.push(new deck.ScatterplotLayer({
@@ -523,7 +532,7 @@
     }).join('');
     renderEvents();
     drawChart();
-    minuteHooks.forEach(function (fn) { fn(); });
+    minuteHooks.forEach(function (fn) { safe(fn); });
   }
 
   // Accidents, fines and their dashboard tiles. Runs once per shown minute.
@@ -739,7 +748,7 @@
     if (orbiting && map && !map.isEasing()) { map.setBearing(map.getBearing() + 6 * dt); }
     var key = binOf(state.t) + '|' + slotOf(state.t), label = clock(state.t);
     if (key !== lastKey || dirty) { lastKey = key; dirty = false; lastLabel = label; $('time').value = Math.round(state.t); renderPanels(); }
-    else if (label !== lastLabel) { lastLabel = label; $('time').value = Math.round(state.t); drawChart(); renderEvents(); minuteHooks.forEach(function (fn) { fn(); }); }
+    else if (label !== lastLabel) { lastLabel = label; $('time').value = Math.round(state.t); drawChart(); renderEvents(); minuteHooks.forEach(function (fn) { safe(fn); }); }
     updateModeUI(false);
     buildLayers();
     requestAnimationFrame(frame);
@@ -873,18 +882,24 @@
       }
     }
     if (st.orbit && map) { setOrbit(true); }
-    readyHooks.forEach(function (fn) { fn(); });
+    readyHooks.forEach(function (fn) { safe(fn); });
     requestAnimationFrame(frame);
     // Railways, cycle tracks and critical sites from OpenStreetMap (present after a data build that exports them).
     function lines(rows) { return rows.map(function (r) { var p = []; for (var i = 0; i < r.length; i += 2) { p.push([r[i], r[i + 1]]); } return p; }); }
     getJSON('data/rail.json').then(function (rows) { if (rows.length) { rail = lines(rows); $('railRow').hidden = false; $('legendRail').hidden = false; $('railNote').textContent = '(' + num((meta.extra || {}).rail_km || 0) + ' km)'; redraw(); } }).catch(function () {});
     getJSON('data/cycle.json').then(function (rows) { if (rows.length) { cycle = lines(rows); $('cycleRow').hidden = false; $('legendCycle').hidden = false; $('cycleNote').textContent = '(' + num((meta.extra || {}).cycle_km || 0) + ' km)'; redraw(); } }).catch(function () {});
-    getJSON('data/zones.json').then(function (rows) { zones = rows; zoneHooks.forEach(function (fn) { fn(rows); }); redraw(); }).catch(function () { zoneHooks.forEach(function (fn) { fn([]); }); });
+    getJSON('data/zones.json').then(function (rows) { zones = rows; zoneHooks.forEach(function (fn) { safe(fn, rows); }); redraw(); }).catch(function () { zoneHooks.forEach(function (fn) { safe(fn, []); }); });
     $('showRail').addEventListener('change', function (e) { extraShow.rail = e.target.checked; redraw(); });
     $('showCycle').addEventListener('change', function (e) { extraShow.cycle = e.target.checked; redraw(); });
     getJSON('data/signals.json').then(function (rows) { signals = rows; $('sigRow').hidden = false; redraw(); }).catch(function () {});
   }).catch(function (err) {
-    if (window.console) { console.warn('IntelliTwin data not loaded:', err && err.message); }
+    if (window.console) { console.warn('IntelliTwin could not start:', err && err.message); }
+    // With the data loaded, the fault is in the page itself: usually an old copy of the page in the browser cache.
+    if (meta && edges.length) {
+      $('nodata').querySelector('h2').textContent = 'The page needs a refresh';
+      $('nodata').querySelector('p').innerHTML = 'A newer version was published while this page was open or cached. <button type="button" class="btn" id="reloadBtn">Reload</button>';
+      $('reloadBtn').addEventListener('click', function () { location.reload(); });
+    }
     $('nodata').hidden = false;
   });
 })();
