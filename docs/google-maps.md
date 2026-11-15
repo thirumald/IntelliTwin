@@ -14,19 +14,29 @@ IntelliTwin can draw Google Maps as its background instead of the OpenStreetMap 
 
 ## Setting the key
 
-Use **Reports**, **Base map**: paste the key and press **Save**; or open the site once with `?gmaps=YOUR_KEY` at the end of the address. The key is kept in that browser only and is **not stored in the repository**.
+In this deployment the key is set in `config.js` (`map.google.key`) by the owner's decision, so Google Maps is the base map for every visitor. A different key can be set per browser in **Reports**, **Base map** (paste and **Save**), or by opening the site once with `?gmaps=YOUR_KEY`; it takes the place of the configured key in that browser.
 
 The key needs the **Map Tiles API** enabled in the Google Cloud project (this is a different product from the Maps JavaScript API). If the key is refused, the app says so and shows OpenStreetMap instead.
 
-### Why the key is not in `config.js`
+### A key in `config.js` is public
 
-This site and its repository are public. A key written into `config.js` can be read and used by anyone, stays in the repository history, and Google Maps usage is billed to the key's owner. `map.google.key` exists for deployments where that is acceptable: first restrict the key in the Google Cloud console to this site's address (HTTP referrer) and to the Map Tiles API, and set a quota.
+This site and its repository are public. The key in `config.js` can be read and used by anyone, stays in the repository history, and Google Maps usage is billed to the key's owner. Restrict the key in the Google Cloud console to this site's address (HTTP referrer) and to the Map Tiles API, and set a quota. If it is misused, regenerate it and update `config.js`, or set `map.google.key` to `null` and use a per-browser key.
+
+## Map view switch
+
+The time bar has a **2D / 3D / City view** switch.
+
+| View | What it is |
+| --- | --- |
+| 2D | Flat map from above |
+| 3D | Tilted map with the twin's 3D vehicles and building blocks (the default) |
+| City view | Google's photorealistic 3D tiles, tilted further. Needs the Google key; experimental |
 
 ## 3D tiles
 
 The 3D option draws Google's photorealistic 3D tiles with deck.gl. Points to know:
 
-- The 3D mesh uses heights above the ellipsoid, while the twin draws roads and vehicles at zero height. `map.google.heightOffsetM` (28 by default) lifts the mesh to meet them. If roads float above the ground or sink into it, adjust this value.
+- The 3D mesh uses real heights, while the twin draws roads and vehicles flat at zero height. `map.google.heightOffsetM` (27 by default) and `regions[].heightOffsetM` shift the mesh to meet them. This works on flat coastal areas; on sloping or inland ground (Al Ain, the hills of Ras Al Khaimah and Fujairah, inland Dubai) roads will float above or sink into the 3D ground. For that reason the 3D option is off by default.
 - 3D tiles are heavier to draw and to download than the 2D map, and are billed separately by Google.
 - Coverage depends on Google; where there is none, the app reports that the tiles could not be loaded.
 

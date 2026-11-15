@@ -3,10 +3,9 @@
  * Everything here is REAL, LIVE data from TomTom when a TomTom API key is set; without a key the module
  * stays switched off and the rest of the app runs on its simulated and synthetic data.
  *
- * The key is kept in this browser only (Reports > TomTom live data, or open the site once with
- * ?tomtom=YOUR_KEY). It is not written to the repository. A key can also be put in config.js (tomtom.key),
- * but this site and its repository are public, so anyone could then read and use that key: restrict it to
- * this site's address in the TomTom developer dashboard first. See docs/tomtom.md.
+ * The key comes from config.js (tomtom.key) or, if one is entered in the app (Reports > TomTom live data, or
+ * ?tomtom=YOUR_KEY once), from this browser. A key in config.js is public: keep it restricted to this site's
+ * address in the TomTom developer dashboard. See docs/tomtom.md.
  */
 (function () {
   'use strict';
@@ -158,11 +157,12 @@
 
   function status() {
     var on = has();
-    $('ttStatus').textContent = on ? (lastError || 'A TomTom key is set in this browser. Live data is on.') : 'No TomTom key is set. Live data is off.';
-    $('ttKey').value = ''; $('ttKey').placeholder = on ? 'Key saved (hidden)' : 'Paste the TomTom API key';
+    var mine = ''; try { mine = localStorage.getItem(STORE) || ''; } catch (e) { /* storage unavailable */ }
+    $('ttStatus').textContent = on ? (lastError || (mine ? 'A TomTom key is set in this browser. Live data is on.' : 'A TomTom key is set in the site configuration. Live data is on.')) : 'No TomTom key is set. Live data is off.';
+    $('ttKey').value = ''; $('ttKey').placeholder = mine ? 'Key saved in this browser (hidden)' : on ? 'A key is set in the site configuration' : 'Paste the TomTom API key';
     ['showTomTom', 'ttSpeedBtn', 'ttEvBtn', 'ttFuelBtn', 'ttIncBtn'].forEach(function (id) { $(id).disabled = !on; });
     Array.prototype.forEach.call(document.querySelectorAll('.tt-need'), function (el) { el.hidden = on; });
-    $('ttKeyRemove').hidden = !on;
+    $('ttKeyRemove').hidden = !mine;
   }
 
   C.onReady(function () {

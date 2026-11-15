@@ -8,8 +8,8 @@
 <meta name="theme-color" content="#0b1220">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b1220'/%3E%3Cpath d='M6 22 L13 12 L19 18 L26 8' fill='none' stroke='%232dd4a7' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="css/styles.css?v=20261116u">
-<link rel="stylesheet" href="css/theme.css?v=20261116u">
+<link rel="stylesheet" href="css/styles.css?v=20261116w">
+<link rel="stylesheet" href="css/theme.css?v=20261116w">
 </head>
 <body>
 <header class="topbar">
@@ -150,7 +150,12 @@
       </div>
       <span class="sim-clock" id="simClock" title="Time shown on the map">--:--</span>
       <input id="time" type="range" min="0" max="86399" step="60" value="0" aria-label="Time of day">
-      <button id="tilt" class="btn" aria-pressed="false">3D</button>
+      <div class="seg" id="viewMode" role="radiogroup" aria-label="Map view">
+        <button data-view="2d" role="radio" aria-checked="false" title="Flat map from above">2D</button>
+        <button data-view="3d" role="radio" aria-checked="true" class="on" title="Tilted map with 3D vehicles and buildings">3D</button>
+        <button data-view="city" role="radio" aria-checked="false" title="Google photorealistic 3D city (experimental)">City view</button>
+      </div>
+      <button id="tilt" class="btn" aria-pressed="false" hidden>3D</button>
       <button id="fullView" class="btn" aria-pressed="false" title="Minimise or restore the panel, legend and site shortcuts" data-i18n="fullView">Full view</button>
       <button id="orbit" class="btn" aria-pressed="false" title="Slowly circle the camera around the view" data-i18n="orbit">Orbit</button>
     </div>
@@ -354,13 +359,13 @@
       <label class="field"><span>Show</span><select id="gType"><option value="roadmap">Google Maps, road map</option><option value="satellite">Google Maps, satellite</option><option value="hybrid">Google Maps, satellite with roads</option><option value="osm">OpenStreetMap</option></select></label>
       <label class="check"><input id="g3d" type="checkbox"><span>Google 3D buildings and terrain <span class="muted">(photorealistic, experimental)</span></span></label>
       <div class="search-row"><input id="gKey" type="password" autocomplete="off" aria-label="Google Maps API key" placeholder="Paste the Google Maps API key"><button type="button" class="btn small" id="gKeySave">Save</button><button type="button" class="btn small" id="gKeyRemove" hidden>Remove</button></div>
-      <p class="muted">Google Maps needs a key with the Map Tiles API enabled. The key is kept in this browser only. The twin’s roads, traffic and sites stay on OpenStreetMap data; only the background picture changes.</p>
+      <p class="muted">Google Maps needs a key with the Map Tiles API enabled. A key entered here is kept in this browser only and takes the place of the one in the site configuration. The twin’s roads, traffic and sites stay on OpenStreetMap data; only the background picture changes.</p>
     </section>
     <section class="card" data-tab="rep" hidden>
       <div class="card-head"><h2>TomTom live data</h2></div>
       <p class="muted" id="ttStatus"></p>
       <div class="search-row"><input id="ttKey" type="password" autocomplete="off" aria-label="TomTom API key" placeholder="Paste the TomTom API key"><button type="button" class="btn small" id="ttKeySave">Save</button><button type="button" class="btn small" id="ttKeyRemove" hidden>Remove</button></div>
-      <p class="muted">The key is kept in this browser only and is not written to the repository. It switches on live traffic, live incidents, live speeds, EV and fuel stations and live route times.</p>
+      <p class="muted">A key entered here is kept in this browser only and takes the place of the one in the site configuration. It switches on live traffic, live incidents, live speeds, EV and fuel stations and live route times.</p>
     </section>
     <section class="card" data-tab="rep" hidden data-need="settings">
       <div class="card-head"><h2 data-i18n="settings">Configuration</h2><span class="muted">From config.js</span></div>
@@ -853,32 +858,32 @@
 <!-- Printed summary -->
 <div id="report" class="report" aria-hidden="true"></div>
 
-<script src="config.js?v=20261116u"></script>
-<script src="js/regions.js?v=20261116u"></script>
+<script src="config.js?v=20261116w"></script>
+<script src="js/regions.js?v=20261116w"></script>
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/deck.gl.min.js"></script>
-<script src="js/daymodel.js?v=20261116u"></script>
-<script src="js/events.js?v=20261116u"></script>
-<script src="js/vehicles3d.js?v=20261116u"></script>
-<script src="js/app.js?v=20261116u"></script>
-<script src="js/ops.js?v=20261116u"></script>
-<script src="js/devices.js?v=20261116u"></script>
-<script src="js/i18n.js?v=20261116u"></script>
-<script src="js/response.js?v=20261116u"></script>
-<script src="js/zones.js?v=20261116u"></script>
-<script src="js/environment.js?v=20261116u"></script>
-<script src="js/buses.js?v=20261116u"></script>
-<script src="js/transit.js?v=20261116u"></script>
-<script src="js/operations.js?v=20261116u"></script>
-<script src="js/mobility.js?v=20261116u"></script>
-<script src="js/support.js?v=20261116u"></script>
-<script src="js/seaair.js?v=20261116u"></script>
-<script src="js/energy.js?v=20261116u"></script>
-<script src="js/tomtom.js?v=20261116u"></script>
-<script src="js/platform.js?v=20261116u"></script>
-<script src="js/vlm.js?v=20261116u"></script>
-<script src="js/analytics.js?v=20261116u"></script>
-<script src="js/assistant.js?v=20261116u"></script>
-<script src="js/shell.js?v=20261116u"></script>
+<script src="js/daymodel.js?v=20261116w"></script>
+<script src="js/events.js?v=20261116w"></script>
+<script src="js/vehicles3d.js?v=20261116w"></script>
+<script src="js/app.js?v=20261116w"></script>
+<script src="js/ops.js?v=20261116w"></script>
+<script src="js/devices.js?v=20261116w"></script>
+<script src="js/i18n.js?v=20261116w"></script>
+<script src="js/response.js?v=20261116w"></script>
+<script src="js/zones.js?v=20261116w"></script>
+<script src="js/environment.js?v=20261116w"></script>
+<script src="js/buses.js?v=20261116w"></script>
+<script src="js/transit.js?v=20261116w"></script>
+<script src="js/operations.js?v=20261116w"></script>
+<script src="js/mobility.js?v=20261116w"></script>
+<script src="js/support.js?v=20261116w"></script>
+<script src="js/seaair.js?v=20261116w"></script>
+<script src="js/energy.js?v=20261116w"></script>
+<script src="js/tomtom.js?v=20261116w"></script>
+<script src="js/platform.js?v=20261116w"></script>
+<script src="js/vlm.js?v=20261116w"></script>
+<script src="js/analytics.js?v=20261116w"></script>
+<script src="js/assistant.js?v=20261116w"></script>
+<script src="js/shell.js?v=20261116w"></script>
 </body>
 </html>

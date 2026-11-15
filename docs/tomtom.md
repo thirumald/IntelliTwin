@@ -15,16 +15,16 @@ While the live traffic layer is on, the twin's own road colours are hidden so th
 
 ## Setting the key
 
-The key is **not stored in the repository**. Each browser keeps its own copy:
+In this deployment the key is set in `config.js` (`tomtom.key`) by the owner's decision, so live data works for every visitor. A different key can be set per browser, and takes its place there:
 
 - In the app: **Reports**, **TomTom live data**, paste the key, **Save**; or
 - Open the site once with `?tomtom=YOUR_KEY` at the end of the address. The key is saved in that browser and removed from the address bar.
 
 **Remove** deletes it from the browser.
 
-### Why it is not in `config.js`
+### A key in `config.js` is public
 
-This site and its repository are public. A key written into `config.js` can be read and used by anyone, and it stays in the repository history even after it is removed. `tomtom.key` exists for deployments where that is acceptable; before using it, restrict the key to the site's address in the TomTom developer dashboard and set a daily request limit.
+This site and its repository are public. The key in `config.js` can be read and used by anyone, and it stays in the repository history even after it is removed. Keep it restricted to the site's address in the TomTom developer dashboard and set a daily request limit. If it is misused, regenerate it there and update `config.js`, or set `tomtom.key` to `null` and use a per-browser key.
 
 ## Settings
 

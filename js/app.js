@@ -75,6 +75,9 @@
   var handsOn = false, wheelUntil = 0;
   // Google photorealistic 3D tiles (optional, experimental): switched on from Reports, Base map.
   var g3d = { on: false, key: '', credit: '' };
+  // Map view: '2d' (flat, from above), '3d' (tilted, with 3D vehicles and building blocks) or 'city' (Google photorealistic 3D).
+  var viewMode = '3d', setView = function () {};
+  function viewPitch() { return viewMode === '2d' ? 0 : viewMode === 'city' ? 62 : 55; }
   var dirty = true, orbiting = false, layerProviders = [], minuteHooks = [], readyHooks = [];
   var carProgress = null, simDt = 0, prevT = 0, visibleEdges = [], visibleKey = '';
 
@@ -242,7 +245,8 @@
       var baseStatus = function (msg) {
         var on = !!gKey(), type = gType();
         $('gStatus').textContent = msg || (!on ? 'No Google Maps key is set. The base map is OpenStreetMap.' : type === 'osm' ? 'A Google Maps key is set, and OpenStreetMap is chosen as the base map.' : 'Base map: Google Maps (' + type + ').');
-        $('gKey').placeholder = on ? 'Key saved (hidden)' : 'Paste the Google Maps API key'; $('gKeyRemove').hidden = !on; $('gType').value = on ? type : 'osm';
+        var mine = ''; try { mine = localStorage.getItem('itw-google-key') || ''; } catch (e) { /* storage unavailable */ }
+        $('gKey').placeholder = mine ? 'Key saved in this browser (hidden)' : on ? 'A key is set in the site configuration' : 'Paste the Google Maps API key'; $('gKeyRemove').hidden = !mine; $('gType').value = on ? type : 'osm';
         Array.prototype.forEach.call($('gType').options, function (o) { o.disabled = !on && o.value !== 'osm'; });
       };
       // After a vector style loads: tint the light theme pale green and extrude the buildings.
@@ -346,6 +350,21 @@
       $('g3d').addEventListener('change', function (e) { set3d(e.target.checked, true); });
       $('gKeySave').addEventListener('click', function () { setTimeout(function () { set3d($('g3d').checked, false); }, 0); });
       $('gKeyRemove').addEventListener('click', function () { setTimeout(function () { set3d(false, true); }, 0); });
+      // Map view switch: 2D, 3D, City view.
+      setView = function (mode, save) {
+        if (mode === 'city' && !gKey()) { mode = '3d'; baseStatus('City view needs a Google Maps key. Showing the 3D view.'); }
+        viewMode = mode === '2d' || mode === 'city' ? mode : '3d';
+        Array.prototype.forEach.call($('viewMode').children, function (b) { var on = b.getAttribute('data-view') === viewMode; b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false'); });
+        if (save) { try { localStorage.setItem('itw-view', viewMode); } catch (e) { /* storage unavailable */ } }
+        set3d(viewMode === 'city', false);
+        $('tilt').setAttribute('aria-pressed', viewMode === '2d' ? 'false' : 'true');
+        map.easeTo(viewMode === '2d' ? { pitch: 0, duration: 700 } : { pitch: viewPitch(), duration: 700 });
+        dirty = true;
+      };
+      $('viewMode').addEventListener('click', function (e) { var b = e.target.closest('[data-view]'); if (b) { setView(b.getAttribute('data-view'), true); } });
+      $('g3d').addEventListener('change', function (e) { setView(e.target.checked ? 'city' : '3d', true); });
+      var wantView = (CFG.start || {}).view || '3d'; try { wantView = localStorage.getItem('itw-view') || wantView; } catch (e) { /* storage unavailable */ }
+      if (wantView !== '3d') { map.once('load', function () { setView(wantView, false); }); setTimeout(function () { if (viewMode !== wantView) { setView(wantView, false); } }, 2500); }
       $('gType').addEventListener('change', function () { try { localStorage.setItem('itw-basemap', $('gType').value); } catch (e) { /* storage unavailable */ } baseStatus(); setTheme(theme); });
       window.addEventListener('resize', function () { padKey = ''; applyPadding(); });
       map.on('error', function () { /* tile or style errors are handled by the fallback timer */ });
@@ -410,7 +429,7 @@
   function setOrbit(on) {
     orbiting = on && !!map;
     $('orbit').setAttribute('aria-pressed', orbiting ? 'true' : 'false');
-    if (orbiting && map.getPitch() < 30) { map.easeTo({ pitch: 55, duration: 600 }); $('tilt').setAttribute('aria-pressed', 'true'); }
+    if (orbiting && viewMode !== '2d' && map.getPitch() < 30) { map.easeTo({ pitch: viewPitch(), duration: 600 }); $('tilt').setAttribute('aria-pressed', 'true'); }
   }
 
   /* ---------- deck.gl layers ---------- */
@@ -449,7 +468,7 @@
     }
     // Google photorealistic 3D tiles: buildings and terrain as a textured 3D mesh under the twin's layers.
     if (g3d.on && g3d.key && deck.Tile3DLayer) {
-      var gOff = ((CFG.map.google || {}).heightOffsetM === undefined ? 28 : (CFG.map.google || {}).heightOffsetM);
+      var gOff = REGION.heightOffsetM !== undefined ? REGION.heightOffsetM : ((CFG.map.google || {}).heightOffsetM === undefined ? 27 : (CFG.map.google || {}).heightOffsetM);
       layers.push(new deck.Tile3DLayer({
         id: 'google-3d', data: 'https://tile.googleapis.com/v1/3dtiles/root.json', loadOptions: { fetch: { headers: { 'X-GOOG-API-KEY': g3d.key } } },
         // The mesh is in heights above the ellipsoid; the twin draws at zero. Lift the mesh so the two meet.
@@ -779,7 +798,7 @@
     if ($('siteSel')) { $('siteSel').value = String(SITES.indexOf(st)); }
     $('goto').value = '';
     if (popup) { popup.remove(); }
-    map.flyTo({ center: [st[1], st[2]], zoom: st[3], pitch: 55, duration: 1400 });
+    map.flyTo({ center: [st[1], st[2]], zoom: st[3], pitch: viewPitch(), duration: 1400 });
     $('tilt').setAttribute('aria-pressed', 'true');
     var box = $('showBld');
     if (!vectorBase && !$('bldRow').hidden && !box.checked) { box.checked = true; box.dispatchEvent(new Event('change')); }

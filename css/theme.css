@@ -517,3 +517,8 @@ body.map-light .topbar .alert-btn.hot b { background: var(--severe); }
 .g-credit { position: absolute; right: 12px; bottom: 96px; z-index: 4; background: rgba(255, 255, 255, .85); color: #202124; border-radius: 4px; padding: 1px 8px; font-size: 11px; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .g-credit[hidden] { display: none; }
 @media (max-width: 860px) { .g-credit { right: 8px; bottom: 150px; max-width: 80%; } }
+
+/* ---------------------------------------------------------------- map view switch */
+#viewMode { flex: none; }
+#viewMode button { white-space: nowrap; }
+@media (max-width: 860px) { #viewMode button { padding: 0 7px; } }
