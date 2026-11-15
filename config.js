@@ -256,6 +256,15 @@ sampleVideos: [
   // The key is published here by the owner's decision: this file is public, so the key can be read by anyone.
   // Keep it restricted to this site's address in the TomTom developer dashboard, with a daily limit.
   // Set key to null to go back to a per-browser key (Reports, TomTom live data).
+  // Critical smart-city use cases added to the existing sections (js/citycases.js). All figures are synthetic or screening estimates.
+  cityCases: {
+    venues: 10,                 // crowd safety: how many of the region's sites are watched as venues
+    schoolZoneM: 200,           // radius of a school zone
+    schoolLimitKmh: 40,         // speed limit in a school zone at school time
+    conflictM: 2000,            // planned works closer than this with overlapping dates are flagged as a conflict
+    development: { tripsPerHome: 7, tripsPerJob: 3, peakHourShare: 0.1, carShare: 0.8, radiusM: 2000, avgTripKmNearby: 3 }
+  },
+
   // Connection check for Google Maps and TomTom (Reports, Connection check; also the two status-bar lights).
   diagnostics: { checkOnStart: true },
 
@@ -380,7 +389,10 @@ sampleVideos: [
     schedules: [
       { name: 'Daily operations summary', every: 'day', at: '06:00', audience: 'control room' },
       { name: 'Weekly traffic and safety report', every: 'week', weekday: 0, at: '07:00', audience: 'department heads' },
-      { name: 'Monthly city KPI scorecard', every: 'month', day: 1, at: '08:00', audience: 'leadership' }
+      { name: 'Monthly city KPI scorecard', every: 'month', day: 1, at: '08:00', audience: 'leadership' },
+      { name: 'Daily city services report', every: 'day', at: '06:30', audience: 'city operations' },
+      { name: 'Weekly safety and security report', every: 'week', weekday: 0, at: '07:30', audience: 'police and civil defence' },
+      { name: 'Monthly regional comparison', every: 'month', day: 1, at: '09:00', audience: 'planning department' }
     ]
   },
 
@@ -493,6 +505,7 @@ sampleVideos: [
     // Population, as quoted from Statistics Centre Abu Dhabi 2024 figures on a third-party site. Verify before reuse.
     // Example targets for the City scorecard. They are illustrations, not official targets; set your own.
     targets: {
+      venuesHighPct: 20, schoolZonesOkPct: 60, adaptiveCorridorsPct: 50, assetHealth: 85, planConflicts: 0, busLateMin: 3,
       peakSpeedKmh: 45, extraTravelPct: 25, dailyDelayVehH: 120000, criticalRoads: 20, junctionsEFPct: 20, busOnTimePct: 85,
       accidentsPerDay: 60, seriousAccidentsPerDay: 2, accidentsWorstHour: 6, criticalAlertsOpen: 0,
       finesPerDay: 12000, finesWorstHour: 1000, topViolationSharePct: 50, topSitesSharePct: 25,

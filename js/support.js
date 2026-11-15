@@ -80,6 +80,34 @@
     var body = '<h2>Network now</h2><table>' + rows([['Average speed', k.speed ? Math.round(k.speed) + ' km/h' : '–'], ['Vehicles moving', num(k.vehicles || 0)], ['Extra travel time', Math.round(k.extra || 0) + '%'], ['Delay', num(k.delay_h || 0) + ' vehicle-hours an hour']]) + '</table>';
     if (T.incidents) { var inc = T.incidents.list(), reached = inc.filter(function (x) { return x.stage >= 3; }); body += '<h2>Incidents today</h2><table>' + rows([['Incidents', inc.length], ['Open now', inc.filter(function (x) { return x.stage < 4; }).length], ['Average response', reached.length ? (reached.reduce(function (s, x) { return s + x.response; }, 0) / reached.length).toFixed(1) + ' min' : '–']]) + '</table>'; }
     if (T.sea && T.air) { var se = T.sea.stats(), ai = T.air.stats(); body += '<h2>Sea and air (synthetic)</h2><table>' + rows([['Vessels moving', se.moving + ' (' + se.inbound + ' inbound, ' + se.outbound + ' outbound)'], ['Berths in use', se.berthsUsed + ' of ' + se.berths], ['Vessel movements today', se.callsToday], ['Aircraft in the air nearby', ai.inAir], ['Flight movements today', ai.movementsToday], ['Flights on time this hour', ai.onTimePct === null ? '–' : Math.round(ai.onTimePct) + '%']]) + '</table>'; }
+    // Bars drawn as inline SVG, so the report keeps its graphics when saved or printed.
+    var bars = function (list) {
+      var h = 24, w = 760, lw = 250, max = Math.max.apply(null, list.map(function (r) { return r[2] || r[1]; }).concat([1]));
+      return '<svg viewBox="0 0 ' + w + ' ' + (list.length * h + 4) + '" width="100%" role="img" aria-label="Bar chart">' + list.map(function (r, i) {
+        var bw = Math.max(2, (w - lw - 110) * r[1] / max);
+        return '<text x="0" y="' + (i * h + 16) + '" font-size="12" fill="#14213a">' + esc(String(r[0]).slice(0, 38)) + '</text><rect x="' + lw + '" y="' + (i * h + 5) + '" width="' + bw.toFixed(1) + '" height="14" rx="3" fill="' + (r[4] || '#3987e5') + '"/><text x="' + (lw + bw + 6).toFixed(1) + '" y="' + (i * h + 16) + '" font-size="12" fill="#5a6b85">' + esc(r[3] !== undefined ? r[3] : num(r[1])) + '</text>';
+      }).join('') + '</svg>';
+    };
+    var tone = function (p) { return p >= 75 ? '#0ca30c' : p >= 40 ? '#c98500' : '#d03b3b'; };
+    body = '<h2>Region</h2><table>' + rows([['Region', C.region.name], ['Road network', num(Math.round(((C.meta() || {}).network || {}).km || 0)) + ' km, ' + num(((C.meta() || {}).network || {}).edges || 0) + ' links', 'OpenStreetMap'], ['Traffic', (C.meta() || {}).traffic === 'synthetic' ? 'Synthetic pattern' : 'SUMO simulation']]) + '</table>' + body;
+    if (T.analytics && T.analytics.scorecard) {
+      try {
+        var glance = T.analytics.scorecard().map(function (g) { var sc = g.kpis.filter(function (q) { return q.target !== null && q.target !== undefined && q.status !== 'none'; }), okn = sc.filter(function (q) { return q.status === 'good'; }).length, p = sc.length ? Math.round(100 * okn / sc.length) : 0; return [g.goal, p, 100, okn + ' of ' + sc.length + ' on target', tone(p)]; });
+        body += '<h2>Scorecard at a glance: KPIs on target by goal</h2>' + bars(glance);
+      } catch (e0) { /* scorecard unavailable */ }
+    }
+    if (T.cityCases) {
+      try {
+        var cs = T.cityCases.stats(), ven = T.cityCases.venues().slice().sort(function (a, b) { return b.load - a.load; }).slice(0, 6), f1 = function (v, u) { return v === null || v === undefined ? '–' : (Math.round(v * 10) / 10) + (u || ''); };
+        body += '<h2>City services (synthetic and estimated)</h2><table>' + rows([['Venues above 80% of capacity', f1(cs.venuesHighPct, '%'), cs.venues + ' venues watched'], ['School zones with calm traffic', f1(cs.schoolOkPct, '%'), cs.schoolTime ? 'school time' : 'outside school time'],
+          ['Corridors under adaptive control', f1(cs.adaptivePct, '%'), 'simulated control'], ['Asset health score', f1(cs.assetHealth, ' / 100'), cs.assetsAtRisk + ' likely to fail in 30 days'], ['Planned work conflicts', cs.planConflicts], ['Average bus lateness', f1(cs.busLateMin, ' min')]]) + '</table>';
+        if (ven.length) { body += '<h2>Busiest venues now, % of capacity (synthetic)</h2>' + bars(ven.map(function (x) { var p = Math.round(x.load * 100); return [x.name, p, 110, p + '% · ' + num(x.people) + ' people', p >= 100 ? '#d03b3b' : p >= 80 ? '#c98500' : '#0ca30c']; })); }
+        var ut = T.cityCases.utility(), dv = T.cityCases.development();
+        if (ut) { body += '<h2>Utility failure assessed (screening estimate)</h2><table>' + rows([['Area', ut.name + ', ' + (ut.r / 1000).toFixed(1) + ' km radius'], ['Roads affected', num(ut.roads.length)], ['Signals affected', ut.sig.length], ['Critical sites inside', ut.sites.length]]) + '</table>'; }
+        if (dv) { body += '<h2>Development impact assessed (screening estimate)</h2><table>' + rows([['Site', dv.name], ['Homes and jobs', num(dv.homes) + ' homes, ' + num(dv.jobs) + ' jobs'], ['Added cars in the peak hour', num(Math.round(dv.peak))], ['Peak speed nearby', Math.round(dv.s0) + ' → ' + Math.round(dv.s1) + ' km/h']]) + '</table>'; }
+      } catch (e1) { /* section unavailable */ }
+    }
+    if (T.environment && T.environment.sensors().length) { var en = T.environment.averageAt(state.t); body += '<h2>Environment (synthetic sensors)</h2><table>' + rows([['Air quality index, average now', Math.round(en.aqi)], ['Roadside noise, average now', Math.round(en.noise) + ' dB(A)'], ['Sensors', T.environment.sensors().length]]) + '</table>'; }
     if (T.analytics && T.analytics.scorecard) {
       try { T.analytics.scorecard().forEach(function (g) { body += '<h2>' + esc(g.goal) + '</h2><table><tr><th>KPI</th><th>Value</th><th>Target and status</th></tr>' + rows(g.kpis.map(function (q) { return [q.label, q.text + (q.unit && q.unit !== '%' ? ' ' + q.unit : ''), q.target === null || q.target === undefined ? 'for context' : (q.better === 'low' ? '≤ ' : '≥ ') + num(q.target) + ' · ' + ({ good: 'On target', warn: 'Watch', bad: 'Off target', none: 'No data' })[q.status]]; })) + '</table>'; }); } catch (e) { /* scorecard not available */ }
     }

@@ -534,3 +534,23 @@ body.map-light .svc-ok { color: #1c7a4b; } body.map-light .svc-part { color: #94
 .svc-row span { color: var(--muted); } .svc-row em { font-style: normal; }
 .svc-text { width: 100%; margin-top: 6px; font: 11px/1.4 ui-monospace, monospace; background: transparent; color: inherit; border: 1px solid var(--line); border-radius: 4px; }
 @media (max-width: 860px) { .statusbar .status-right { display: none; } }
+
+/* ---------------------------------------------------------------- critical use-case cards */
+.cc-h { margin: 12px 0 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.cc-log { list-style: none; margin: 0; padding: 0; font-size: 12.5px; }
+.cc-log li { padding: 4px 0 4px 10px; border-left: 2px solid var(--line); margin-bottom: 2px; overflow-wrap: anywhere; }
+.cc-log li span { display: inline-block; min-width: 44px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cc-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.cc-row > div { cursor: pointer; min-width: 0; } .cc-row strong { display: block; font-size: 13px; } .cc-row .muted { font-size: 12px; }
+.cc-row select { max-width: 150px; }
+.cc-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cc-two input { width: 100%; }
+
+/* ---------------------------------------------------------------- scorecard graphics */
+.sc-visual { margin-bottom: 18px; }
+.sc-bullet { position: relative; display: block; height: 10px; border-radius: 5px; background: var(--surface-3); overflow: hidden; }
+.sc-bullet .sc-zone { position: absolute; top: 0; bottom: 0; left: 0; background: rgba(12, 163, 12, .16); }
+.sc-bullet .sc-fill { position: absolute; top: 2px; bottom: 2px; left: 0; border-radius: 3px; background: var(--muted); }
+.sc-bullet i { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--text); }
+.sc-kpi.good .sc-fill { background: #0ca30c; } .sc-kpi.warn .sc-fill { background: #fab219; } .sc-kpi.bad .sc-fill { background: #d03b3b; }
+.an-table tr.is-current td { font-weight: 600; background: rgba(57, 135, 229, .1); }

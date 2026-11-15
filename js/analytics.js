@@ -276,6 +276,7 @@
     themeInk();
     if (!M) { build(); }
     safeScore();
+    if (T.analyticsOps) { try { T.analyticsOps.render(); } catch (err) { if (window.console) { console.warn('IntelliTwin analytics (operations): ' + err.message); } } }
     var H = horizon, roads = M.roads, J = M.junctions, last = M.years.length - 1;
     var cost = M.dailyDelay * A.valueOfTimeAedPerHour * A.workingDaysPerYear, fMid = Math.min(5, H);
     var losCount = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 }; J.forEach(function (j) { losCount[j.los]++; });
@@ -470,6 +471,16 @@
         kpi('Road traffic CO₂ a day', co2Day, 't', G.co2TonnesPerDay, 'low', 'estimated from simulated traffic'),
         kpi('Air quality index, average now', env ? env.aqi : null, '', G.aqi, 'low', 'synthetic sensors'),
         kpi('Roadside noise, average now', env ? env.noise : null, 'dB', G.noiseDb, 'low', 'synthetic sensors')] },
+      (function () {
+        var cs = T.cityCases ? T.cityCases.stats() : null; if (!cs) { return null; }
+        return { goal: 'Resilient city services', note: 'Synthetic and estimated figures from the operational sections', kpis: [
+          kpi('Venues above 80% of capacity', cs.venuesHighPct, '%', G.venuesHighPct, 'low', cs.venues + ' venues watched, synthetic', pct),
+          kpi('School zones with calm traffic', cs.schoolOkPct, '%', G.schoolZonesOkPct, 'high', cs.schoolTime ? 'school time now' : 'outside school time', pct),
+          kpi('Corridors under adaptive control', cs.adaptivePct, '%', G.adaptiveCorridorsPct, 'high', 'set in Signals, simulated', pct),
+          kpi('Asset health score', cs.assetHealth, '/100', G.assetHealth, 'high', cs.assetsAtRisk + ' assets likely to fail in 30 days, synthetic'),
+          kpi('Planned work conflicts', cs.planConflicts, '', G.planConflicts, 'low', 'overlapping work within 2 km'),
+          kpi('Average bus lateness now', cs.busLateMin, 'min', G.busLateMin, 'low', 'synthetic buses')] };
+      })(),
       { goal: 'City development', note: 'Projection at ' + (growth * 100).toFixed(1) + '% growth a year', kpis: [
         kpi('Peak speed in ' + horizon + ' years, no action', M.sDo[last], 'km/h', G.futureSpeedKmh, 'high', 'against ' + Math.round(M.sDo[0]) + ' km/h today'),
         kpi('Peak speed in ' + horizon + ' years, with measures', M.sBoth[last], 'km/h', G.futureSpeedKmh, 'high', 'road widening and adaptive signals'),
@@ -477,7 +488,7 @@
         kpi('Cycle track', M.cycleKm || null, 'km', G.cycleKm, 'high', 'OpenStreetMap'),
         kpi('Delay cost a year', M.dailyDelay * A.valueOfTimeAedPerHour * A.workingDaysPerYear / 1e6, 'AED m', G.delayCostAedMillion, 'low', 'value of time AED ' + A.valueOfTimeAedPerHour + ' an hour'),
         kpi('Residents, Abu Dhabi region', pop.abuDhabiRegion || null, '', null, 'high', pop.year ? 'census ' + pop.year + ', for context' : 'not set for this region')] }
-    ];
+    ].filter(function (g) { return g; });
   }
   function renderScore() {
     var goals = scorecard(), all = 0, good = 0, warn = 0, bad = 0, html = '';
@@ -486,13 +497,23 @@
       scored.forEach(function (k) { all++; if (k.status === 'good') { good++; } else if (k.status === 'warn') { warn++; } else { bad++; } });
       html += '<section class="sc-goal"><h3>' + esc(g.goal) + '<span class="sc-count">' + ok + ' of ' + scored.length + ' on target</span><span class="sc-note">' + esc(g.note) + '</span></h3><div class="sc-grid">' +
         g.kpis.map(function (k) {
-          var has = k.target !== null && k.target !== undefined, st = has ? k.status : 'none', fill = !has || k.ratio === null ? 0 : Math.max(6, Math.min(100, 100 / Math.max(k.ratio, 0.01) * (k.ratio <= 1 ? 1 : 1)));
+          var has = k.target !== null && k.target !== undefined, st = has ? k.status : 'none', okv = k.value !== null && isFinite(k.value), scale = has && okv ? Math.max(k.value, k.target, 1e-9) * 1.2 : 1;
+          var fill = has && okv ? Math.max(2, 100 * k.value / scale) : 0, tick = has ? 100 * k.target / scale : 0;
           return '<div class="sc-kpi ' + st + '"><span class="sc-label">' + esc(k.label) + '</span><b>' + k.text + (k.unit && k.unit !== '%' ? ' <small>' + esc(k.unit) + '</small>' : '') + '</b>' +
-            (has ? '<span class="sc-status"><i>' + ST[st][0] + '</i>' + ST[st][1] + ' · target ' + (k.better === 'low' ? '≤ ' : '≥ ') + num(k.target) + (k.unit === '%' ? '%' : '') + '</span><span class="sc-bar"><span style="width:' + Math.min(100, fill) + '%"></span></span>' : '<span class="sc-status">For context</span>') +
+            (has ? '<span class="sc-status"><i>' + ST[st][0] + '</i>' + ST[st][1] + ' · target ' + (k.better === 'low' ? '≤ ' : '≥ ') + num(k.target) + (k.unit === '%' ? '%' : '') + '</span><span class="sc-bullet" title="Value against the target (the marker)"><span class="sc-zone ' + (k.better === 'low' ? 'low' : 'high') + '" style="' + (k.better === 'low' ? 'width:' + tick.toFixed(1) + '%' : 'left:' + tick.toFixed(1) + '%;right:0') + '"></span><span class="sc-fill" style="width:' + Math.min(100, fill).toFixed(1) + '%"></span><i style="left:' + tick.toFixed(1) + '%"></i></span>' : '<span class="sc-status">For context</span>') +
             '<em>' + esc(k.basis) + '</em></div>';
         }).join('') + '</div></section>';
     });
     $('scBody').innerHTML = html;
+    // Graphics above the detail: status split of all KPIs, and the share on target for each goal.
+    pieChart('scDonut', { unit: 'KPIs', centre: all ? Math.round(100 * good / all) + '%' : '–', rows: [{ label: 'On target', color: STATUS.good, value: good }, { label: 'Watch', color: STATUS.warning, value: warn }, { label: 'Off target', color: STATUS.critical, value: bad }] });
+    hbarChart('scGoals', { unit: '%', rows: goals.map(function (g) {
+      var sc = g.kpis.filter(function (k) { return k.target !== null && k.target !== undefined && k.status !== 'none'; }), okn = sc.filter(function (k) { return k.status === 'good'; }).length, p = sc.length ? Math.round(100 * okn / sc.length) : 0;
+      return { label: g.goal, value: p, color: p >= 75 ? STATUS.good : p >= 40 ? STATUS.warning : STATUS.critical, sub: okn + ' of ' + sc.length + ' KPIs on target' };
+    }) });
+    var gaps = []; goals.forEach(function (g) { g.kpis.forEach(function (k) { if (k.target !== null && k.target !== undefined && k.status === 'bad' && k.ratio && isFinite(k.ratio)) { gaps.push({ label: k.label, value: Math.round((k.ratio - 1) * 100), color: STATUS.critical, sub: g.goal + ' · ' + k.text + ' against a target of ' + num(k.target) }); } }); });
+    hbarChart('scGaps', { unit: '%', rows: gaps.sort(function (a, b) { return b.value - a.value; }).slice(0, 8) });
+    $('scGapsCard').hidden = !gaps.length;
     $('scSummary').innerHTML = tile('KPIs on target', good + ' of ' + all, 'across ' + goals.length + ' goals', 'good') + tile('To watch', warn, 'within 25% of the target') + tile('Off target', bad, 'more than 25% from the target', bad ? 'bad' : '') +
       tile('Scorecard time', C.clock(state.t), C.prettyDate(state.date) + ' · synthetic data');
   }
@@ -535,5 +556,5 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('analytics').hidden) { close(); } });
   });
 
-  T.analytics = { open: open, close: close, scorecard: function () { if (!M) { build(); } return scorecard(); }, model: function () { if (!M) { build(); } return M; } };
+  T.analytics = { charts: { line: lineChart, hbar: hbarChart, bar: barChart, pie: pieChart, tile: tile, COL: COL, STATUS: STATUS }, open: open, close: close, scorecard: function () { if (!M) { build(); } return scorecard(); }, model: function () { if (!M) { build(); } return M; } };
 })();
