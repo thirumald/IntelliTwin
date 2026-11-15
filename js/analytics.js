@@ -340,18 +340,18 @@
     Array.prototype.forEach.call($('anSigTable').querySelectorAll('[data-sig]'), function (b) { b.onclick = locate(function () { var j = J[Number(b.getAttribute('data-sig'))]; C.flyTo(j.lon, j.lat, 16); }); });
 
     /* ---- population and fleet ---- */
-    var P = A.population, mix = window.TwinCars.MIX, mt = window.TwinCars.mixTotal, peakVeh = M.peakVehicles;
+    var hasPop = !!A.population, P = A.population || { year: new Date().getFullYear(), abuDhabiRegion: 0, alAinRegion: 0, alDhafraRegion: 0, emirate: 0, growthPerYear: 0 }, mix = window.TwinCars.MIX, mt = window.TwinCars.mixTotal, peakVeh = M.peakVehicles;
     var popSeries = [], popLabels = [];
     for (var py = 0; py <= H; py++) { popLabels.push(String(P.year + py)); popSeries.push(P.abuDhabiRegion * Math.pow(1 + P.growthPerYear, py) / 1e6); }
     $('anPopTiles').innerHTML =
-      tile('Abu Dhabi Region residents', num(P.abuDhabiRegion), P.year + ', as quoted from SCAD') +
+      (hasPop ? tile('Abu Dhabi Region residents', num(P.abuDhabiRegion), P.year + ', as quoted from SCAD') +
       tile('Emirate residents', num(P.emirate), 'three regions') +
-      tile('Region residents in ' + H + ' years', (popSeries[H]).toFixed(1) + ' m', 'at ' + (P.growthPerYear * 100).toFixed(1) + '% a year, if the ' + (P.year - 1) + '–' + P.year + ' rate held') +
+      tile('Region residents in ' + H + ' years', (popSeries[H]).toFixed(1) + ' m', 'at ' + (P.growthPerYear * 100).toFixed(1) + '% a year, if the ' + (P.year - 1) + '–' + P.year + ' rate held') : tile('Residents', '–', 'Population figures are set for Abu Dhabi only; add this region’s in config.js')) +
       tile('Vehicles moving at the peak', num(peakVeh), 'synthetic, working day 08:00') +
       tile('Railway in the study area', M.railKm ? num(M.railKm) + ' km' : '–', M.railKm ? 'from OpenStreetMap' : 'not in this data build') +
       tile('Cycle tracks', M.cycleKm ? num(M.cycleKm) + ' km' : '–', M.cycleKm ? 'from OpenStreetMap' : 'not in this data build');
-    barChart('anPopReg', { labels: ['Abu Dhabi', 'Al Ain', 'Al Dhafra'], unit: 'residents', series: [{ name: 'Residents', color: COL[0], values: [P.abuDhabiRegion, P.alAinRegion, P.alDhafraRegion] }] });
-    lineChart('anPopLine', { labels: popLabels, unit: 'million', yMin: 0, series: [{ name: 'Residents', color: COL[0], values: popSeries.map(function (v) { return Math.round(v * 100) / 100; }) }] });
+    if (hasPop) { barChart('anPopReg', { labels: ['Abu Dhabi', 'Al Ain', 'Al Dhafra'], unit: 'residents', series: [{ name: 'Residents', color: COL[0], values: [P.abuDhabiRegion, P.alAinRegion, P.alDhafraRegion] }] });
+    lineChart('anPopLine', { labels: popLabels, unit: 'million', yMin: 0, series: [{ name: 'Residents', color: COL[0], values: popSeries.map(function (v) { return Math.round(v * 100) / 100; }) }] }); }
     hbarChart('anFleet', { unit: 'vehicles', rows: mix.map(function (mx) { return { label: mx.label, value: peakVeh * mx.share / mt, sub: Math.round(100 * mx.share / mt) + '% of traffic (assumed share)' }; }) });
     var kmc = (M.meta.network || {}).km_by_class || {}, roadKm = Object.keys(kmc).reduce(function (sum, k) { return sum + kmc[k]; }, 0);
     hbarChart('anModes', { unit: 'km', rows: [{ label: 'Roads in the model (by direction)', value: roadKm }, { label: 'Cycle tracks', value: M.cycleKm }, { label: 'Railway', value: M.railKm }] });
@@ -476,7 +476,7 @@
         kpi('Critical roads in ' + horizon + ' years, no action', M.critical[last], 'roads', G.futureCriticalRoads, 'low', 'against ' + M.critical[0] + ' today'),
         kpi('Cycle track', M.cycleKm || null, 'km', G.cycleKm, 'high', 'OpenStreetMap'),
         kpi('Delay cost a year', M.dailyDelay * A.valueOfTimeAedPerHour * A.workingDaysPerYear / 1e6, 'AED m', G.delayCostAedMillion, 'low', 'value of time AED ' + A.valueOfTimeAedPerHour + ' an hour'),
-        kpi('Residents, Abu Dhabi region', pop.abuDhabiRegion || null, '', null, 'high', 'census ' + (pop.year || '') + ', for context')] }
+        kpi('Residents, Abu Dhabi region', pop.abuDhabiRegion || null, '', null, 'high', pop.year ? 'census ' + pop.year + ', for context' : 'not set for this region')] }
     ];
   }
   function renderScore() {

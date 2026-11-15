@@ -36,23 +36,18 @@
   var E = window.TwinEvents;
   var $ = function (id) { return document.getElementById(id); };
 
-  // Major sites for quick navigation: [name, lon, lat, zoom]. Locations are approximate.
-  var SITES = [
-    ['Downtown', 54.3570, 24.4870, 14], ['Corniche', 54.3400, 24.4750, 14], ['Qasr Al Hosn', 54.3545, 24.4823, 15],
-    ['Emirates Palace', 54.3170, 24.4615, 14.5], ['Qasr Al Watan', 54.3050, 24.4625, 14.5], ['Etihad Towers', 54.3215, 24.4585, 15],
-    ['Al Maryah Island', 54.3900, 24.5020, 14.5], ['Al Reem Island', 54.4050, 24.4980, 14], ['Mina Zayed', 54.3780, 24.5220, 14],
-    ['Saadiyat Island', 54.3983, 24.5338, 13.5], ['ADNEC', 54.4370, 24.4180, 14.5], ['Sheikh Zayed Grand Mosque', 54.4750, 24.4128, 14.5],
-    ['Sheikh Zayed Bridge', 54.4970, 24.4190, 14.5], ['Mussafah', 54.5000, 24.3550, 13], ['Mohamed Bin Zayed City', 54.5450, 24.3400, 13.5],
-    ['Khalifa City', 54.5770, 24.4200, 13], ['Masdar City', 54.6170, 24.4290, 14], ['Yas Island', 54.6031, 24.4672, 13.5],
-    ['Zayed International Airport', 54.6511, 24.4330, 13]
-  ];
+  // Region (js/regions.js) and its major sites for quick navigation: [name, lon, lat, zoom]. Locations are approximate.
+  var REGION = CFG.region || { id: 'abudhabi', name: 'Abu Dhabi', dataDir: 'data/', isDefault: true, sites: [] };
+  var SITES = REGION.sites;
 
   function level(r) { return r >= 0.8 ? 'free' : r >= 0.6 ? 'moderate' : r >= 0.4 ? 'heavy' : 'severe'; }
   function num(n) { return Math.round(n).toLocaleString('en-US'); }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function clock(sec) { sec = ((Math.floor(sec) % DAY) + DAY) % DAY; return pad(Math.floor(sec / 3600)) + ':' + pad(Math.floor(sec % 3600 / 60)); }
-  function getJSON(url) { return fetch(url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(url); } return r.json(); }); }
-  function getBuf(url) { return fetch(url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(url); } return r.arrayBuffer(); }); }
+  // Data files are read from the selected region's folder.
+  function rdir(url) { return url.indexOf('data/') === 0 ? REGION.dataDir + url.slice(5) : url; }
+  function getJSON(url) { url = rdir(url); return fetch(url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(url); } return r.json(); }); }
+  function getBuf(url) { url = rdir(url); return fetch(url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(url); } return r.arrayBuffer(); }); }
 
   // Binary trajectories: uint32 count, uint32 offsets[count + 1], float32 (lon, lat, t)[points]. t is seconds since sim_begin.
   function parsePaths(buf, shift) {
@@ -171,12 +166,12 @@
     $('dateLabel').textContent = prettyDate(state.date);
     $('clock').textContent = shown;
     if (state.mode === 'live') {
-      $('modeNote').textContent = (state.rate === 1 ? 'Live: following the Abu Dhabi clock.' : 'Live: started at the Abu Dhabi clock, playing at ' + state.rate + '× so it runs ahead of the clock.') + ' Synthetic feed for a ' + day.typeLabel + ', not measured traffic.';
+      $('modeNote').textContent = REGION.name + ' · ' + (state.rate === 1 ? 'Live: following the UAE clock.' : 'Live: started at the UAE clock, playing at ' + state.rate + '× so it runs ahead of the clock.') + ' ' + (meta && meta.traffic === 'synthetic' ? 'Synthetic traffic pattern' : 'Simulated traffic') + ' for a ' + day.typeLabel + ', not measured traffic.';
     } else {
       if (document.activeElement !== $('hHour') && document.activeElement !== $('hMin')) {
         $('hHour').value = pad(Math.floor(state.t / 3600) % 24); $('hMin').value = pad(Math.floor(state.t % 3600 / 300) * 5);
       }
-      $('modeNote').textContent = 'Historical: synthetic record for ' + prettyDate(state.date) + ' (' + day.typeLabel + '). No measured history is stored yet.';
+      $('modeNote').textContent = REGION.name + ' · Historical: synthetic record for ' + prettyDate(state.date) + ' (' + day.typeLabel + '). No measured history is stored yet.';
     }
   }
 
@@ -365,7 +360,8 @@
         getFillColor: [72, 92, 128, 210], material: { ambient: 0.5, diffuse: 0.6, shininess: 8 }, visible: zoom >= 11.5
       }));
     }
-    layers.push(roadLayer);
+    // With the TomTom live traffic layer on, the twin's own road colours step aside so the live colours show.
+    if (!state.liveFlow) { layers.push(roadLayer); }
     // Railways and cycle tracks from OpenStreetMap, drawn under the traffic.
     if (rail && extraShow.rail) {
       layers.push(new deck.PathLayer({ id: 'rail', data: rail, getPath: function (p) { return p; }, getColor: [226, 226, 235, 235], getWidth: 6, widthUnits: 'meters', widthMinPixels: 2,
@@ -400,7 +396,7 @@
         var carScale = zoom >= 17 ? 1.3 : zoom >= 16 ? 2 : zoom >= 15 ? 3 : 4.5;
         var carProps = { data: cars, getPosition: function (c) { return c.p; }, getOrientation: function (c) { return [0, c.yaw, 0]; }, getScale: function (c) { return c.s; }, sizeScale: carScale };
         // Asphalt under the traffic so vehicles sit on a road surface; the congestion colour stays as the thin line on top.
-        layers.splice(layers.indexOf(roadLayer), 0, new deck.PathLayer({
+        layers.splice(Math.max(0, layers.indexOf(roadLayer)), 0, new deck.PathLayer({
           id: 'asphalt', data: visibleEdges, getPath: function (i) { return edges[i].path; }, getColor: theme === 'light' ? [92, 100, 110, 255] : [34, 40, 54, 255],
           getWidth: function (i) { return edges[i].l * 3.5 + 1; }, widthUnits: 'meters', capRounded: true, jointRounded: true, updateTriggers: { getPath: visibleKey } }));
         layers.push(new deck.SimpleMeshLayer(Object.assign({ id: 'cars3d', mesh: window.TwinCars.MESH, getColor: function (c) { return c.c; },
@@ -581,11 +577,16 @@
   function renderFacts() {
     var sm = scenarioMeta(state.scenario), s = sm.stats || {}, nw = meta.network, kc = nw.km_by_class || {}, bs = meta.buses || {}, bl = meta.buildings || {};
     $('winLabel').textContent = clock(meta.sim_begin) + '–' + clock(meta.sim_end);
+    if (meta.traffic === 'synthetic') {
+      $('tripFacts').innerHTML = fact('Traffic in this region', 'a pattern by road class, lanes, distance from the centre and time of day; no simulation yet', 'Synthetic') +
+        fact('Assumed morning trips', 'scaled from Abu Dhabi by city size, not counted', num(sm.trips)) + fact('Rest of the day', 'synthetic: the morning pattern re-used on an assumed daily curve', '24 h');
+    } else {
     $('tripFacts').innerHTML =
       fact('Vehicle trips simulated', 'assumed total, not counted', num(sm.trips)) + fact('Trips completed in the window', '', num(s.completed || 0)) +
       fact('Average trip', 'inside the study area', (s.km || '–') + ' km · ' + (s.min || '–') + ' min') + fact('Average trip speed', '', (s.kmh || '–') + ' km/h') +
       fact('Average time lost', 'against free-flowing roads', (s.min_lost || '–') + ' min') + fact('Trip ends placed by', '', meta.demand.trip_ends) +
       fact('Rest of the day', 'synthetic: simulated states re-used on an assumed daily curve', '24 h');
+    }
     $('builtLabel').textContent = 'Built ' + meta.built;
     $('netFacts').innerHTML =
       fact('Roads in the model', 'motorway to tertiary, by direction', num(nw.km) + ' km') + fact('Motorway · trunk', '', num(kc.motorway || 0) + ' · ' + num(kc.trunk || 0) + ' km') +
@@ -655,6 +656,7 @@
   function goSite(st) {
     if (!map) { return; }
     Array.prototype.forEach.call($('sites').querySelectorAll('.chip'), function (c) { c.classList.toggle('on', c.textContent === st[0]); });
+    if ($('siteSel')) { $('siteSel').value = String(SITES.indexOf(st)); }
     $('goto').value = '';
     if (popup) { popup.remove(); }
     map.flyTo({ center: [st[1], st[2]], zoom: st[3], pitch: 55, duration: 1400 });
@@ -702,11 +704,22 @@
 
     // Quick navigation: major-site chips on the map, and the longest major roads in the top bar.
     majorRoads = groups.filter(function (g) { return g.c <= 2 && g.m >= 5000; }).sort(function (a, b) { return b.m - a.m; }).slice(0, 30).sort(function (a, b) { return a.name.localeCompare(b.name); });
+    // Region and site selectors in the top bar. Choosing a region reloads the app on that region's data.
+    (CFG.regions || []).forEach(function (r) { var o = document.createElement('option'); o.value = r.id; o.textContent = r.name; $('regionSel').appendChild(o); });
+    $('regionSel').value = REGION.id;
+    $('regionSel').addEventListener('change', function () {
+      var id = $('regionSel').value, q = new URLSearchParams(location.search);
+      if (id === (CFG.defaultRegion || 'abudhabi')) { q.delete('region'); } else { q.set('region', id); }
+      q.delete('r'); var qs = q.toString(); location.href = location.pathname + (qs ? '?' + qs : '');
+    });
+    SITES.forEach(function (st, i) { var o = document.createElement('option'); o.value = String(i); o.textContent = st[0]; $('siteSel').appendChild(o); });
+    $('siteSel').addEventListener('change', function () { var st = SITES[Number($('siteSel').value)]; if ($('siteSel').value !== '' && st) { goSite(st); } });
     SITES.forEach(function (st) { var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = st[0]; b.addEventListener('click', function () { goSite(st); }); $('sites').appendChild(b); });
     majorRoads.forEach(function (g, i) { var o = document.createElement('option'); o.value = 'r' + i; o.textContent = g.name; $('gotoRoads').appendChild(o); });
     $('goto').addEventListener('change', function () {
       var v = $('goto').value; if (!v || !map) { return; }
       Array.prototype.forEach.call($('sites').querySelectorAll('.chip'), function (c) { c.classList.remove('on'); });
+      if ($('siteSel')) { $('siteSel').value = ''; }
       if (popup) { popup.remove(); }
       if (v === 'all') { map.fitBounds([[meta.bbox[0], meta.bbox[1]], [meta.bbox[2], meta.bbox[3]]], { padding: 10, pitch: 0, bearing: 0, duration: 900 }); $('tilt').setAttribute('aria-pressed', 'false'); }
       else { locate(majorRoads[Number(v.slice(1))]); }
@@ -790,7 +803,7 @@
       startFocus: function () { return startFocus; }, theme: function () { return theme; }, setTheme: function (th) { setTheme(th); }, peopleInView: function () { return peopleInView; }, zones: function () { return zones; }, onZones: function (fn) { if (zones) { fn(zones); } else { zoneHooks.push(fn); } },
       railKm: function () { return (meta.extra || {}).rail_km || 0; }, cycleKm: function () { return (meta.extra || {}).cycle_km || 0; }, setPlaying: setPlaying,
       onReady: function (fn) { if (meta && day) { fn(); } else { readyHooks.push(fn); } }, redraw: redraw, setClosure: setClosure,
-      closure: function () { return fx; }, showTab: showTab, onTab: function (fn) { tabHooks.push(fn); }, prettyDate: prettyDate, daySeriesKpi: function (id) { var d = id === state.scenario ? day : baseDay, bins = scenarioMeta(id).bins, out = []; for (var s = 0; s < SLOTS; s++) { out.push(bins[d.map[s]]); } return out; }
+      closure: function () { return fx; }, region: REGION, getJSON: getJSON, sites: function () { return SITES; }, showTab: showTab, onTab: function (fn) { tabHooks.push(fn); }, prettyDate: prettyDate, daySeriesKpi: function (id) { var d = id === state.scenario ? day : baseDay, bins = scenarioMeta(id).bins, out = []; for (var s = 0; s < SLOTS; s++) { out.push(bins[d.map[s]]); } return out; }
     },
     // Used by js/assistant.js to read the data and operate the twin.
     api: {
@@ -912,6 +925,13 @@
     getJSON('data/signals.json').then(function (rows) { signals = rows; $('sigRow').hidden = false; redraw(); }).catch(function () {});
   }).catch(function (err) {
     if (window.console) { console.warn('IntelliTwin could not start:', err && err.message); }
+    // A region whose data has not been built yet: say so and offer the default region.
+    if (!meta && !REGION.isDefault) {
+      $('nodata').querySelector('h2').textContent = 'Data for ' + REGION.name + ' is not built yet';
+      $('nodata').querySelector('p').innerHTML = 'The "Build region data" workflow creates it. <button type="button" class="btn" id="backBtn">Open Abu Dhabi</button>';
+      $('backBtn').addEventListener('click', function () { location.href = location.pathname; });
+      if ($('regionSel') && !$('regionSel').options.length) { (CFG.regions || []).forEach(function (r) { var o = document.createElement('option'); o.value = r.id; o.textContent = r.name; $('regionSel').appendChild(o); }); $('regionSel').value = REGION.id; $('regionSel').addEventListener('change', function () { var id = $('regionSel').value; location.href = location.pathname + (id === (CFG.defaultRegion || 'abudhabi') ? '' : '?region=' + id); }); }
+    }
     // With the data loaded, the fault is in the page itself: usually an old copy of the page in the browser cache.
     if (meta && edges.length) {
       $('nodata').querySelector('h2').textContent = 'The page needs a refresh';

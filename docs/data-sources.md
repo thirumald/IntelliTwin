@@ -29,6 +29,10 @@ Residential and service streets are left out to keep the network and the browser
 
 If the download fails, the build continues. Trip ends then fall back to road length × lanes, and `meta.json` records `buildings.available = false`.
 
+## 2a. Fuel and EV charging stations — OpenStreetMap
+
+`amenity=fuel` and `amenity=charging_station` objects are exported to `data/energy.json` (and `data/<region>/energy.json`) with name, brand or operator and, where mapped, the number of sockets. Coverage depends on OpenStreetMap contributors; EV charging in particular is incomplete. Live stations and charger availability come from TomTom when a key is set.
+
 ## 3. Buses — synthetic network
 
 The app shows an **example bus network generated in the browser** (`js/buses.js`, see [buses.md](buses.md)). Routes, stops, timetables and delays are invented; they are not the Integrated Transport Centre's services.

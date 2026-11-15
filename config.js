@@ -28,6 +28,60 @@ window.INTELLITWIN_CONFIG = {
   // menu: 'minimised' (icons only, with a button to expand) or 'expanded'.
   ui: { style: 'government', menu: 'minimised' },
 
+  /* ---- Regions ------------------------------------------------------------------------------- */
+  // The region selector in the top bar. Abu Dhabi is the default and keeps the settings in this file.
+  // For the other regions the app derives its example data (bus routes, taxi ranks, parking, freight, emergency,
+  // ships, flights) from the sites listed here; see js/regions.js. Site positions are APPROXIMATE: check them
+  // on the map. Site: [name, longitude, latitude, zoom, kind]. Kinds: centre, business, residential, leisure,
+  // mall, university, industrial, open, airport, port. `coastal` sites are used for the storm-surge exercise.
+  // port.seaBearing and airport.runwayBearing are compass bearings used to draw example sea lanes and flight paths.
+  defaultRegion: 'abudhabi',
+  regions: [
+    { id: 'abudhabi', name: 'Abu Dhabi', dir: '', sites: [
+      ['Downtown', 54.3570, 24.4870, 14, 'centre'], ['Corniche', 54.3400, 24.4750, 14, 'leisure'], ['Qasr Al Hosn', 54.3545, 24.4823, 15, 'leisure'],
+      ['Emirates Palace', 54.3170, 24.4615, 14.5, 'leisure'], ['Qasr Al Watan', 54.3050, 24.4625, 14.5, 'leisure'], ['Etihad Towers', 54.3215, 24.4585, 15, 'business'],
+      ['Al Maryah Island', 54.3900, 24.5020, 14.5, 'business'], ['Al Reem Island', 54.4050, 24.4980, 14, 'residential'], ['Mina Zayed', 54.3780, 24.5220, 14, 'port'],
+      ['Saadiyat Island', 54.3983, 24.5338, 13.5, 'leisure'], ['ADNEC', 54.4370, 24.4180, 14.5, 'business'], ['Sheikh Zayed Grand Mosque', 54.4750, 24.4128, 14.5, 'leisure'],
+      ['Sheikh Zayed Bridge', 54.4970, 24.4190, 14.5, 'business'], ['Mussafah', 54.5000, 24.3550, 13, 'industrial'], ['Mohamed Bin Zayed City', 54.5450, 24.3400, 13.5, 'residential'],
+      ['Khalifa City', 54.5770, 24.4200, 13, 'residential'], ['Masdar City', 54.6170, 24.4290, 14, 'business'], ['Yas Island', 54.6031, 24.4672, 13.5, 'leisure'],
+      ['Zayed International Airport', 54.6511, 24.4330, 13, 'airport']] },
+    { id: 'dubai', name: 'Dubai', dir: 'dubai', centre: [55.2744, 25.1972], port: { name: 'Port Rashid', at: [55.2700, 25.2760], seaBearing: 315 }, airport: { name: 'Dubai International Airport', at: [55.3644, 25.2532], runwayBearing: 120 }, sites: [
+      ['Downtown Dubai', 55.2744, 25.1972, 14.5, 'centre'], ['Business Bay', 55.2650, 25.1860, 14.5, 'business'], ['DIFC', 55.2796, 25.2110, 15, 'business'],
+      ['Deira', 55.3200, 25.2700, 14, 'business'], ['Bur Dubai', 55.2960, 25.2580, 14, 'residential'], ['Port Rashid', 55.2760, 25.2700, 14, 'port', true],
+      ['Jumeirah', 55.2450, 25.2250, 14, 'leisure', true], ['Dubai Marina', 55.1390, 25.0800, 14, 'leisure', true], ['Palm Jumeirah', 55.1380, 25.1120, 13.5, 'leisure', true],
+      ['Al Quoz', 55.2300, 25.1400, 13.5, 'industrial'], ['Dubai Festival City', 55.3520, 25.2220, 14, 'mall'], ['Zabeel Park', 55.3000, 25.2330, 14.5, 'open'],
+      ['Mirdif', 55.4200, 25.2200, 13.5, 'residential'], ['Dubai Silicon Oasis', 55.3800, 25.1200, 13.5, 'residential'], ['Academic City', 55.4100, 25.1200, 13.5, 'university'],
+      ['Jebel Ali', 55.0600, 25.0100, 13, 'industrial', true], ['Expo City', 55.1470, 24.9620, 13.5, 'open'], ['Dubai International Airport', 55.3644, 25.2532, 13, 'airport']] },
+    { id: 'sharjah', name: 'Sharjah', dir: 'sharjah', centre: [55.3900, 25.3460], port: { name: 'Khalid Port', at: [55.3650, 25.3600], seaBearing: 315 }, airport: { name: 'Sharjah International Airport', at: [55.5170, 25.3290], runwayBearing: 120 }, sites: [
+      ['Rolla', 55.3900, 25.3570, 14.5, 'centre'], ['Al Majaz', 55.3850, 25.3250, 14.5, 'leisure', true], ['Al Qasba', 55.3760, 25.3220, 15, 'leisure'],
+      ['Al Khan', 55.3700, 25.3300, 14.5, 'leisure', true], ['Khalid Port', 55.3650, 25.3600, 14, 'port', true], ['Al Taawun', 55.3760, 25.3120, 14.5, 'residential'],
+      ['Al Nahda', 55.3750, 25.3020, 14, 'residential'], ['Sahara Centre', 55.3740, 25.2980, 15, 'mall'], ['Industrial Area', 55.4100, 25.3100, 13.5, 'industrial'],
+      ['Muwaileh', 55.4500, 25.2950, 13.5, 'residential'], ['University City', 55.4800, 25.2900, 13.5, 'university'], ['Sharjah National Park', 55.5000, 25.3200, 14, 'open'],
+      ['Sharjah International Airport', 55.5170, 25.3290, 13, 'airport']] },
+    { id: 'ajman', name: 'Ajman', dir: 'ajman', centre: [55.4450, 25.4050], port: { name: 'Ajman Port', at: [55.4420, 25.4180], seaBearing: 305 }, sites: [
+      ['Al Rashidiya', 55.4450, 25.4000, 14.5, 'centre'], ['Ajman Corniche', 55.4350, 25.4150, 14.5, 'leisure', true], ['Ajman Port', 55.4580, 25.4130, 14.5, 'port', true],
+      ['Al Nuaimiya', 55.4500, 25.3900, 14.5, 'residential'], ['Ajman City Centre', 55.4800, 25.4000, 14.5, 'mall'], ['Al Zorah', 55.4700, 25.4300, 14, 'open', true],
+      ['Al Jurf', 55.5000, 25.4200, 13.5, 'industrial'], ['Al Rawda', 55.5100, 25.3950, 14, 'residential'], ['Al Mowaihat', 55.5300, 25.3850, 14, 'residential']] },
+    { id: 'ummalquwain', name: 'Umm Al Quwain', dir: 'ummalquwain', centre: [55.5700, 25.5600], port: { name: 'Umm Al Quwain Port', at: [55.5650, 25.5950], seaBearing: 330 }, sites: [
+      ['Old Town', 55.5550, 25.5850, 14.5, 'centre', true], ['Al Raas', 55.5530, 25.5900, 15, 'leisure', true], ['Corniche', 55.5600, 25.5750, 14.5, 'leisure', true],
+      ['Al Salamah', 55.6000, 25.5000, 13.5, 'residential'], ['Al Ramlah', 55.5750, 25.5450, 14, 'residential'], ['Industrial Area', 55.6200, 25.5200, 13.5, 'industrial'],
+      ['Al Humrah', 55.6400, 25.5500, 13.5, 'open'], ['Dreamland', 55.7000, 25.5880, 14, 'leisure', true]] },
+    { id: 'rasalkhaimah', name: 'Ras Al Khaimah', dir: 'rasalkhaimah', centre: [55.9600, 25.7900], port: { name: 'Ras Al Khaimah Port', at: [55.9380, 25.8030], seaBearing: 300 }, airport: { name: 'Ras Al Khaimah International Airport', at: [55.9400, 25.6130], runwayBearing: 160 }, sites: [
+      ['Al Nakheel', 55.9750, 25.7900, 14.5, 'centre'], ['Old Ras Al Khaimah', 55.9450, 25.8000, 14.5, 'leisure', true], ['Corniche', 55.9500, 25.7850, 14.5, 'leisure', true],
+      ['Manar Mall', 55.9570, 25.7830, 15, 'mall'], ['Al Dhait', 55.9300, 25.7300, 14, 'residential'], ['Al Hamra Village', 55.7800, 25.6900, 14, 'leisure', true],
+      ['Al Marjan Island', 55.7300, 25.6700, 13.5, 'leisure', true], ['Al Jazirah Al Hamra', 55.8000, 25.7000, 13.5, 'industrial'], ['Khuzam', 55.9500, 25.7700, 14, 'open'],
+      ['Ras Al Khaimah International Airport', 55.9400, 25.6130, 13, 'airport']] },
+    { id: 'fujairah', name: 'Fujairah', dir: 'fujairah', centre: [56.3350, 25.1250], port: { name: 'Port of Fujairah', at: [56.3650, 25.1750], seaBearing: 95 }, airport: { name: 'Fujairah International Airport', at: [56.3240, 25.1120], runwayBearing: 110 }, sites: [
+      ['City Centre', 56.3350, 25.1250, 14.5, 'centre'], ['Fujairah Corniche', 56.3550, 25.1300, 14.5, 'leisure', true], ['Fujairah Fort', 56.3300, 25.1370, 15, 'leisure'],
+      ['Al Faseel', 56.3450, 25.1450, 14.5, 'residential', true], ['Free Zone', 56.3550, 25.1600, 14, 'industrial', true], ['Port of Fujairah', 56.3600, 25.1700, 14, 'port', true],
+      ['Sakamkam', 56.3400, 25.1650, 14, 'residential'], ['Madhab', 56.3100, 25.1400, 14, 'open'], ['Fujairah International Airport', 56.3240, 25.1120, 13.5, 'airport']] },
+    { id: 'alain', name: 'Al Ain', dir: 'alain', centre: [55.7600, 24.2200], airport: { name: 'Al Ain International Airport', at: [55.6090, 24.2620], runwayBearing: 10 }, sites: [
+      ['City Centre', 55.7600, 24.2200, 14.5, 'centre'], ['Al Ain Oasis', 55.7700, 24.2150, 15, 'open'], ['Al Ain Mall', 55.7750, 24.2220, 15, 'mall'],
+      ['Al Jimi', 55.7400, 24.2400, 14, 'residential'], ['Hili', 55.7700, 24.2900, 14, 'leisure'], ['Al Ain Zoo', 55.7400, 24.1750, 14, 'leisure'],
+      ['Sanaiya', 55.7500, 24.1900, 14, 'industrial'], ['UAE University', 55.6800, 24.2000, 14, 'university'], ['Tawam', 55.6500, 24.1950, 14, 'business'],
+      ['Al Maqam', 55.6600, 24.1800, 14, 'residential'], ['Al Ain International Airport', 55.6090, 24.2620, 13, 'airport']] }
+  ],
+
   // Check options: which map layers are switched on when the app opens. Each can still be changed on screen.
   layers: {
     vehicles: true, people: true, accidents: true, enforcementSites: true, buildings3d: false,
@@ -183,6 +237,13 @@ sampleVideos: [
       { name: 'Al Reem Island', at: [54.4050, 24.4980], radiusM: 1500, vehicles: 4, waitMin: 6 }
     ]
   },
+
+  /* ---- TomTom live data --------------------------------------------------------------------- */
+  // Live traffic tiles, live incidents, live speeds, EV and fuel stations and live route times.
+  // Leave key as null: users add the key in the app (Reports, TomTom live data) and it stays in their browser.
+  // This file is public. If a key is put here, anyone can read and use it, so first restrict the key to this
+  // site's address in the TomTom developer dashboard.
+  tomtom: { key: null, flowStyle: 'relative0', flowThickness: 6, flowOnStart: false, incidentRefreshSec: 120, searchRadiusM: 15000, maxSites: 20 },
 
   /* ---- Ships and aircraft (synthetic) ----------------------------------------------------------- */
   // Example movements. The sea lanes and flight paths are approximate lines for demonstration, not

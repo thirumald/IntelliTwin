@@ -52,3 +52,5 @@ The traffic shown is simulated, not observed. Results are indicative and must no
 - **Live is not a live feed.** Live starts at the Abu Dhabi clock and, at the default 30×, runs ahead of it; all traffic in it is synthetic.
 - **The operations modules are demonstrations.** Incidents, signal plans, events and roadworks, parking, evacuation estimates, plate reads, crossings, freight, weather and work orders are generated examples (see [operations-modules.md](operations-modules.md)).
 - **Platform monitoring is synthetic.** There are no servers or feeds behind this static app (see [platform-monitoring.md](platform-monitoring.md)).
+- **Regions other than Abu Dhabi** start on a synthetic traffic pattern, and their sites, sea lanes, flight paths and example services are placed from approximate coordinates (see [regions.md](regions.md)).
+- **TomTom features** are real and live but were tested with simulated responses only; they need a key in the browser (see [tomtom.md](tomtom.md)).

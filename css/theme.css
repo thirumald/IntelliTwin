@@ -498,3 +498,17 @@ body.map-light:not(.ui-gov) .statusbar .mode-note { color: #e3f3ee; }
 body.map-light:not(.ui-gov) .statusbar .strap { color: #ffffff; }
 body.map-light .topbar .alert-btn b { background: rgba(255, 255, 255, .22); color: #fff; }
 body.map-light .topbar .alert-btn.hot b { background: var(--severe); }
+
+/* ---------------------------------------------------------------- region and site selectors */
+.pick { flex: none; margin: 0; }
+.pick select { max-width: 170px; }
+#regionSel { font-weight: 700; }
+@media (max-width: 1500px) { .brand p { display: none; } }
+@media (max-width: 1320px) { .pick select { max-width: 130px; } }
+
+/* ---------------------------------------------------------------- TomTom credit and key field */
+.tt-credit { position: absolute; left: 12px; bottom: 112px; z-index: 4; background: var(--glass); color: var(--text-2); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 11px; }
+.tt-credit[hidden] { display: none; }
+.layout.panel-open .tt-credit { left: calc(var(--panel) + 22px); }
+.search-row input[type=password] { flex: 1; min-width: 0; height: 34px; padding: 0 10px; font: inherit; font-size: 13px; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius-s); }
+@media (max-width: 860px) { .tt-credit, .layout.panel-open .tt-credit { left: 8px; bottom: 150px; } }

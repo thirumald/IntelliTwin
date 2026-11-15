@@ -88,6 +88,8 @@
   }
 
   function render() {
+    // Regions without a port or an airport do not show the matching card.
+    $('seaList').closest('section').style.display = lanes.length ? '' : 'none'; $('airList').closest('section').style.display = routes.length ? '' : 'none';
     if (!K.tabOpen('bus')) { return; }
     var t = state.t, vs = ships(t), b = berths(t);
     $('seaMoving').textContent = vs.length; $('seaBerth').textContent = b.used + ' of ' + b.total;
