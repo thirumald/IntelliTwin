@@ -23,7 +23,32 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -q -r tools/requirements.txt
-      - run: python .github/scripts/add_buildings.py --region "${{ matrix.region }}" --out "out/${{ matrix.region }}"
+      - name: Microsoft building footprints
+        id: ms
+        continue-on-error: true
+        run: python .github/scripts/add_buildings.py --region "${{ matrix.region }}" --out "out/${{ matrix.region }}"
+      # Where Microsoft lists no footprints for the area, use the buildings mapped in OpenStreetMap.
+      - name: Week number for the OpenStreetMap cache
+        if: steps.ms.outcome == 'failure'
+        id: week
+        run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+      - name: Restore OpenStreetMap extract
+        if: steps.ms.outcome == 'failure'
+        uses: actions/cache/restore@v4
+        with:
+          path: build/gcc-states.osm.pbf
+          key: geofabrik-gcc-${{ steps.week.outputs.week }}
+      - name: OpenStreetMap buildings
+        if: steps.ms.outcome == 'failure'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
+          mkdir -p build
+          [ -s build/gcc-states.osm.pbf ] || curl -fL --retry 6 --retry-all-errors --retry-delay 30 --connect-timeout 30 -o build/gcc-states.osm.pbf https://download.geofabrik.de/asia/gcc-states-latest.osm.pbf
+          BBOX="$(python3 -c 'import sys; sys.path.insert(0, "tools"); import regions; print(",".join(map(str, regions.REGIONS[sys.argv[1]]["bbox"])))' "${{ matrix.region }}")"
+          osmium extract --bbox "$BBOX" --strategy smart build/gcc-states.osm.pbf -o build/area.osm.pbf --overwrite
+          osmium tags-filter build/area.osm.pbf wr/building -o build/bld.osm.pbf --overwrite
+          osmium export build/bld.osm.pbf -f geojsonseq --geometry-types=polygon -o build/bld.geojsonseq --overwrite
+          python .github/scripts/add_buildings.py --region "${{ matrix.region }}" --out "out/${{ matrix.region }}" --osm-geojson build/bld.geojsonseq
       - uses: actions/upload-artifact@v4
         with:
           name: bld-${{ matrix.region }}
