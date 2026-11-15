@@ -92,27 +92,43 @@ The counts and speeds are the simulation's. The individual cars are drawn to mat
 
 Bus runs come from the GTFS timetable for a Tuesday service day. Positions follow the route shape where the feed has one, at constant speed between consecutive timetabled stops; otherwise they move in straight lines between stops. Buses do not load the simulated roads.
 
-## 9. Live and historical modes
+## 9. The synthetic day: live, historical and 24 hours
 
-The model holds one simulated weekday morning. There is no live traffic feed and no recorded history.
+The simulation covers one weekday morning (06:30–10:00). There is no live feed and no recorded history. `js/daymodel.js` builds a **synthetic day** so that the app can show any date and any hour:
 
-- **Live:** the header shows the current Abu Dhabi date and time. Between 07:00 and 10:00 the twin follows the clock at real-time speed; outside those hours it replays the modelled morning and says so.
-- **Historical:** a date and a 24-hour time can be chosen. Every date replays the same modelled morning for the selected demand case; a time outside 07:00–10:00 shows the nearest modelled time. The on-screen note states this.
+1. An assumed curve gives network load by hour for three kinds of day: working day (peaks around 08:00 and 18:00), Friday (smaller morning peak, a midday bump) and weekend (no morning peak, an evening peak). The curves are assumptions, not measurements.
+2. The simulated morning's build-up, from its first 5 minutes to its busiest point before 09:00, is treated as a ladder of traffic states from quiet to peak.
+3. For each 5-minute slot of the day, the app shows the simulated state whose vehicle count best matches the curve. A date-seeded variation of a few percent makes each date slightly different and repeatable.
 
-Storing real history would need a feed (for example floating-car speeds or detector counts) and a time-series store behind the app.
+So road-by-road speeds and counts are always a state the simulation actually produced, but the time of day and the date it is shown at are assumed. Known consequences: the evening peak reuses morning states, so the direction of travel is not reversed; and the congested late-morning states (after about 09:00) are not used.
+
+- **Live** follows the Abu Dhabi clock at real-time speed.
+- **Historical** takes a date and a 24-hour time, and plays at 1×, 30×, 120× or 600×.
+- **Forecast** tiles read the same synthetic day 15, 30 and 60 minutes ahead. It is the assumed profile, not a prediction from measurements.
 
 ## 10. Illustrative accidents and fines
 
-No accident or enforcement data is public for Abu Dhabi. So that the dashboard has these views, `js/events.js` generates them in the browser, deterministically, from the simulated traffic. **They are not real records and the app labels them “illustrative” wherever they appear.**
+No accident or enforcement data is public for Abu Dhabi. `js/events.js` generates these in the browser, deterministically for each date and demand case, from the synthetic day. **They are not real records and the app labels them wherever they appear.**
 
 | Item | How it is generated |
 | --- | --- |
-| Accidents | 45 for the typical weekday (06:30–10:00), an arbitrary demo figure. Each is placed on a link and time in proportion to vehicle-kilometres, weighted up where traffic is slow. Other demand cases scale with their own exposure. Severity is drawn 78% damage only, 17% minor injury, 5% serious; duration 15–45 minutes |
-| Enforcement sites | 60 assumed sites: the busiest named links (at most two per road). They are not real camera locations |
-| Violations | Drawn per site and 5-minute bin from the simulated flow passing it, by type: speeding (mostly when traffic flows freely), red light, lane discipline, phone use, seat belt, tailgating. The rates are invented for the demo |
+| Accidents | 90 for a reference working day, an arbitrary demo figure. Each is placed on a link and time in proportion to vehicle-kilometres, weighted up where traffic is slow; other days and demand cases scale with their own exposure. Severity is drawn 78% damage only, 17% minor injury, 5% serious; duration 15–45 minutes |
+| Enforcement cameras | 60 assumed sites: the busiest named links (at most two per road). They are not real camera locations |
+| Violations | Drawn per site and 5-minute slot from the flow passing it, by type: speeding (mostly when traffic flows freely), red light, lane discipline, phone use, seat belt, tailgating. The rates are invented for the demo |
 | Fine values | Placeholders (AED 400–1,000 by type), not the official tariff |
 
-To replace them with real data, load real records in place of `TwinEvents.generate()`; the dashboard, map layers and assistant read the same structure.
+## 10a. Operations features
+
+| Feature | How it works | What it is not |
+| --- | --- | --- |
+| Alerts | Rules in `config.js` checked every shown minute: network speed below a threshold, a road below a share of its limit with enough vehicles, an active serious accident, an active what-if closure | Not driven by measured data |
+| What-if closure | The chosen road is emptied and shown closed. Links within 1.5 km lose up to 40% of their speed (more when nearer) and gain vehicles. KPIs are recomputed from the links | Not re-simulated: no rerouting beyond the radius, no knock-on effects over time |
+| Devices | CCTV cameras, detectors and message signs are placed on the busiest links, spaced apart, unless real cameras are listed in `config.js`. Readings and sign messages come from the synthetic traffic | Not real device positions or readings |
+| Signals | Positions come from OpenStreetMap via the pipeline (`data/signals.json`). Each shows a generic 90-second cycle with a fixed offset | Not real signal timings or states |
+| Camera view | Plays the configured stream. Without one, draws a synthetic view of the camera's road from its current density and speed | The synthetic view is not footage |
+| Exports | CSV files and a printable summary, each stating the data is synthetic | — |
+| Audit log | Actions are stored in the browser's local storage (last 300), and posted to `api.auditUrl` if set | Not tamper-proof |
+| Sign-in | A role is chosen in the browser | Not a security control |
 
 ## 11. Tuning history
 

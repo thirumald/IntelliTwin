@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>IntelliTwin — Transportation Intelligence &amp; Predictive Simulation</title>
-<meta name="description" content="IntelliTwin: a static traffic digital twin demonstrator for Abu Dhabi, replaying a SUMO morning-peak simulation on OpenStreetMap roads. Simulated, not observed.">
+<meta name="description" content="IntelliTwin: a traffic digital twin demonstrator for Abu Dhabi on OpenStreetMap roads, with a SUMO simulation and a synthetic live feed. Simulated and synthetic, not observed.">
 <meta name="theme-color" content="#0b1220">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b1220'/%3E%3Cpath d='M6 22 L13 12 L19 18 L26 8' fill='none' stroke='%232dd4a7' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
@@ -17,27 +17,29 @@
     <img class="brand-logo" src="assets/presight-logo.png" alt="Presight" width="496" height="142">
     <div>
       <h1>IntelliTwin</h1>
-      <p>Abu Dhabi mobility twin</p>
+      <p data-i18n="tagline">Abu Dhabi mobility twin</p>
     </div>
   </div>
   <label class="goto">
-    <span class="sr-only">Go to a major road</span>
     <select id="goto" aria-label="Go to a major road">
-      <option value="">Go to a major road…</option>
-      <option value="all">Whole study area</option>
+      <option value="" data-i18n="gotoRoad">Go to a major road…</option>
+      <option value="all" data-i18n="wholeArea">Whole study area</option>
       <optgroup label="Major roads" id="gotoRoads"></optgroup>
     </select>
   </label>
   <div class="topbar-right">
-    <span class="badge" title="Traffic is simulated from assumptions, not observed">Simulated, not observed</span>
+    <button class="alert-btn" id="alertBtn" title="Open alerts"><span data-i18n="alerts">Alerts</span> <b id="alertCount">0</b></button>
+    <button class="btn small" id="langBtn" title="Switch language">عربي</button>
+    <button class="btn small user" id="userBtn" hidden></button>
+    <span class="badge" title="Traffic is simulated and the live feed is synthetic" data-i18n="badge">Synthetic, not observed</span>
     <span class="now"><span class="now-date" id="dateLabel"></span><span class="clock" id="clock" aria-live="off">--:--</span></span>
   </div>
 </header>
 
 <div class="modebar" role="group" aria-label="Live or historical view">
   <div class="seg small" id="mode" role="radiogroup" aria-label="View mode">
-    <button data-mode="live" role="radio" aria-checked="true" class="on">Live</button>
-    <button data-mode="hist" role="radio" aria-checked="false">Historical</button>
+    <button data-mode="live" role="radio" aria-checked="true" class="on" data-i18n="live">Live</button>
+    <button data-mode="hist" role="radio" aria-checked="false" data-i18n="historical">Historical</button>
   </div>
   <span class="hist" id="histControls" hidden>
     <input type="date" id="hDate" aria-label="Date">
@@ -54,150 +56,208 @@
       <p>Run the “Build twin data” workflow in GitHub Actions, or follow <a href="docs/operations.md">docs/operations.md</a> to build it locally.</p>
     </div>
 
-    <div class="sites" id="sites" role="group" aria-label="Major sites"><button type="button" class="mini" id="sitesMin" title="Show or hide the site shortcuts">Sites</button></div>
-    <button type="button" class="panel-open-btn" id="panelOpen" hidden>Dashboard</button>
+    <div class="sites" id="sites" role="group" aria-label="Major sites"><button type="button" class="mini" id="sitesMin" title="Show or hide the site shortcuts" data-i18n="sites">Sites</button></div>
+    <button type="button" class="panel-open-btn" id="panelOpen" hidden data-i18n="dashboard">Dashboard</button>
 
     <div class="legend" id="legend" aria-label="Legend">
-      <button type="button" class="mini" id="legendMin" title="Show or hide the legend">Legend</button>
-      <span><i class="sw free"></i>Free ≥80% of limit</span>
-      <span><i class="sw moderate"></i>Moderate 60–80%</span>
-      <span><i class="sw heavy"></i>Heavy 40–60%</span>
-      <span><i class="sw severe"></i>Severe &lt;40%</span>
-      <span><i class="pt car"></i>Vehicles (zoom in for 3D)</span>
+      <button type="button" class="mini" id="legendMin" title="Show or hide the legend" data-i18n="legend">Legend</button>
+      <span><i class="sw free"></i><span data-i18n="lgFree">Free ≥80% of limit</span></span>
+      <span><i class="sw moderate"></i><span data-i18n="lgModerate">Moderate 60–80%</span></span>
+      <span><i class="sw heavy"></i><span data-i18n="lgHeavy">Heavy 40–60%</span></span>
+      <span><i class="sw severe"></i><span data-i18n="lgSevere">Severe &lt;40%</span></span>
+      <span><i class="pt car"></i><span data-i18n="lgVehicles">Vehicles (zoom in for 3D)</span></span>
       <span id="legendBus" hidden><i class="pt bus"></i>Timetabled bus</span>
-      <span><i class="pt acc"></i>Accident (illustrative)</span>
-      <span><i class="pt site"></i>Enforcement site (illustrative)</span>
+      <span><i class="pt acc"></i><span data-i18n="lgAccident">Accident (illustrative)</span></span>
+      <span><i class="pt site"></i><span data-i18n="lgSite">Enforcement camera (synthetic)</span></span>
+      <span><i class="pt cam"></i><span data-i18n="lgCam">CCTV camera</span></span>
+      <span><i class="pt det"></i><span data-i18n="lgDet">Detector</span></span>
+      <span><i class="pt vms"></i><span data-i18n="lgVms">Message sign</span></span>
+      <span><i class="pt sig"></i><span data-i18n="lgSig">Signal (generic cycle)</span></span>
     </div>
 
-    <button id="chatOpen" class="chat-open" aria-expanded="false" aria-controls="chat">Ask IntelliTwin</button>
+    <button id="chatOpen" class="chat-open" aria-expanded="false" aria-controls="chat" data-i18n="ask">Ask IntelliTwin</button>
     <section id="chat" class="chat" hidden aria-label="IntelliTwin assistant">
-      <header><div><strong>IntelliTwin assistant</strong><span>Built-in agent · answers from the simulation in this page</span></div><button id="chatClose" class="btn small" aria-label="Close assistant">Close</button></header>
+      <header><div><strong>IntelliTwin assistant</strong><span>Built-in agent · answers from the data in this page</span></div><button id="chatClose" class="btn small" aria-label="Close assistant">Close</button></header>
       <div id="chatLog" class="chat-log" aria-live="polite"></div>
       <div id="chatChips" class="chat-chips">
         <button type="button">How is traffic now?</button>
         <button type="button">Which roads are slowest?</button>
+        <button type="button">Any alerts?</button>
+        <button type="button">Forecast</button>
         <button type="button">Show accidents</button>
         <button type="button">How many fines?</button>
         <button type="button">Go to Yas Island</button>
         <button type="button">Compare the demand cases</button>
       </div>
-      <form id="chatForm" autocomplete="off"><input id="chatInput" type="text" placeholder="Ask about traffic, roads, accidents, fines…" aria-label="Question"><button class="btn" type="submit">Send</button></form>
+      <form id="chatForm" autocomplete="off"><input id="chatInput" type="text" placeholder="Ask about traffic, roads, alerts, accidents, fines…" aria-label="Question"><button class="btn" type="submit">Send</button></form>
+    </section>
+
+    <!-- Camera video window -->
+    <section id="video" class="video" hidden aria-label="Camera view">
+      <header><div><strong id="videoTitle">Camera</strong><span id="videoSub"></span></div><button id="videoClose" class="btn small">Close</button></header>
+      <div class="video-body" id="videoBody"></div>
+      <footer id="videoNote"></footer>
     </section>
 
     <div class="timeline" role="group" aria-label="Time controls">
       <button id="play" class="btn icon" aria-label="Pause">❚❚</button>
       <div class="seg" id="rate" role="radiogroup" aria-label="Playback speed">
-        <button data-rate="1" role="radio" aria-checked="false" title="Real time">1×</button>
+        <button data-rate="1" role="radio" aria-checked="true" class="on" title="Real time">1×</button>
         <button data-rate="30" role="radio" aria-checked="false">30×</button>
-        <button data-rate="120" role="radio" aria-checked="true" class="on">120×</button>
+        <button data-rate="120" role="radio" aria-checked="false">120×</button>
         <button data-rate="600" role="radio" aria-checked="false">600×</button>
       </div>
-      <span class="sim-clock" id="simClock" title="Time in the simulated morning">--:--</span>
-      <input id="time" type="range" min="0" max="100" step="1" value="0" aria-label="Time of morning">
+      <span class="sim-clock" id="simClock" title="Time shown on the map">--:--</span>
+      <input id="time" type="range" min="0" max="86399" step="60" value="0" aria-label="Time of day">
       <button id="tilt" class="btn" aria-pressed="false">3D</button>
-      <button id="fullView" class="btn" aria-pressed="false" title="Minimise or restore the panel, legend and site shortcuts">Full view</button>
-      <button id="orbit" class="btn" aria-pressed="false" title="Slowly circle the camera around the view">Orbit</button>
+      <button id="fullView" class="btn" aria-pressed="false" title="Minimise or restore the panel, legend and site shortcuts" data-i18n="fullView">Full view</button>
+      <button id="orbit" class="btn" aria-pressed="false" title="Slowly circle the camera around the view" data-i18n="orbit">Orbit</button>
     </div>
   </section>
 
   <aside class="panel" aria-label="Network intelligence">
     <nav class="tabs" id="tabs" role="tablist" aria-label="Views">
-      <button role="tab" data-tab="dash" aria-selected="true" class="on">Dashboard</button>
-      <button role="tab" data-tab="cong" aria-selected="false">Congestion</button>
-      <button role="tab" data-tab="acc" aria-selected="false">Accidents</button>
-      <button role="tab" data-tab="fines" aria-selected="false">Fines</button>
-      <button role="tab" data-tab="model" aria-selected="false">Model</button>
-      <button type="button" class="mini" id="panelMin" title="Minimise this panel" aria-label="Minimise panel">Minimise</button>
+      <button type="button" class="mini" id="panelMin" title="Minimise this panel" aria-label="Minimise panel" data-i18n="minimise">Minimise</button>
+      <button role="tab" data-tab="dash" aria-selected="true" class="on" data-i18n="dashboard">Dashboard</button>
+      <button role="tab" data-tab="cong" aria-selected="false" data-i18n="congestion">Congestion</button>
+      <button role="tab" data-tab="acc" aria-selected="false" data-i18n="accidents">Accidents</button>
+      <button role="tab" data-tab="fines" aria-selected="false" data-i18n="fines">Fines</button>
+      <button role="tab" data-tab="dev" aria-selected="false" data-i18n="devices">Devices</button>
+      <button role="tab" data-tab="rep" aria-selected="false" data-i18n="reports">Reports</button>
+      <button role="tab" data-tab="model" aria-selected="false" data-i18n="model">Model</button>
     </nav>
 
     <!-- Dashboard -->
     <section class="card" data-tab="dash">
-      <div class="card-head">
-        <h2>Network now</h2>
-        <span class="muted" id="viewLabel"></span>
-      </div>
+      <div class="card-head"><h2 data-i18n="networkNow">Network now</h2><span class="muted" id="viewLabel"></span></div>
       <div class="kpis">
-        <div class="kpi"><span class="k-label">Average speed</span><span class="k-value" id="kSpeed">–</span><span class="k-delta" id="dSpeed"></span></div>
-        <div class="kpi"><span class="k-label">Extra travel time</span><span class="k-value" id="kCong">–</span><span class="k-delta" id="dCong"></span></div>
-        <div class="kpi"><span class="k-label">Vehicles moving</span><span class="k-value" id="kVeh">–</span><span class="k-delta" id="dVeh"></span></div>
-        <div class="kpi"><span class="k-label">Delay per hour</span><span class="k-value" id="kDelay">–</span><span class="k-delta" id="dDelay"></span></div>
-        <button class="kpi link" data-goto="acc"><span class="k-label">Accidents since 06:30 <em>illustrative</em></span><span class="k-value" id="kAcc">–</span><span class="k-delta" id="dAcc"></span></button>
-        <button class="kpi link" data-goto="fines"><span class="k-label">Fines since 06:30 <em>illustrative</em></span><span class="k-value" id="kFines">–</span><span class="k-delta" id="dFines"></span></button>
+        <div class="kpi"><span class="k-label" data-i18n="avgSpeed">Average speed</span><span class="k-value" id="kSpeed">–</span><span class="k-delta" id="dSpeed"></span></div>
+        <div class="kpi"><span class="k-label" data-i18n="extraTime">Extra travel time</span><span class="k-value" id="kCong">–</span><span class="k-delta" id="dCong"></span></div>
+        <div class="kpi"><span class="k-label" data-i18n="vehMoving">Vehicles moving</span><span class="k-value" id="kVeh">–</span><span class="k-delta" id="dVeh"></span></div>
+        <div class="kpi"><span class="k-label" data-i18n="delayHour">Delay per hour</span><span class="k-value" id="kDelay">–</span><span class="k-delta" id="dDelay"></span></div>
+        <button class="kpi link" data-goto="acc"><span class="k-label"><span data-i18n="accToday">Accidents today</span> <em data-i18n="illustrative">illustrative</em></span><span class="k-value" id="kAcc">–</span><span class="k-delta" id="dAcc"></span></button>
+        <button class="kpi link" data-goto="fines"><span class="k-label"><span data-i18n="finesToday">Fines today</span> <em data-i18n="illustrative">illustrative</em></span><span class="k-value" id="kFines">–</span><span class="k-delta" id="dFines"></span></button>
       </div>
       <p class="insight" id="insight"></p>
     </section>
 
     <section class="card" data-tab="dash">
-      <div class="card-head">
-        <h2>Scenario and layers</h2>
-        <span class="muted">Pre-simulated</span>
+      <div class="card-head"><h2 data-i18n="alerts">Alerts</h2><span class="muted" id="alertNote"></span></div>
+      <ol class="corridors" id="alertList"></ol>
+    </section>
+
+    <section class="card" data-tab="dash">
+      <div class="card-head"><h2 data-i18n="forecast">Forecast</h2><span class="muted" data-i18n="forecastNote">From the synthetic day profile</span></div>
+      <div class="kpis three" id="forecastTiles"></div>
+    </section>
+
+    <section class="card" data-tab="dash">
+      <div class="card-head"><h2 data-i18n="dayProfile">Day profile</h2><span class="muted" data-i18n="speedKmh">Network speed, km/h</span></div>
+      <canvas id="chart" height="150" aria-label="Network average speed through the day"></canvas>
+      <div class="chart-key">
+        <span><i class="ln base"></i><span data-i18n="typical">Typical demand</span></span>
+        <span><i class="ln scen"></i><span data-i18n="selected">Selected case</span></span>
+        <span><i class="ln mark"></i><span data-i18n="shownTime">Shown time</span></span>
       </div>
-      <label class="field">
-        <span>Demand case</span>
-        <select id="scenario"></select>
-      </label>
-      <label class="check"><input id="showCars" type="checkbox" checked><span>Vehicles <span class="muted" id="carNote"></span></span></label>
-      <label class="check"><input id="showAcc" type="checkbox" checked><span>Accidents <span class="muted">(illustrative)</span></span></label>
-      <label class="check"><input id="showSites" type="checkbox" checked><span>Enforcement sites <span class="muted">(illustrative)</span></span></label>
+    </section>
+
+    <section class="card" data-tab="dash">
+      <div class="card-head"><h2 data-i18n="scenarioLayers">Scenario and layers</h2><span class="muted">Pre-simulated</span></div>
+      <label class="field"><span data-i18n="demandCase">Demand case</span><select id="scenario"></select></label>
+      <label class="check"><input id="showCars" type="checkbox" checked><span><span data-i18n="vehicles">Vehicles</span> <span class="muted" id="carNote"></span></span></label>
+      <label class="check"><input id="showAcc" type="checkbox" checked><span><span data-i18n="accidents">Accidents</span> <span class="muted">(illustrative)</span></span></label>
+      <label class="check"><input id="showSites" type="checkbox" checked><span data-i18n="lyEnf">Enforcement cameras</span></label>
+      <label class="check"><input id="showCams" type="checkbox" checked><span data-i18n="lyCam">CCTV cameras</span></label>
+      <label class="check"><input id="showDet" type="checkbox"><span data-i18n="lyDet">Detectors</span></label>
+      <label class="check"><input id="showVms" type="checkbox" checked><span data-i18n="lyVms">Message signs</span></label>
+      <label class="check" id="sigRow" hidden><input id="showSig" type="checkbox" checked><span data-i18n="lySig">Traffic signals</span></label>
       <label class="check" id="busRow" hidden><input id="showBuses" type="checkbox" checked><span>Buses from the timetable <span class="muted" id="busNote"></span></span></label>
       <label class="check" id="bldRow" hidden><input id="showBld" type="checkbox"><span>More buildings, Microsoft footprints <span class="muted" id="bldNote"></span></span></label>
     </section>
 
-    <section class="card" data-tab="dash">
-      <div class="card-head">
-        <h2>Morning profile</h2>
-        <span class="muted">Network speed, km/h</span>
-      </div>
-      <canvas id="chart" height="150" aria-label="Network average speed through the morning"></canvas>
-      <div class="chart-key">
-        <span><i class="ln base"></i>Typical weekday</span>
-        <span><i class="ln scen"></i>Selected case</span>
-        <span><i class="ln mark"></i>Shown time</span>
-      </div>
-    </section>
-
     <!-- Congestion -->
+    <section class="card" data-tab="cong" hidden data-need="whatif">
+      <div class="card-head"><h2 data-i18n="whatIf">What-if: close a road</h2><span class="muted">Estimate</span></div>
+      <p class="notice">An estimate made in the browser: the closed road empties and roads within 1.5 km slow down. It is <strong>not re-simulated</strong>, so rerouting further away is not shown.</p>
+      <label class="field"><span data-i18n="roadToClose">Road to close</span><select id="closureRoad"><option value="">None</option></select></label>
+      <p class="insight" id="closureNote"></p>
+    </section>
     <section class="card" data-tab="cong" hidden>
-      <div class="card-head"><h2>Congestion by road class</h2><span class="muted">Share of vehicles in heavy or severe traffic</span></div>
+      <div class="card-head"><h2 data-i18n="congByClass">Congestion by road class</h2><span class="muted">Share of vehicles in heavy or severe traffic</span></div>
       <div class="bars" id="classBars"></div>
     </section>
     <section class="card" data-tab="cong" hidden>
-      <div class="card-head">
-        <h2>Slowest roads now</h2>
-        <span class="muted">Tap to locate</span>
-      </div>
+      <div class="card-head"><h2 data-i18n="slowest">Slowest roads now</h2><span class="muted" data-i18n="tapLocate">Tap to locate</span></div>
       <ol class="corridors" id="corridors"></ol>
     </section>
 
     <!-- Accidents -->
     <section class="card" data-tab="acc" hidden>
-      <p class="notice"><strong>Illustrative, not real records.</strong> No accident data is public for Abu Dhabi. These are generated from the simulated traffic to show how the view works.</p>
+      <p class="notice"><strong>Illustrative, not real records.</strong> No accident data is public for Abu Dhabi. These are generated from the synthetic traffic to show how the view works.</p>
       <div class="kpis three">
-        <div class="kpi"><span class="k-label">Since 06:30</span><span class="k-value" id="aTotal">–</span></div>
-        <div class="kpi"><span class="k-label">Active now</span><span class="k-value" id="aActive">–</span></div>
-        <div class="kpi"><span class="k-label">With injury</span><span class="k-value" id="aInjury">–</span></div>
+        <div class="kpi"><span class="k-label" data-i18n="today">Today</span><span class="k-value" id="aTotal">–</span></div>
+        <div class="kpi"><span class="k-label" data-i18n="activeNow">Active now</span><span class="k-value" id="aActive">–</span></div>
+        <div class="kpi"><span class="k-label" data-i18n="withInjury">With injury</span><span class="k-value" id="aInjury">–</span></div>
       </div>
     </section>
     <section class="card" data-tab="acc" hidden>
-      <div class="card-head"><h2>Accident log</h2><span class="muted">Latest first · tap to locate</span></div>
+      <div class="card-head"><h2 data-i18n="accLog">Accident log</h2><span class="muted">Latest first · tap to locate</span></div>
       <ol class="corridors" id="accList"></ol>
     </section>
 
     <!-- Fines -->
     <section class="card" data-tab="fines" hidden>
-      <p class="notice"><strong>Illustrative, not real records.</strong> No enforcement data is public. Violations are generated from simulated flow at 60 assumed sites, and the fine values are placeholders, not the official tariff.</p>
+      <p class="notice"><strong>Illustrative, not real records.</strong> No enforcement data is public. Violations are generated from synthetic flow at 60 assumed sites, and the fine values are placeholders, not the official tariff.</p>
       <div class="kpis">
-        <div class="kpi"><span class="k-label">Fines since 06:30</span><span class="k-value" id="fTotal">–</span></div>
-        <div class="kpi"><span class="k-label">Value</span><span class="k-value" id="fValue">–</span></div>
+        <div class="kpi"><span class="k-label" data-i18n="finesToday">Fines today</span><span class="k-value" id="fTotal">–</span></div>
+        <div class="kpi"><span class="k-label" data-i18n="value">Value</span><span class="k-value" id="fValue">–</span></div>
       </div>
     </section>
     <section class="card" data-tab="fines" hidden>
-      <div class="card-head"><h2>By violation type</h2><span class="muted">Count · assumed fine</span></div>
+      <div class="card-head"><h2 data-i18n="byType">By violation type</h2><span class="muted">Count · assumed fine</span></div>
       <div class="bars" id="typeBars"></div>
     </section>
     <section class="card" data-tab="fines" hidden>
-      <div class="card-head"><h2>Busiest enforcement sites</h2><span class="muted">Tap to locate</span></div>
+      <div class="card-head"><h2 data-i18n="busiestSites">Busiest enforcement sites</h2><span class="muted" data-i18n="tapLocate">Tap to locate</span></div>
       <ol class="corridors" id="siteList"></ol>
+    </section>
+
+    <!-- Devices -->
+    <section class="card" data-tab="dev" hidden>
+      <p class="notice"><strong>Synthetic devices.</strong> Positions are placed by the app on busy roads unless real devices are listed in <code>config.js</code>. Readings come from the synthetic traffic.</p>
+      <table class="facts" id="devFacts"></table>
+    </section>
+    <section class="card" data-tab="dev" hidden>
+      <div class="card-head"><h2 data-i18n="cameras">CCTV cameras</h2><span class="muted">Tap to open the view</span></div>
+      <ol class="corridors" id="camList"></ol>
+    </section>
+    <section class="card" data-tab="dev" hidden>
+      <div class="card-head"><h2 data-i18n="signs">Message signs</h2><span class="muted" data-i18n="tapLocate">Tap to locate</span></div>
+      <ol class="corridors" id="vmsList"></ol>
+    </section>
+
+    <!-- Reports -->
+    <section class="card" data-tab="rep" hidden data-need="export">
+      <div class="card-head"><h2 data-i18n="exports">Exports</h2><span class="muted" id="repLabel"></span></div>
+      <div class="btn-col">
+        <button class="btn" data-export="kpi">Day KPIs (CSV)</button>
+        <button class="btn" data-export="roads">Roads now (CSV)</button>
+        <button class="btn" data-export="accidents">Accidents today (CSV)</button>
+        <button class="btn" data-export="fines">Fines by site (CSV)</button>
+        <button class="btn" data-export="print">Print summary (or save as PDF)</button>
+      </div>
+    </section>
+    <section class="card" data-tab="rep" hidden data-need="audit">
+      <div class="card-head"><h2 data-i18n="audit">Audit log</h2><span class="muted">Kept in this browser</span></div>
+      <div class="btn-col row"><button class="btn small" data-export="audit">Export CSV</button><button class="btn small" id="auditClear">Clear</button></div>
+      <table class="facts audit" id="auditTable"></table>
+    </section>
+    <section class="card" data-tab="rep" hidden data-need="settings">
+      <div class="card-head"><h2 data-i18n="settings">Configuration</h2><span class="muted">From config.js</span></div>
+      <table class="facts" id="cfgFacts"></table>
+    </section>
+    <section class="card" data-tab="rep" hidden id="repLocked">
+      <p class="muted">Your role does not include exports. Sign in as an operator or administrator.</p>
     </section>
 
     <!-- Model -->
@@ -209,21 +269,45 @@
       <div class="card-head"><h2>What is built</h2><span class="muted" id="builtLabel"></span></div>
       <table class="facts" id="netFacts"></table>
     </section>
+    <section class="card" data-tab="model" hidden>
+      <div class="card-head"><h2>Validation</h2><span class="muted">Not calibrated</span></div>
+      <p class="muted">No traffic counts or journey times are connected, so the model has not been checked against measured traffic. Connecting counts is the first step to a decision-grade model; see docs/limitations.md.</p>
+    </section>
     <section class="card about" data-tab="model" hidden>
       <h2>About this demonstrator</h2>
-      <p>IntelliTwin replays a morning peak simulated with Eclipse SUMO on the OpenStreetMap road network of Abu Dhabi city. The roads are real; the <strong>traffic is simulated from assumptions</strong>, not observed. No traffic counts are public for Abu Dhabi, so the model is not calibrated or validated. Accidents and fines are illustrative only.</p>
+      <p>IntelliTwin shows traffic on the OpenStreetMap road network of Abu Dhabi city. The roads are real. The <strong>traffic is simulated</strong> with Eclipse SUMO from assumed demand, and the live and historical views are a <strong>synthetic feed</strong> built from those simulated states. Accidents, fines, devices and camera views are illustrative.</p>
       <p>It is an independent demonstrator, not an official model of any UAE authority, and must not be used for planning, investment, operational, legal or safety decisions.</p>
-      <p>Sources, method, file formats and limits are in the <a href="docs/README.md">docs folder</a>.</p>
+      <p>Sources, method, configuration and limits are in the <a href="docs/README.md">docs folder</a>.</p>
       <p class="muted">Roads © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL). Base map: OpenStreetMap data, vector tiles by OpenFreeMap. Buildings: Microsoft Global ML Building Footprints. Bus timetable: Integrated Transport Centre GTFS. Software: Eclipse SUMO, deck.gl, MapLibre GL JS.</p>
     </section>
   </aside>
 </main>
 
+<!-- Demo sign-in -->
+<div class="login" id="login" hidden>
+  <div class="login-card">
+    <img src="assets/presight-logo.png" alt="Presight" width="496" height="142">
+    <h2>IntelliTwin</h2>
+    <p>Choose a role to continue.</p>
+    <label class="field"><span>Your name (optional, for the audit log)</span><input id="loginName" type="text" maxlength="40" autocomplete="off"></label>
+    <div class="btn-col" id="loginRoles"></div>
+    <p class="muted">Demo sign-in. The role is chosen in the browser, so this is not a security control. Use real authentication in front of the app for anything beyond a demo.</p>
+  </div>
+</div>
+
+<!-- Printed summary -->
+<div id="report" class="report" aria-hidden="true"></div>
+
+<script src="config.js"></script>
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/deck.gl.min.js"></script>
+<script src="js/daymodel.js"></script>
 <script src="js/events.js"></script>
 <script src="js/vehicles3d.js"></script>
 <script src="js/app.js"></script>
+<script src="js/ops.js"></script>
+<script src="js/devices.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/assistant.js"></script>
 </body>
 </html>

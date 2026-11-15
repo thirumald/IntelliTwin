@@ -26,9 +26,15 @@ The traffic shown is simulated, not observed. Results are indicative and must no
 | Simulation detail | Mesoscopic queues, not individual car-following; no lane changing, no junction geometry effects |
 | Buses | Drawn from a timetable that may be several years old; they do not interact with traffic |
 | Buildings | Machine-detected footprints; most heights are estimated from footprint size |
-| Accidents and fines | Illustrative only, generated from the simulated traffic. Not real records, sites or fine values |
-| Live and historical | No live feed and no stored history; both modes replay the one simulated morning (07:00–10:00) |
-| Vehicles on the map | Drawn to match each link's simulated count and speed; not tracked vehicles |
+| Accidents and fines | Illustrative only, generated from the synthetic traffic. Not real records, sites or fine values |
+| Live, historical, 24 hours | A synthetic day: simulated morning states placed on an assumed daily curve. No live feed, no stored history. The evening peak reuses morning states, so its direction is not reversed |
+| Forecast | Reads the synthetic day ahead; not a prediction from measurements |
+| What-if closure | A local estimate in the browser, not a re-simulation |
+| Devices and camera views | Synthetic positions and readings; the camera view is a drawing unless a real stream is configured |
+| Signals | Real positions, generic cycle; no real timings or states |
+| Sign-in and audit log | Demo only: the role is chosen in the browser and the log is kept in the browser. Neither is a security control |
+| Arabic interface | Fixed labels only; sentences built from values, the assistant and the docs are English. Needs native-speaker review |
+| Vehicles on the map | Drawn to match each link's count and speed; not tracked vehicles |
 | Assistant | Rule-based, limited to the data in the page; not a language model |
 | Scenarios | Demand scaling only. No incident, closure, weather or event scenarios yet |
 | Days | One typical weekday. No Friday, weekend, Ramadan or school-holiday patterns |

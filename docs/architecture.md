@@ -26,7 +26,12 @@ There is no server-side component at run time. The simulation runs once, at buil
 
 | Path | Purpose |
 | --- | --- |
-| `index.html`, `css/`, `js/app.js` | The static application: map, playback, panels |
+| `config.js` | All settings ([configuration.md](configuration.md)) |
+| `index.html`, `css/`, `js/app.js` | The static application: data loading, map, vehicles, panels, time |
+| `js/daymodel.js` | The synthetic 24-hour day |
+| `js/ops.js` | Alerts, forecast, what-if closure, exports, audit log, demo sign-in |
+| `js/devices.js` | Cameras, detectors, message signs, signals and the camera view |
+| `js/i18n.js` | Arabic labels and right-to-left switch |
 | `js/vehicles3d.js` | Individual vehicles: per-link placement and the 3D car mesh |
 | `js/events.js` | Illustrative accidents and fines generated from the simulation |
 | `js/assistant.js` | The built-in assistant |

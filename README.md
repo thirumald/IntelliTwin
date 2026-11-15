@@ -8,17 +8,18 @@ IntelliTwin is a static traffic digital twin demonstrator for Abu Dhabi city. A 
 
 ## What the app shows
 
-- **Full-view 3D map:** a vector base map built from OpenStreetMap data with extruded buildings. The dashboard panel, legend and site shortcuts each minimise, or all at once with **Full view**.
-- **Road network** coloured by simulated speed against the limit, in 5-minute steps from 07:00 to 10:00.
-- **Individual vehicles:** one for every simulated vehicle on each road, moving at that road's simulated speed. They are dots when zoomed out and 3D cars at street level. Playback runs at 1× (real time), 30×, 120× or 600×.
-- **Dashboard tabs:** Dashboard, Congestion, Accidents, Fines and Model.
-- **Congestion:** slowest named roads and the share of traffic in heavy or severe conditions by road class.
-- **Accidents and fines:** illustrative only, generated from the simulated traffic and labelled as such. No real accident or enforcement data is used.
-- **Live and Historical:** Live shows the current Abu Dhabi date and time; Historical offers a date and a 24-hour time. Both replay the simulated morning, because no live feed or recorded history exists yet, and the app says so on screen.
-- **Scenarios:** typical weekday, demand +20%, demand −20%, each a full SUMO run.
-- **Go to:** chips across the top of the map fly to major sites in a tilted 3D view (approximate locations); a selector in the top bar jumps to the longest major roads. **Orbit** circles the camera.
-- **Assistant:** a built-in, rule-based agent that answers questions from the simulation data and operates the twin. It is not a language model; an optional endpoint can add one (see [docs/assistant.md](docs/assistant.md)).
-- **Optional layers:** timetabled buses (ITC GTFS) and extra buildings (Microsoft footprints), when those downloads succeed.
+- **Full-view 3D map** on OpenStreetMap data with extruded buildings; every overlay minimises.
+- **Individual vehicles:** one per vehicle on each road, dots when zoomed out and 3D cars at street level.
+- **Live and Historical, 24 hours:** Live follows the Abu Dhabi clock; Historical takes any date and a 24-hour time. Both use a synthetic feed built from the simulated traffic states.
+- **Dashboard:** KPIs, alerts, 15/30/60-minute forecast, day profile, demand cases.
+- **Congestion:** slowest roads, congestion by road class, and a what-if road closure (an estimate).
+- **Accidents and fines:** illustrative, generated and labelled as such.
+- **Devices:** CCTV cameras with a video window, enforcement cameras, detectors, message signs and traffic signals. Devices are synthetic unless listed in `config.js`; a camera without a stream shows a synthetic view.
+- **Reports:** CSV exports, a printable summary and an audit log.
+- **Sign-in with roles** (demo only), **Arabic interface** for fixed labels, and a built-in **assistant**.
+- **One configuration file**, `config.js`, for map tiles, feeds, cameras, alert thresholds, roles and services.
+
+Everything shown is simulated, synthetic or illustrative except the road network and building footprints. See [docs/limitations.md](docs/limitations.md).
 
 ## Quick start
 

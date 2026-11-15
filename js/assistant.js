@@ -4,10 +4,9 @@
  * operate the twin (fly to a site or road, change the demand case, jump to a time, open a view).
  * It is rule-based: it matches the question to a known intent. It is not a large language model.
  *
- * Optional: set window.INTELLITWIN_AI_ENDPOINT to the URL of your own service to have questions
- * the built-in rules do not cover answered by a language model. The page POSTs
- * { question, context } as JSON and expects { answer }. Keep API keys on that service, never here.
- * See docs/assistant.md.
+ * Optional: set api.assistantUrl in config.js to the URL of your own service to have questions the
+ * built-in rules do not cover answered by a language model. The page POSTs { question, context }
+ * as JSON and expects { answer }. Keep API keys on that service, never here. See docs/assistant.md.
  */
 (function () {
   'use strict';
@@ -38,16 +37,20 @@
     return {
       time: a.timeText(), scenario: a.scenarioLabel(), average_speed_kmh: k.speed, extra_travel_time_pct: k.extra,
       vehicles_moving: k.vehicles, delay_vehicle_hours_per_hour: k.delay_h, slowest_roads: a.slowest(),
-      illustrative_accidents: ev ? { since_0630: ev.accidents, active: ev.active, with_injury: ev.injury } : null,
+      illustrative_accidents: ev ? { today: ev.accidents, active: ev.active, with_injury: ev.injury } : null,
       illustrative_fines: ev ? { count: Math.round(ev.fines), value_aed: Math.round(ev.value) } : null,
-      note: 'Traffic is simulated from assumptions, not observed. Accidents and fines are illustrative, not real records.'
+      alerts: a.alerts().map(function (x) { return x.title; }),
+      note: 'Traffic is a synthetic feed built from a simulation, not observed. Accidents and fines are illustrative, not real records.'
     };
   }
 
   var HELP = 'I can answer from the simulation in this page and operate the twin. Try:\n' +
     '• "How is traffic now?" or "Average speed at 08:30"\n' +
     '• "Which roads are slowest?"\n' +
+    '• "Any alerts?" or "Forecast"\n' +
     '• "Show accidents" or "How many fines?"\n' +
+    '• "Close Al Khaleej Al Arabi Street" or "Reopen roads"\n' +
+    '• "Open a camera"\n' +
     '• "Go to Yas Island" or "Show Al Khaleej Al Arabi Street"\n' +
     '• "Switch to demand +20%" or "Compare the demand cases"\n' +
     '• "Orbit", "3D", "Pause", "Live"';
@@ -73,6 +76,31 @@
         return c.label + ' — ' + Math.round(c.speed) + ' km/h, ' + num(c.vehicles) + ' vehicles moving, +' + Math.round(c.extra) + '% travel time';
       }).join('; ') + '.';
     }
+    // Operations
+    if (/\breopen|\bclear (the )?closure|\bremove (the )?closure|\bopen (the )?road/.test(q)) { a.closeRoad(''); return 'Closure cleared.'; }
+    if (/\bclose\b|\bclosure\b|\bshut\b|\bblock\b/.test(q)) {
+      var cr = findByName(a.roads(), q);
+      if (!cr) { return 'Tell me which road to close, for example "Close Al Khaleej Al Arabi Street".'; }
+      var res = a.closeRoad(cr);
+      if (!res || res.error) { return (res && res.error) || 'The what-if tool is not available.'; }
+      a.setTab('cong');
+      return cr + ' closed (what-if estimate, not re-simulated): ' + num(res.links) + ' nearby links slow down; network speed ' + Math.round(res.before.speed) + ' → ' + Math.round(res.after.speed) +
+        ' km/h and delay ' + num(res.before.delay_h) + ' → ' + num(res.after.delay_h) + ' vehicle-hours per hour. Say "reopen roads" to clear it.';
+    }
+    if (/\balert|\bwarning|\battention|\bproblem/.test(q)) {
+      var al = a.alerts(); a.setTab('dash');
+      return al.length ? al.length + ' alerts at ' + a.timeText() + ': ' + al.slice(0, 5).map(function (x) { return x.title + ' (' + x.sub + ')'; }).join('; ') + '.' : 'No alerts at ' + a.timeText() + '.';
+    }
+    if (/\bforecast|\bpredict|\bnext (hour|30|15)|\bin (15|30|60) min|\blater\b|\bexpect/.test(q)) {
+      var k0 = a.kpi(); a.setTab('dash');
+      return 'From ' + Math.round(k0.speed) + ' km/h now: ' + [15, 30, 60].map(function (m) { var kk = a.kpiIn(m); return '+' + m + ' min ' + Math.round(kk.speed) + ' km/h with ' + num(kk.vehicles) + ' vehicles'; }).join('; ') +
+        '. This follows the synthetic day profile; it is not a prediction from measured data.';
+    }
+    if (/\bcamera|\bcctv|\bvideo|\bfootage/.test(q)) {
+      var dv = window.IntelliTwin.devices, cam = dv ? dv.openCamera(findByName(dv.cameras().map(function (c) { return c.name; }), q) || '') : null;
+      return cam ? 'Opened ' + cam.id + ' on ' + cam.name + '. ' + (cam.stream ? 'It is playing the configured stream.' : 'No stream is configured, so it shows a synthetic view, not footage.') : 'No cameras are available.';
+    }
+
     // View controls
     if (/\bstop orbit|\bno orbit/.test(q)) { a.orbit(false); return 'Orbit stopped.'; }
     if (/\borbit|\bcircle|\brotate/.test(q)) { a.orbit(true); return 'Orbiting the current view. Touch the map to stop.'; }
@@ -80,7 +108,7 @@
     if (/\b3d\b|\btilt/.test(q)) { a.tilt(true); return 'Switched to the tilted 3D view. Zoom in to street level to see 3D vehicles.'; }
     if (/\bpause|\bstop\b|\bfreeze/.test(q)) { a.play(false); return 'Paused at ' + a.timeText() + '.'; }
     if (/\bplay|\bresume|\bstart\b/.test(q)) { a.play(true); return 'Playing.'; }
-    if (/\blive\b|\bright now\b|current time/.test(q) && !/traffic|speed/.test(q)) { a.live(); return 'Live mode: the header shows the current Abu Dhabi date and time. The traffic is simulated, not a live feed.'; }
+    if (/\blive\b|\bright now\b|current time/.test(q) && !/traffic|speed/.test(q)) { a.live(); return 'Live mode: the twin follows the current Abu Dhabi time. The feed is synthetic, not measured traffic.'; }
     if (/whole|entire|overview|zoom out|all of|full (map|area)/.test(q)) { a.goAll(); return 'Showing the whole study area.'; }
 
     // Navigation
@@ -97,13 +125,13 @@
     if (/accident|crash|collision|incident/.test(q)) {
       a.setTab('acc');
       var ev = a.events();
-      return out.join(' ') + (ev ? num(ev.accidents) + ' accidents since 06:30, ' + num(ev.active) + ' active now and ' + num(ev.injury) + ' with injury. ' +
-        (ev.latest ? 'Latest: ' + ev.latest + '. ' : '') : '') + 'These are illustrative, generated from the simulated traffic; no real accident data is public.';
+      return out.join(' ') + (ev ? num(ev.accidents) + ' accidents today, ' + num(ev.active) + ' active now and ' + num(ev.injury) + ' with injury. ' +
+        (ev.latest ? 'Latest: ' + ev.latest + '. ' : '') : '') + 'These are illustrative, generated from the synthetic traffic; no real accident data is public.';
     }
     if (/fine|violation|speeding|red light|enforcement|camera|penalt|ticket/.test(q)) {
       a.setTab('fines');
       var ef = a.events();
-      return out.join(' ') + (ef ? num(ef.fines) + ' fines since 06:30, worth AED ' + num(ef.value) + ' at the assumed values. Largest type: ' + ef.topType + '. ' : '') +
+      return out.join(' ') + (ef ? num(ef.fines) + ' fines today, worth AED ' + num(ef.value) + ' at the assumed values. Largest type: ' + ef.topType + '. ' : '') +
         'These are illustrative: generated from simulated flow at assumed sites, with placeholder fine values.';
     }
     if (/slow|worst|congest|jam|bottleneck|busiest|queue/.test(q)) {
@@ -115,7 +143,7 @@
     }
     if (/real|accura|source|data|trust|calibrat|valid|official|how (does|do) (it|you|this) work|simulat|sumo/.test(q)) {
       a.setTab('model');
-      return 'The roads are real, from OpenStreetMap. The traffic is simulated with Eclipse SUMO from an assumed morning demand; it is not observed and not calibrated, because no traffic counts are public for Abu Dhabi. Accidents and fines are illustrative. Details are in the docs folder.';
+      return 'The roads are real, from OpenStreetMap. The traffic is simulated with Eclipse SUMO from an assumed morning demand, and the live and historical views are a synthetic 24-hour feed built from those simulated states. Nothing is measured or calibrated, because no traffic counts are public for Abu Dhabi. Accidents, fines, devices and camera views are illustrative. Details are in the docs folder.';
     }
     if (/traffic|speed|status|summary|how (is|are)|vehicle|delay|travel time|network|overview|kpi|dashboard/.test(q) || out.length) {
       if (!out.length) { a.setTab('dash'); }
@@ -124,8 +152,9 @@
     if (/help|what can you|hello|hi\b|hey|option|command/.test(q) || !q) { return HELP; }
 
     // Not covered by the built-in rules: use the optional language-model endpoint if one is configured.
-    if (window.INTELLITWIN_AI_ENDPOINT) {
-      return fetch(window.INTELLITWIN_AI_ENDPOINT, {
+    var endpoint = window.IntelliTwin.core.CFG.api.assistantUrl;
+    if (endpoint) {
+      return fetch(endpoint, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: text, context: context(a) })
       }).then(function (r) { if (!r.ok) { throw new Error(r.status); } return r.json(); })
@@ -138,7 +167,7 @@
   function summary(a) {
     var k = a.kpi();
     return a.scenarioLabel() + ' at ' + a.timeText() + ': average speed ' + Math.round(k.speed) + ' km/h, ' + num(k.vehicles) +
-      ' vehicles moving, travel time +' + Math.round(k.extra) + '% against free flow, ' + num(k.delay_h) + ' vehicle-hours of delay per hour. Simulated, not observed.';
+      ' vehicles moving, travel time +' + Math.round(k.extra) + '% against free flow, ' + num(k.delay_h) + ' vehicle-hours of delay per hour. Synthetic feed, not measured.';
   }
 
   /* ---------- chat window ---------- */

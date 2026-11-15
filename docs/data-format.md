@@ -11,6 +11,7 @@ Everything the app reads is in `data/`, written by `tools/build.py`. All binary 
 | `<scenario>_trips.bin` | Sampled vehicle trajectories |
 | `buses.bin` | Timetabled bus trajectories (only if the GTFS step succeeded) |
 | `buildings.json` | Largest building footprints (only if the buildings step succeeded) |
+| `signals.json` | Traffic signal positions, `[[lon, lat], …]` |
 
 `<scenario>` is `base`, `high` or `low`.
 
