@@ -257,6 +257,17 @@ sampleVideos: [
   // The key is published here by the owner's decision: this file is public, so the key can be read by anyone.
   // Keep it restricted to this site's address in the TomTom developer dashboard, with a daily limit.
   // Set key to null to go back to a per-browser key (Reports, TomTom live data).
+  // Real live data read from files the "Live data" GitHub Actions workflow publishes on the live-data branch
+  // (NASA FIRMS fire detections, N2YO satellite orbits, aisstream.io vessels). The API keys stay in GitHub as
+  // repository secrets FIRMS_API_KEY, N2YO_API_KEY and AIS_API_KEY; none is needed here.
+  live: {
+    enabled: true,
+    baseUrl: 'https://raw.githubusercontent.com/thirumald/IntelliTwin/live-data/',
+    refreshMin: 10,              // how often the browser looks for newer files
+    fires: true, vessels: true, satellites: true,   // layers on at start
+    replaceSyntheticShips: true  // hide the synthetic ships once real AIS vessels are loaded
+  },
+
   // Critical smart-city use cases added to the existing sections (js/citycases.js). All figures are synthetic or screening estimates.
   cityCases: {
     venues: 10,                 // crowd safety: how many of the region's sites are watched as venues

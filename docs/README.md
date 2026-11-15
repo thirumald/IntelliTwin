@@ -13,6 +13,7 @@ Technical and data-source documentation for the IntelliTwin traffic twin for Abu
 | [analytics.md](analytics.md) | The predictive analytics view: sections, method and assumptions |
 | [zones-and-response.md](zones-and-response.md) | Critical-zone monitoring, response routing, vehicle types, railway and cycle layers |
 | [buses.md](buses.md) | Public transport: synthetic buses (stops, timetable, tracking), taxis and shuttles |
+| [live-data.md](live-data.md) | Real live data: NASA FIRMS fire detections, aisstream.io vessels, N2YO satellites, and the workflow that fetches them |
 | [critical-use-cases.md](critical-use-cases.md) | Crowd safety, unified command, utility failure, adaptive control, site protection and the other critical cases; analytics charts and reports |
 | [operations-modules.md](operations-modules.md) | Incidents, signals, events and roadworks, parking, evacuation, vehicle search, pedestrians, freight, weather, assets, reports |
 | [regions.md](regions.md) | UAE regions: what changes per region, the two kinds of traffic, building and adding a region |

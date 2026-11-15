@@ -8,8 +8,8 @@
 <meta name="theme-color" content="#0b1220">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b1220'/%3E%3Cpath d='M6 22 L13 12 L19 18 L26 8' fill='none' stroke='%232dd4a7' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="css/styles.css?v=20261117b">
-<link rel="stylesheet" href="css/theme.css?v=20261117b">
+<link rel="stylesheet" href="css/styles.css?v=20261117c">
+<link rel="stylesheet" href="css/theme.css?v=20261117c">
 </head>
 <body>
 <header class="topbar">
@@ -254,6 +254,9 @@
       <label class="check"><input id="lyTtInc" type="checkbox" checked><span>Live incidents, TomTom <span class="muted" id="lyTtIncN"></span></span></label>
       <label class="check"><input id="lyTtEv" type="checkbox"><span>EV charging stations, TomTom <span class="muted" id="lyTtEvN"></span></span></label>
       <label class="check"><input id="lyTtFuel" type="checkbox"><span>Fuel stations, TomTom <span class="muted" id="lyTtFuelN"></span></span></label>
+      <label class="check"><input id="lyLvFire" type="checkbox" checked><span>Fire and heat detections, NASA FIRMS <span class="muted" id="lyLvFireN"></span></span></label>
+      <label class="check"><input id="lyLvShip" type="checkbox" checked><span>Live vessels, AIS <span class="muted" id="lyLvShipN"></span></span></label>
+      <label class="check"><input id="lyLvSat" type="checkbox" checked><span>Satellites overhead, N2YO <span class="muted" id="lyLvSatN"></span></span></label>
     </section>
 
     <!-- Congestion -->
@@ -904,35 +907,37 @@
 <!-- Printed summary -->
 <div id="report" class="report" aria-hidden="true"></div>
 
-<script src="config.js?v=20261117b"></script>
-<script src="js/regions.js?v=20261117b"></script>
+<script src="config.js?v=20261117c"></script>
+<script src="js/regions.js?v=20261117c"></script>
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/deck.gl.min.js"></script>
-<script src="js/daymodel.js?v=20261117b"></script>
-<script src="js/events.js?v=20261117b"></script>
-<script src="js/vehicles3d.js?v=20261117b"></script>
-<script src="js/app.js?v=20261117b"></script>
-<script src="js/ops.js?v=20261117b"></script>
-<script src="js/devices.js?v=20261117b"></script>
-<script src="js/i18n.js?v=20261117b"></script>
-<script src="js/response.js?v=20261117b"></script>
-<script src="js/zones.js?v=20261117b"></script>
-<script src="js/environment.js?v=20261117b"></script>
-<script src="js/buses.js?v=20261117b"></script>
-<script src="js/transit.js?v=20261117b"></script>
-<script src="js/operations.js?v=20261117b"></script>
-<script src="js/mobility.js?v=20261117b"></script>
-<script src="js/support.js?v=20261117b"></script>
-<script src="js/seaair.js?v=20261117b"></script>
-<script src="js/energy.js?v=20261117b"></script>
-<script src="js/tomtom.js?v=20261117b"></script>
-<script src="js/citycases.js?v=20261117b"></script>
-<script src="js/diagnostics.js?v=20261117b"></script>
-<script src="js/platform.js?v=20261117b"></script>
-<script src="js/vlm.js?v=20261117b"></script>
-<script src="js/analytics.js?v=20261117b"></script>
-<script src="js/analytics-ops.js?v=20261117b"></script>
-<script src="js/assistant.js?v=20261117b"></script>
-<script src="js/shell.js?v=20261117b"></script>
+<script src="vendor/satellite.min.js"></script>
+<script src="js/daymodel.js?v=20261117c"></script>
+<script src="js/events.js?v=20261117c"></script>
+<script src="js/vehicles3d.js?v=20261117c"></script>
+<script src="js/app.js?v=20261117c"></script>
+<script src="js/ops.js?v=20261117c"></script>
+<script src="js/devices.js?v=20261117c"></script>
+<script src="js/i18n.js?v=20261117c"></script>
+<script src="js/response.js?v=20261117c"></script>
+<script src="js/zones.js?v=20261117c"></script>
+<script src="js/environment.js?v=20261117c"></script>
+<script src="js/buses.js?v=20261117c"></script>
+<script src="js/transit.js?v=20261117c"></script>
+<script src="js/operations.js?v=20261117c"></script>
+<script src="js/mobility.js?v=20261117c"></script>
+<script src="js/support.js?v=20261117c"></script>
+<script src="js/seaair.js?v=20261117c"></script>
+<script src="js/energy.js?v=20261117c"></script>
+<script src="js/tomtom.js?v=20261117c"></script>
+<script src="js/citycases.js?v=20261117c"></script>
+<script src="js/livefeeds.js?v=20261117c"></script>
+<script src="js/diagnostics.js?v=20261117c"></script>
+<script src="js/platform.js?v=20261117c"></script>
+<script src="js/vlm.js?v=20261117c"></script>
+<script src="js/analytics.js?v=20261117c"></script>
+<script src="js/analytics-ops.js?v=20261117c"></script>
+<script src="js/assistant.js?v=20261117c"></script>
+<script src="js/shell.js?v=20261117c"></script>
 </body>
 </html>
