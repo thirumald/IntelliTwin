@@ -22,7 +22,12 @@ OUT = sys.argv[1] if len(sys.argv) > 1 else "out"
 BBOX = (51.0, 22.4, 56.7, 26.5)                  # UAE and its waters: west, south, east, north
 CENTRE = (24.4, 54.5)                            # observer for "satellites above": lat, lon
 NOW = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-ALWAYS = [25544]                                 # International Space Station
+# Satellites always followed (NORAD numbers); the name shown is the one N2YO returns for the number.
+ALWAYS = [25544, 48274, 20580,                   # International Space Station, Chinese space station, Hubble
+          37849, 43013, 54234,                   # Suomi NPP, NOAA-20, NOAA-21: the satellites behind the FIRMS detections
+          25994, 27424, 39084, 49260, 40697,     # Terra, Aqua, Landsat 8, Landsat 9, Sentinel-2A
+          43676, 39419, 35682]                   # KhalifaSat, DubaiSat-2, DubaiSat-1
+CATEGORIES = [1, 3, 6]                           # N2YO groups also sampled for what is overhead: brightest, weather, Earth resources
 os.makedirs(OUT, exist_ok=True)
 
 
@@ -33,7 +38,7 @@ def scrub(text):
         key = os.environ.get(name) or ""
         if key:
             text = text.replace(key, "***")
-    return text[:300]
+    return text[:600]
 
 
 def get(url, timeout=60):
@@ -78,26 +83,22 @@ def satellites():
     if not key:
         raise RuntimeError("N2YO_API_KEY is not set")
     base = "https://api.n2yo.com/rest/v1/satellite"
-    above = json.loads(get(f"{base}/above/{CENTRE[0]}/{CENTRE[1]}/0/45/0/&apiKey={key}"))
-    if "above" not in above:
-        raise RuntimeError("N2YO answered: " + scrub(json.dumps(above)))
-    ids, names = list(ALWAYS), {}
-    for s in above.get("above") or []:
-        name = (s.get("satname") or "").strip()
-        names[s["satid"]] = name
-        # Skip debris and rocket bodies; keep working satellites, and not too many of one constellation.
-        if " DEB" in name or " R/B" in name or name.startswith("OBJECT"):
-            continue
-        if s["satid"] not in ids:
-            ids.append(s["satid"])
-    seen, picked = {}, []
-    for i in ids:
-        fam = (names.get(i, "ISS").split("-")[0].split(" ")[0])
-        seen[fam] = seen.get(fam, 0) + 1
-        if seen[fam] <= 6:
-            picked.append(i)
+    ids, names, count = list(ALWAYS), {}, 0
+    for cat in CATEGORIES:
+        above = json.loads(get(f"{base}/above/{CENTRE[0]}/{CENTRE[1]}/0/70/{cat}/&apiKey={key}"))
+        if "above" not in above:
+            raise RuntimeError("N2YO answered: " + scrub(json.dumps(above)))
+        for s in above.get("above") or []:
+            name = (s.get("satname") or "").strip()
+            names[s["satid"]] = name
+            count += 1
+            if " DEB" in name or " R/B" in name or name.startswith("OBJECT"):
+                continue
+            if s["satid"] not in ids:
+                ids.append(s["satid"])
+    picked = ids[:len(ALWAYS) + 22]
     sats = []
-    for i in picked[:40]:
+    for i in picked:
         try:
             d = json.loads(get(f"{base}/tle/{i}&apiKey={key}", timeout=30))
             lines = [x.strip() for x in (d.get("tle") or "").replace("\r", "").split("\n") if x.strip()]
@@ -108,14 +109,14 @@ def satellites():
     if not sats:
         raise RuntimeError("no orbital elements were returned")
     save("satellites.json", {"updated": NOW, "source": "N2YO.com orbital elements (TLE); positions are computed in the browser", "observer": CENTRE, "sats": sats})
-    return f"{len(sats)} satellites ({above.get('info', {}).get('satcount', '?')} objects above the UAE at the time)"
+    return f"{len(sats)} satellites ({len(ALWAYS)} always followed, {count} bright, weather and Earth-observation satellites above the UAE at the time)"
 
 
-async def ais_collect(key, seconds):
+async def ais_collect(key, seconds, box=None):
     """Listen for the given time, reconnecting if the stream drops; returns the vessels heard and a short log."""
     import websockets
     ships, log, msgs = {}, [], 0
-    sub = {"APIKey": key.strip(), "BoundingBoxes": [[[BBOX[1], BBOX[0]], [BBOX[3], BBOX[2]]]]}
+    sub = {"APIKey": key.strip(), "BoundingBoxes": [box or [[BBOX[1], BBOX[0]], [BBOX[3], BBOX[2]]]]}
     end, attempt = time.time() + seconds, 0
     while time.time() < end - 5 and attempt < 6:
         attempt += 1
@@ -149,6 +150,7 @@ async def ais_collect(key, seconds):
             raise
         except Exception as err:  # the stream dropped: note it and connect again
             code = getattr(getattr(err, "rcvd", None), "code", None)
+            log.append(f"after {int(seconds - (end - time.time()))} s")
             log.append(scrub(f"{type(err).__name__}{' ' + str(code) if code else ''}: {err}")[:120])
             await asyncio.sleep(min(10, 2 * attempt))
     return [s for s in ships.values() if "lon" in s], msgs, attempt, log
@@ -161,7 +163,12 @@ def vessels():
     seconds = int(os.environ.get("AIS_SECONDS", "150"))
     ships, msgs, attempts, log = asyncio.run(ais_collect(key, seconds))
     if not ships:
-        raise RuntimeError(f"no vessel position was received in {seconds} seconds ({msgs} messages, {attempts} connections" + (f"; last drop: {log[-1]}" if log else "") + ")")
+        k = key.strip()
+        shape = f"key has {len(k)} characters" + ("" if all(c in "0123456789abcdefABCDEF" for c in k) and len(k) == 40 else ", not the usual 40 letters and digits (a-f, 0-9)")
+        # Listen to the whole world for a moment: if that works, the key is fine and nothing was heard near the UAE.
+        world, wmsgs, _, wlog = asyncio.run(ais_collect(key, 25, [[-90, -180], [90, 180]]))
+        raise RuntimeError(f"no vessel position was received in {seconds} seconds ({msgs} messages, {attempts} connections" + (f"; drops: {', '.join(log[-4:])}" if log else "") +
+                           f"). {shape}. World-wide test: {wmsgs} messages" + (f", drop: {wlog[-1]}" if wlog else "") + ".")
     save("vessels.json", {"updated": NOW, "source": f"aisstream.io AIS, positions heard in {seconds} seconds", "bbox": BBOX, "ships": ships})
     return f"{len(ships)} vessels from {msgs} messages" + (f", {len(log)} reconnects" if log else "")
 
