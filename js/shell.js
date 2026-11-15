@@ -5,7 +5,9 @@
   if (!tabs || !layout) { return; }
   // Selecting the section that is already open closes the panel, so the rail doubles as a full-view switch.
   tabs.addEventListener('click', function (e) {
-    var b = e.target.closest('[data-tab]');
+    var b = e.target.closest('[data-tab]'), an = document.getElementById('analytics');
+    // Analytics opens in the same page; choosing a section closes it and shows that section.
+    if (b && an && !an.hidden && window.IntelliTwin && window.IntelliTwin.analytics) { window.IntelliTwin.analytics.close(); return; }
     if (b && b.classList.contains('on') && layout.classList.contains('panel-open')) {
       e.stopPropagation();
       document.getElementById('panelMin').click();
@@ -19,16 +21,19 @@
   // Interface style: 'government' (navy and gold, labelled side menu) or 'enterprise'. The choice is remembered in this browser.
   var cfg = (window.INTELLITWIN_CONFIG || {}).ui || {}, styleBtn = document.getElementById('styleBtn'), style = cfg.style || 'government';
   try { style = localStorage.getItem('itw-style') || style; } catch (e1) { /* storage unavailable */ }
+  // Styles: three colour schemes on the formal layout (standard, military, police) and the compact enterprise look.
+  var STYLES = ['government', 'military', 'police', 'enterprise'], STYLE_NAME = { government: 'Standard', military: 'Military', police: 'Police', enterprise: 'Enterprise' };
   function setStyle(v, save) {
-    style = v === 'enterprise' ? 'enterprise' : 'government';
-    document.body.classList.toggle('ui-gov', style === 'government');
-    if (styleBtn) { styleBtn.textContent = 'Style: ' + (style === 'government' ? 'Government' : 'Enterprise'); }
+    style = STYLES.indexOf(v) >= 0 ? v : 'government';
+    var b = document.body.classList;
+    b.toggle('ui-gov', style !== 'enterprise'); b.toggle('scheme-military', style === 'military'); b.toggle('scheme-police', style === 'police');
+    if (styleBtn) { styleBtn.textContent = 'Style: ' + STYLE_NAME[style]; }
     if (save) { try { localStorage.setItem('itw-style', style); } catch (e2) { /* storage unavailable */ } }
     var T = window.IntelliTwin, m = T && T.getMap && T.getMap();
     if (m) { setTimeout(function () { m.resize(); if (T.core && T.core.redraw) { T.core.redraw(); } }, 60); }
   }
   setStyle(style, false);
-  if (styleBtn) { styleBtn.addEventListener('click', function () { setStyle(style === 'government' ? 'enterprise' : 'government', true); }); }
+  if (styleBtn) { styleBtn.addEventListener('click', function () { setStyle(STYLES[(STYLES.indexOf(style) + 1) % STYLES.length], true); }); }
   // Side menu: minimised to icons by default (ui.menu), with a button to expand it. The choice is remembered in this browser.
   var railBtn = document.getElementById('railToggle'), railMin = (cfg.menu || 'minimised') !== 'expanded';
   try { var savedMenu = localStorage.getItem('itw-menu'); if (savedMenu) { railMin = savedMenu === 'min'; } } catch (e3) { /* storage unavailable */ }

@@ -10,7 +10,7 @@
     badge: 'توأم رقمي ذكي لمدن أكثر ذكاءً', live: 'مباشر', historical: 'تاريخي', sites: 'المواقع', dashboard: 'لوحة المعلومات', legend: 'مفتاح الخريطة',
     lgFree: 'انسيابي ≥80% من الحد', lgModerate: 'متوسط 60–80%', lgHeavy: 'مزدحم 40–60%', lgSevere: 'شديد الازدحام <40%',
     lgVehicles: 'المركبات (قرّب للعرض ثلاثي الأبعاد)', lgAccident: 'حادث (توضيحي)', lgSite: 'كاميرا ضبط (اصطناعية)', lgCam: 'كاميرا مراقبة',
-    lgDet: 'كاشف مروري', lgVms: 'لوحة رسائل', lgSig: 'إشارة ضوئية (دورة عامة)', ask: 'اسأل IntelliTwin', fullView: 'عرض كامل', orbit: 'دوران',
+    lgDet: 'كاشف مروري', lgVms: 'لوحة رسائل', lgSig: 'إشارة ضوئية (دورة عامة)', ask: 'مستشار التوأم', fullView: 'عرض كامل', orbit: 'دوران',
     minimise: 'تصغير', congestion: 'الازدحام', accidents: 'الحوادث', fines: 'المخالفات', devices: 'الأجهزة', reports: 'التقارير', model: 'النموذج',
     networkNow: 'الشبكة الآن', avgSpeed: 'متوسط السرعة', extraTime: 'زمن الرحلة الإضافي', vehMoving: 'المركبات المتحركة', delayHour: 'التأخير في الساعة',
     accToday: 'حوادث اليوم', finesToday: 'مخالفات اليوم', illustrative: 'توضيحي', forecast: 'التوقعات', forecastNote: 'من منحنى اليوم الاصطناعي',

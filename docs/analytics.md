@@ -4,6 +4,27 @@ The **Analytics** button in the top bar opens a separate full-screen view (`js/a
 
 Everything is computed in the browser from the synthetic traffic. **The results illustrate a planning method; they are not forecasts and must not be used for investment or design decisions.** All assumptions are in `config.js` under `analytics`.
 
+## Where it opens
+
+Analytics opens inside the same page, over the map area. The top bar, the side menu and the status bar stay in place; choosing any menu section, **Close** or Esc returns to the map.
+
+## City scorecard
+
+The first tab. It groups KPIs under six goals and compares each with an example target.
+
+| Goal | KPIs |
+| --- | --- |
+| Smooth traffic | Peak network speed, extra travel time, vehicle delay a day, critical roads, junctions at service level E or F, buses on time |
+| Fewer accidents | Accidents a day, serious accidents, accidents in the worst hour, critical alerts open |
+| Fewer violations | Fines a day, fines in the worst hour, largest violation type, share at the five busiest sites |
+| Safe and secure city | Critical sites monitored, sites on alert, cameras online |
+| Clean and liveable | Road traffic CO₂ a day, air quality index, roadside noise |
+| City development | Peak speed and critical roads at the horizon with and without measures, cycle track, delay cost a year, residents (context) |
+
+Status: **On target** when the value meets the target, **Watch** within 25% of it, **Off target** beyond that. Each status has a symbol and a label as well as a colour.
+
+Values come from the simulated traffic for the day type on the map, the illustrative accidents and fines, and the synthetic sensors, alerts, buses and devices. **Targets are examples** in `analytics.targets` in `config.js`; they are not official targets. Replace them with the client's own before showing the scorecard as an assessment.
+
 ## Sections
 
 | Section | What it shows |

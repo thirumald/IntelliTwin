@@ -28,20 +28,20 @@
 }
 /* The light theme follows the light map: white surfaces on a pale green ground. */
 body.map-light {
-  --bg: #e9f2eb;
-  --surface: #ffffff;
-  --surface-2: #f1f7f2;
-  --surface-3: #e2eee5;
-  --line: #cfe0d4;
-  --line-soft: #dfeae2;
-  --text: #10231c;
-  --text-2: #2c4239;
-  --muted: #5a6f66;
-  --accent: #0c8f76;
+  --bg: #c3d2c7;
+  --surface: #dfe9e1;
+  --surface-2: #d2dfd5;
+  --surface-3: #c2d2c6;
+  --line: #a3b9a9;
+  --line-soft: #b7c9bc;
+  --text: #0f211a;
+  --text-2: #263b32;
+  --muted: #4b5f56;
+  --accent: #0a7a64;
   --accent-ink: #ffffff;
-  --accent-soft: rgba(12, 143, 118, .12);
-  --glass: rgba(255, 255, 255, .93);
-  --shadow: 0 10px 28px rgba(16, 35, 28, .16);
+  --accent-soft: rgba(10, 122, 100, .16);
+  --glass: rgba(223, 233, 225, .95);
+  --shadow: 0 10px 28px rgba(16, 35, 28, .22);
 }
 
 html, body { height: 100%; }
@@ -147,7 +147,7 @@ body.map-light .hist input, body.map-light .hist select { color-scheme: light; }
 .bar-row .track { background: var(--surface-3); }
 .bar-row .fill { background: var(--accent); }
 .notice { color: var(--text-2); background: rgba(245, 197, 66, .1); border-color: rgba(245, 197, 66, .4); }
-body.map-light .notice { color: #5c4a10; background: #fff8e1; border-color: #ecd58a; }
+body.map-light .notice { color: #4a3b0c; background: #efe3b8; border-color: #c9b064; }
 .check input, input[type=range] { accent-color: var(--accent); }
 .mini { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); height: 26px; display: inline-flex; align-items: center; }
 
@@ -173,7 +173,7 @@ body.map-light .notice { color: #5c4a10; background: #fff8e1; border-color: #ecd
 .chat form input { background: var(--surface-2); color: var(--text); border-color: var(--line); }
 .toast { background: var(--glass); backdrop-filter: blur(10px); color: var(--text); border-color: var(--line); box-shadow: var(--shadow); }
 .toast span { color: var(--text-2); }
-body.map-light .toast.sev3 { background: #fdecee; }
+body.map-light .toast.sev3 { background: #f1cfd3; }
 .maplibregl-popup-content { background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); }
 .maplibregl-ctrl-group { background: var(--surface); border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0, 0, 0, .2); }
 .maplibregl-ctrl-group button + button { border-top-color: var(--line); }
@@ -265,10 +265,10 @@ body.ui-gov {
   font-size: 14px;
 }
 body.ui-gov.map-light {
-  --bg: #f3f0e8; --surface: #ffffff; --surface-2: #f6f3ec; --surface-3: #e9e3d5; --line: #d3cbb8; --line-soft: #e4ddcd;
-  --text: #14213a; --text-2: #2c3a55; --muted: #5b6577;
-  --accent: #7d5d12; --accent-ink: #ffffff; --accent-soft: rgba(125, 93, 18, .12);
-  --glass: rgba(255, 255, 255, .97);
+  --bg: #c9c5b6; --surface: #e3dfd2; --surface-2: #d7d2c2; --surface-3: #c8c2af; --line: #a9a18a; --line-soft: #bdb6a1;
+  --text: #14213a; --text-2: #2a3752; --muted: #535c6c;
+  --accent: #6f5210; --accent-ink: #ffffff; --accent-soft: rgba(111, 82, 16, .16);
+  --glass: rgba(227, 223, 210, .97);
 }
 body.ui-gov .topbar, body.ui-gov.map-light .topbar {
   --surface: #0c1f3f; --surface-2: #15305a; --surface-3: #1f3f73; --line: #2c4a7c; --text: #ffffff; --text-2: #dbe3f0; --muted: #a9b8d1;
@@ -343,3 +343,94 @@ body .seg button.on, body .seg.small button.on { color: var(--accent-ink); }
   body.ui-gov:not(.rail-min) .rail .rail-toggle { border-bottom: 1px solid var(--line-soft); }
 }
 @media (max-width: 860px) { .rail .rail-toggle { display: none; } }
+
+/* ---------------------------------------------------------------- analytics inside the page (not a separate screen) */
+.analytics { position: absolute; inset: 0; z-index: 12; }
+body.an-open .rail button[data-tab].on { background: none; color: var(--text-2); }
+body.an-open .rail button[data-tab].on::before { display: none; }
+body.an-open .rail #analyticsBtn { background: var(--accent-soft); color: var(--accent); }
+body.ui-gov.an-open .rail #analyticsBtn { color: var(--text); }
+body.an-open .rail #analyticsBtn::before { content: ""; position: absolute; left: -6px; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); }
+@media (min-width: 861px) {
+  body.ui-gov.an-open .rail #analyticsBtn::before { left: 0; top: 0; bottom: 0; width: 4px; border-radius: 0; }
+  body.rail-min.an-open .rail #analyticsBtn::before { left: -4px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; }
+}
+@media (max-width: 860px) { body.an-open .rail #analyticsBtn::before { left: 14px; right: 14px; top: -4px; bottom: auto; width: auto; height: 3px; } }
+.an-head { padding: 10px 16px; }
+.an-head h2 { font-size: 16px; }
+/* City scorecard */
+.sc-goal { margin-bottom: 18px; }
+.sc-goal h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; font-size: 14px; font-weight: 680; margin: 0 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.sc-count { font-size: 12px; font-weight: 600; color: var(--text-2); }
+.sc-note { font-size: 11.5px; font-weight: 400; color: var(--muted); margin-left: auto; }
+.sc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.sc-kpi { background: var(--surface); border: 1px solid var(--line-soft); border-left: 4px solid var(--line); border-radius: var(--radius-s); padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.sc-kpi.good { border-left-color: #0ca30c; } .sc-kpi.warn { border-left-color: #fab219; } .sc-kpi.bad { border-left-color: #d03b3b; }
+.sc-label { font-size: 12px; color: var(--text-2); }
+.sc-kpi b { font-size: 22px; font-weight: 680; font-variant-numeric: tabular-nums; }
+.sc-kpi b small { font-size: 12px; font-weight: 500; color: var(--muted); }
+.sc-status { font-size: 11.5px; color: var(--text-2); display: flex; align-items: center; gap: 6px; }
+.sc-status i { font-style: normal; font-weight: 700; width: 16px; height: 16px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10.5px; color: #fff; background: var(--muted); flex: none; }
+.sc-kpi.good .sc-status i { background: #0a8a0a; } .sc-kpi.warn .sc-status i { background: #b07a00; } .sc-kpi.bad .sc-status i { background: #d03b3b; }
+.sc-bar { height: 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
+.sc-bar span { display: block; height: 100%; background: var(--muted); }
+.sc-kpi.good .sc-bar span { background: #0ca30c; } .sc-kpi.warn .sc-bar span { background: #fab219; } .sc-kpi.bad .sc-bar span { background: #d03b3b; }
+.sc-kpi em { font-style: normal; font-size: 11px; color: var(--muted); }
+
+/* ---------------------------------------------------------------- Twin Advisor (assistant) */
+.chat-open { display: inline-flex; align-items: center; gap: 8px; padding: 0 16px 0 12px; font-weight: 700; }
+.chat-open svg { flex: none; }
+.chat-title { display: flex; align-items: center; gap: 10px; }
+.chat-title svg { flex: none; width: 26px; height: 26px; color: var(--accent); }
+.chat-title > div { display: flex; flex-direction: column; }
+@media (max-width: 860px) { .chat-open { padding: 0 10px; } .chat-open span { display: none; } }
+
+/* ================================================================ Colour schemes on the formal layout
+ * Standard (navy and gold) is body.ui-gov alone. Military and Police reuse its layout with their own
+ * colours. They are generic service colours, not any force's insignia or branding.
+ */
+body.ui-gov { --bar: #0c1f3f; --bar-2: #15305a; --bar-3: #1f3f73; --bar-line: #2c4a7c; --trim: #d2ab52; --strap: #f0cf7f; }
+/* Military: olive drab and khaki */
+body.ui-gov.scheme-military {
+  --bg: #11150d; --surface: #1a2015; --surface-2: #242c1d; --surface-3: #303a26; --line: #414c33; --line-soft: #333d28;
+  --text: #eef0e4; --text-2: #d0d4bf; --muted: #a0a88c;
+  --accent: #c2ad62; --accent-ink: #1a1705; --accent-soft: rgba(194, 173, 98, .16); --glass: rgba(26, 32, 21, .96);
+  --bar: #2b351f; --bar-2: #38442a; --bar-3: #465436; --bar-line: #556443; --trim: #c2ad62; --strap: #dccb8a;
+}
+body.ui-gov.scheme-military.map-light {
+  --bg: #b9bca1; --surface: #d6d8c2; --surface-2: #c9ccb2; --surface-3: #b9bd9f; --line: #999d7c; --line-soft: #adb192;
+  --text: #1b2011; --text-2: #30361f; --muted: #50563c;
+  --accent: #4c5720; --accent-ink: #ffffff; --accent-soft: rgba(76, 87, 32, .18); --glass: rgba(214, 216, 194, .97);
+}
+/* Police: deep blue with silver trim */
+body.ui-gov.scheme-police {
+  --bg: #060c1b; --surface: #0c1630; --surface-2: #132145; --surface-3: #1b2e5d; --line: #2a4079; --line-soft: #1f3262;
+  --text: #f2f5fb; --text-2: #d3dcee; --muted: #97a7c7;
+  --accent: #5aa7ff; --accent-ink: #04122b; --accent-soft: rgba(90, 167, 255, .16); --glass: rgba(12, 22, 48, .96);
+  --bar: #0a2a6b; --bar-2: #123a8a; --bar-3: #1b4aa6; --bar-line: #2d5cbb; --trim: #cfd7e6; --strap: #e3e9f4;
+}
+body.ui-gov.scheme-police.map-light {
+  --bg: #b9c5d9; --surface: #d6deec; --surface-2: #c8d2e4; --surface-3: #b7c4da; --line: #97a8c4; --line-soft: #abb9d1;
+  --text: #0b1a38; --text-2: #22335a; --muted: #44547a;
+  --accent: #0a45ab; --accent-ink: #ffffff; --accent-soft: rgba(10, 69, 171, .15); --glass: rgba(214, 222, 236, .97);
+}
+body.ui-gov .topbar, body.ui-gov.map-light .topbar {
+  --surface: var(--bar); --surface-2: var(--bar-2); --surface-3: var(--bar-3); --line: var(--bar-line); border-bottom-color: var(--trim); --accent: var(--trim);
+}
+body.ui-gov .statusbar { background: var(--bar); }
+body.ui-gov .statusbar .strap { color: var(--strap); }
+body.ui-gov :focus-visible { outline-color: var(--trim); }
+body.map-light #map { background: #cfe0d2; }
+
+/* Light themes: map overlays take the scheme's surfaces (replaces the older fixed pale-green overlays) */
+body.map-light .legend, body.map-light .timeline, body.map-light .sites button, body.map-light .mini { background: var(--glass); color: var(--text); border-color: var(--line); }
+body.map-light .legend, body.map-light .mini { color: var(--text-2); }
+body.map-light .seg { background: var(--surface-2); border-color: var(--line); }
+body.map-light .seg button { color: var(--muted); }
+body.map-light .seg button.on { color: var(--accent-ink); }
+body.map-light .timeline .btn { background: var(--surface-2); color: var(--text); border-color: var(--line); }
+body.map-light .timeline .btn[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+body.map-light .sites .chip.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+body.map-light .sim-clock { color: var(--text); }
+body.map-light .k-label em, body.map-light .badge { color: #6b4e00; }
+body.map-light .topbar .seg { background: var(--surface-2); border-color: var(--line); }

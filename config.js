@@ -16,13 +16,14 @@ window.INTELLITWIN_CONFIG = {
     rasterAttribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     // Light theme: its vector style and the pale green tint applied to the map background.
     styleUrlLight: 'https://tiles.openfreemap.org/styles/positron',
-    lightTint: '#e3f1e4',
+    lightTint: '#cfe0d2',
     theme: 'dark',              // 'dark' or 'light' at start; the Light map / Dark map button switches
     buildings3d: true
   },
 
   /* ---- Start-up view ------------------------------------------------------------------------- */
-  // Interface style: 'government' (navy and gold, square corners, labelled side menu) or 'enterprise' (compact icon rail).
+  // Interface style: 'government' (standard: navy and gold), 'military' (olive and khaki), 'police' (blue and silver)
+  // or 'enterprise' (compact, rounded).
   // Visitors can switch with the Style button in the status bar.
   // menu: 'minimised' (icons only, with a button to expand) or 'expanded'.
   ui: { style: 'government', menu: 'minimised' },
@@ -247,6 +248,15 @@ sampleVideos: [
     co2: { baseGPerKm: 150, congestionGKmh: 2500,       // g/km = base + congestion ÷ speed (km/h)
       typeFactor: { car: 1, taxi: 1, van: 1.5, lorry: 4, bus: 4.5, moto: 0.5 } },   // emissions per km against a car
     // Population, as quoted from Statistics Centre Abu Dhabi 2024 figures on a third-party site. Verify before reuse.
+    // Example targets for the City scorecard. They are illustrations, not official targets; set your own.
+    targets: {
+      peakSpeedKmh: 45, extraTravelPct: 25, dailyDelayVehH: 120000, criticalRoads: 20, junctionsEFPct: 20, busOnTimePct: 85,
+      accidentsPerDay: 60, seriousAccidentsPerDay: 2, accidentsWorstHour: 6, criticalAlertsOpen: 0,
+      finesPerDay: 12000, finesWorstHour: 1000, topViolationSharePct: 50, topSitesSharePct: 25,
+      sitesMonitored: 500, sitesOnAlertPct: 2, camerasOnlinePct: 97,
+      co2TonnesPerDay: 7000, aqi: 100, noiseDb: 70,
+      futureSpeedKmh: 40, futureCriticalRoads: 40, cycleKm: 300, delayCostAedMillion: 1200
+    },
     population: { emirate: 4135985, abuDhabiRegion: 2823340, alAinRegion: 986910, alDhafraRegion: 325735, growthPerYear: 0.075, year: 2024 }
   },
 

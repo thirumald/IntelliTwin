@@ -12,14 +12,14 @@ IntelliTwin is a static traffic digital twin demonstrator for Abu Dhabi city. A 
 - **Opening view:** by default the app opens in full view on the most congested major site, in 3D with the camera orbiting, in Live mode. The site is selected in the site chips, and replay runs at 30× by default. This is set in `config.js`.
 - **Pushed alerts:** each new alert appears as an on-screen notification, generated from the synthetic data.
 - **Camera video:** cameras play real traffic footage (sample clips from Wikimedia Commons, not Abu Dhabi) until a stream is configured.
-- **Predictive analytics:** a separate view with road expansion, traffic signals, population and fleet, demand, safety and emissions, with tiles, charts and tables ([docs/analytics.md](docs/analytics.md)).
+- **Analytics and city KPIs:** opens inside the same page. A City scorecard compares 25 KPIs with example targets across six goals (smooth traffic, fewer accidents, fewer violations, safe and secure city, clean and liveable, city development), plus road expansion, traffic signals, population and fleet, environment, safety and demand sections.
 - **Critical zones:** traffic watched around defence sites, embassies, hospitals, schools and other sites from OpenStreetMap, with alerts.
 - **Response routing:** the quickest route from the nearest unit to a critical alert, drawn on the map with an arrival estimate.
 - **Vehicle types, railway and cycle tracks:** cars, taxis, vans, lorries, buses and motorcycles (assumed mix), plus railway and cycle layers from OpenStreetMap.
 - **Environmental sensors:** example roadside sensors with synthetic air-quality and noise readings, on the map, in an Environment tab and in the analytics ([docs/environment.md](docs/environment.md)).
 - **Dark and light map**, with a pale green light theme; 3D cars with glass and wheels, and synthetic people on foot at street zoom.
 - **Individual vehicles:** one per vehicle on each road, dots when zoomed out and 3D cars at street level.
-- **Application shell:** one top bar (Live / Historical, road search, alerts, theme, language), a navigation rail for the sections, a docked panel and a status bar; dark and light themes; a bottom bar on phones. Two interface styles: **Government** (default: navy and gold, labelled side menu) and **Enterprise**.
+- **Application shell:** one top bar (Live / Historical, road search, alerts, theme, language), a navigation rail for the sections, a docked panel and a status bar; dark and light themes; a bottom bar on phones. Four interface styles: **Standard** (default: navy and gold), **Military** (olive and khaki), **Police** (blue and silver) and **Enterprise**; each has a dark and a mid-tone light theme.
 - **Public transport (Transit):** bus routes with numbered and named stops, next-bus times, bus numbers and live tracking on the map; a taxi fleet with ranks and statuses; on-demand shuttle zones. All synthetic, not Abu Dhabi's real services.
 - **Live and Historical, 24 hours:** Live starts at the Abu Dhabi clock and plays at 30× by default (1× stays locked to the clock); Historical takes any date and a 24-hour time. Both use synthetic data.
 - **Dashboard:** KPIs, alerts, 15/30/60-minute forecast, day profile, demand cases.
@@ -27,7 +27,7 @@ IntelliTwin is a static traffic digital twin demonstrator for Abu Dhabi city. A 
 - **Accidents and fines:** illustrative, generated and labelled as such.
 - **Devices:** CCTV cameras with a video window, enforcement cameras, detectors, message signs and traffic signals. Devices are synthetic unless listed in `config.js`; a camera without a stream shows a synthetic view.
 - **Reports:** CSV exports, a printable summary and an audit log.
-- **Sign-in with roles** (demo only), **Arabic interface** for fixed labels, and a built-in **assistant**.
+- **Sign-in with roles** (demo only), **Arabic interface** for fixed labels, and a built-in assistant, **Twin Advisor**.
 - **One configuration file**, `config.js`, for map tiles, feeds, cameras, alert thresholds, roles and services.
 
 Everything shown is simulated, synthetic or illustrative except the road network and building footprints. See [docs/limitations.md](docs/limitations.md).

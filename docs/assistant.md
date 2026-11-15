@@ -1,6 +1,6 @@
 # Assistant
 
-The **Ask IntelliTwin** button opens a chat window. The assistant is implemented in `js/assistant.js`.
+The **Twin Advisor** button opens a chat window. Twin Advisor is the built-in assistant, implemented in `js/assistant.js`.
 
 ## What it is
 

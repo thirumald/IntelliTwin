@@ -8,14 +8,14 @@ All settings are in `config.js` at the repository root. Every value has a workin
 
 | Section | Key | Default | What it does |
 | --- | --- | --- | --- |
-| `ui` | `style` | `'government'` | Interface style: `'government'` (navy and gold, square corners, larger text, labelled side menu) or `'enterprise'` (compact icon rail). The Style button in the status bar switches it for that browser |
+| `ui` | `style` | `'government'` | Interface style: `'government'` (standard: navy and gold), `'military'` (olive and khaki), `'police'` (blue and silver) or `'enterprise'` (compact, rounded). The Style button in the status bar steps through them for that browser. The schemes are generic colours, not any force's insignia |
 | | `menu` | `'minimised'` | Side menu on opening: `'minimised'` (icons only) or `'expanded'`. The menu button at its top switches it for that browser |
 | `start` | `mode`, `rate` | `'live'`, 30 | Opening mode and speed. `'live'` starts at the Abu Dhabi clock and plays at `rate` (30× by default, so it runs ahead of the clock; choose 1× to stay locked to it). `'replay'` opens today's synthetic day as Historical |
 | | `fullView` | `true` | Open with the panel, legend and site shortcuts minimised |
 | | `focus`, `orbit` | `'most-congested-site'`, `true` | Open with the most congested major site selected in the site chips, in a tilted 3D view with the camera orbiting. `'most-congested'` opens on the slowest road instead; `'all'` on the whole area |
 | `map` | `styleUrl` | OpenFreeMap dark style | MapLibre style for the vector base map. Use a licensed or self-hosted style in production |
 | | `rasterTiles`, `rasterAttribution` | OpenStreetMap standard tiles | Raster fallback if the vector style cannot load |
-| | `styleUrlLight`, `lightTint`, `theme` | OpenFreeMap positron, `#e3f1e4`, `'dark'` | Light-theme style, its pale green background tint, and the theme at start |
+| | `styleUrlLight`, `lightTint`, `theme` | OpenFreeMap positron, `#cfe0d2`, `'dark'` | Light-theme style, its pale green background tint, and the theme at start |
 | | `buildings3d` | `true` | Extrude buildings from the vector tiles |
 | `time` | `timeZone` | `Asia/Dubai` | Clock used for Live mode and dates |
 | | `weekendDays`, `shortDay` | `[6, 0]`, `5` | Weekend days and the shorter working day, used by the synthetic day |
@@ -45,6 +45,7 @@ All settings are in `config.js` at the repository root. Every value has a workin
 | `zones` | `radiusM`, `watchRatioBelow`, `alertRatioBelow`, `minVehicles` | 500, 0.6, 0.4, 25 | Critical-zone monitoring thresholds |
 | | `types`, `custom`, `alert` | nine types, `[]`, `true` | Site types with labels and priority; your own sites; whether a site in alert raises an alert |
 | `analytics` | growth, horizon, curve, costs, population | see `config.js` | Every assumption behind the predictive analytics view ([analytics.md](analytics.md)) |
+| | `targets` | see file | Example targets for the City scorecard (speed, delay, accidents, fines, sites, emissions and others). Not official targets |
 | `forecast` | `horizonsMin` | `[15, 30, 60]` | Forecast horizons |
 | `closure` | `radiusM`, `speedLoss`, `extraVehicles` | 1500, 0.4, 0.3 | The what-if closure estimate: affected radius, maximum speed loss, extra vehicles on nearby roads |
 | `auth` | `enabled`, `roles` | `true`, three roles | Demo sign-in and what each role may do |

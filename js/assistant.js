@@ -1,4 +1,4 @@
-/* IntelliTwin assistant.
+/* Twin Advisor: the IntelliTwin assistant.
  *
  * A built-in agent that answers questions from the simulation data loaded in the page and can
  * operate the twin (fly to a site or road, change the demand case, jump to a time, open a view).
@@ -197,7 +197,7 @@
     function toggle(on) {
       open = on; $('chat').hidden = !on; $('chatOpen').setAttribute('aria-expanded', on ? 'true' : 'false');
       if (on) {
-        if (!$('chatLog').children.length) { add('bot', 'Hello. I am the IntelliTwin assistant. ' + HELP); }
+        if (!$('chatLog').children.length) { add('bot', 'Hello. I am Twin Advisor, the built-in assistant for this twin. ' + HELP); }
         $('chatInput').focus();
       }
     }
