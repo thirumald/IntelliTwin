@@ -8,7 +8,7 @@ All settings are in `config.js` at the repository root. Every value has a workin
 
 | Section | Key | Default | What it does |
 | --- | --- | --- | --- |
-| `start` | `mode`, `rate` | `'replay'`, 30 | Opening mode: `'replay'` plays today from the current time at this speed; `'live'` follows the clock at 1× |
+| `start` | `mode`, `rate` | `'live'`, 30 | Opening mode: `'live'` follows the clock in real time; `'replay'` plays today from the current time at `rate` |
 | | `fullView` | `true` | Open with the panel, legend and site shortcuts minimised |
 | | `focus`, `orbit` | `'most-congested'`, `true` | Open on the slowest busy road in a tilted 3D view, with the camera orbiting; `'all'` opens on the whole area |
 | `map` | `styleUrl` | OpenFreeMap dark style | MapLibre style for the vector base map. Use a licensed or self-hosted style in production |
@@ -19,7 +19,7 @@ All settings are in `config.js` at the repository root. Every value has a workin
 | `feeds` | `traffic` | `'synthetic'` | Traffic source. Only `'synthetic'` is implemented; see “Integration points” |
 | | `accidentsUrl` | `null` | Reserved for a real accident feed; not implemented yet |
 | `devices` | `cameras` | `[]` | Real CCTV cameras: `{ id, name, lon, lat, stream }` |
-| | `sampleVideos` | two Wikimedia Commons clips | Real traffic footage shown by cameras with no stream: `{ sources: [urls], credit }`. The clips are from Chicago and the camera window says they are not the camera's feed. `[]` uses the synthetic view only |
+| | `sampleVideos` | four Wikimedia Commons clips | Real traffic footage shown by cameras with no stream: `{ sources: [urls], credit }`. The clips are from Chicago and the camera window says they are not the camera's feed. `[]` uses the synthetic view only |
 | | `syntheticCameras`, `syntheticDetectors`, `syntheticSigns` | 40, 80, 15 | How many synthetic devices to place when no real ones are listed |
 | | `hlsScript` | `null` | URL of an HLS player script for browsers without native HLS |
 | | `signalCycleSeconds` | 90 | Generic signal cycle shown on the map |
@@ -29,6 +29,11 @@ All settings are in `config.js` at the repository root. Every value has a workin
 | | `everyAccident` | `true` | Alert on every new accident, not only serious ones |
 | | `syntheticEventsPerHour` | 14 | Synthetic operational events raised at cameras (stopped vehicle, wrong-way vehicle, debris, pedestrian on carriageway, queue, camera offline and similar). 0 turns them off |
 | | `push`, `pushSeconds`, `pushMaxVisible` | `true`, 9, 4 | Push each new alert as an on-screen notification (and a browser notification when the user has allowed them and the page is in the background) |
+| `vehicles` | `mix` | six types | Assumed shares of vehicle types for display and reporting |
+| `response` | `auto`, `speedFactor`, `bases` | `true`, 1.25, seven units | Response routing: route automatically on critical alerts; speed advantage; unit positions (synthetic placeholders) |
+| `zones` | `radiusM`, `watchRatioBelow`, `alertRatioBelow`, `minVehicles` | 500, 0.6, 0.4, 25 | Critical-zone monitoring thresholds |
+| | `types`, `custom`, `alert` | nine types, `[]`, `true` | Site types with labels and priority; your own sites; whether a site in alert raises an alert |
+| `analytics` | growth, horizon, curve, costs, population | see `config.js` | Every assumption behind the predictive analytics view ([analytics.md](analytics.md)) |
 | `forecast` | `horizonsMin` | `[15, 30, 60]` | Forecast horizons |
 | `closure` | `radiusM`, `speedLoss`, `extraVehicles` | 1500, 0.4, 0.3 | The what-if closure estimate: affected radius, maximum speed loss, extra vehicles on nearby roads |
 | `auth` | `enabled`, `roles` | `true`, three roles | Demo sign-in and what each role may do |

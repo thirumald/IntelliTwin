@@ -35,6 +35,27 @@
     [120, 124, 130], [40, 42, 48], [40, 42, 48], [150, 30, 36], [36, 70, 140], [176, 150, 110]];
   var LANE_M = 3.3, MAX_CARS = 5000;
 
+  // Vehicle types. The simulation has one type; the shares are assumptions from config.js (vehicles.mix).
+  // scale = [length, width, height] against the car mesh; paint = body colours.
+  var SHAPE = {
+    car: { scale: [1, 1, 1], paint: PAINT },
+    taxi: { scale: [1, 1, 1.05], paint: [[236, 200, 60]] },
+    van: { scale: [1.2, 1.08, 1.5], paint: [[240, 240, 240], [196, 200, 206], [60, 70, 90]] },
+    lorry: { scale: [2.4, 1.35, 2.2], paint: [[215, 110, 50], [200, 200, 205], [60, 90, 150]] },
+    bus: { scale: [2.7, 1.4, 2.1], paint: [[70, 140, 220], [240, 240, 240]] },
+    moto: { scale: [0.45, 0.35, 0.85], paint: [[30, 30, 34], [150, 30, 36]] }
+  };
+  var MIX = ((window.INTELLITWIN_CONFIG || {}).vehicles || {}).mix || [{ id: 'car', label: 'Cars', share: 1 }];
+  var mixTotal = MIX.reduce(function (s, m) { return s + m.share; }, 0) || 1;
+  function typeOf(h, roadClass) {
+    var acc = 0;
+    for (var i = 0; i < MIX.length; i++) {
+      acc += MIX[i].share / mixTotal;
+      if (h < acc) { return (MIX[i].id === 'lorry' && roadClass >= 4) ? 'van' : (SHAPE[MIX[i].id] ? MIX[i].id : 'car'); }   // no lorries on the smallest streets
+    }
+    return 'car';
+  }
+
   function hash01(a, b) {
     var h = (Math.imul(a + 1, 2654435761) ^ Math.imul(b + 7, 1597334677)) >>> 0;
     h ^= h >>> 15; h = Math.imul(h, 2246822519) >>> 0; h ^= h >>> 13;
@@ -73,12 +94,14 @@
         cars.push({
           p: [a[0] + (b[0] - a[0]) * t + (dy / dl) * off / kx, a[1] + (b[1] - a[1]) * t - (dx / dl) * off / ky, 0],
           yaw: Math.atan2(dy, dx) * 180 / Math.PI,
-          c: PAINT[Math.floor(hash01(ei * 31 + k, 5) * PAINT.length)]
+          c: null, s: null, type: ''
         });
+        var car = cars[cars.length - 1], ty = typeOf(hash01(ei * 17 + k, 77), e.c), sh = SHAPE[ty];
+        car.type = ty; car.s = sh.scale; car.c = sh.paint[Math.floor(hash01(ei * 31 + k, 5) * sh.paint.length)];
       }
     }
     return cars;
   }
 
-  root.TwinCars = { MESH: MESH, build: build, MIN_ZOOM: 14.3 };
+  root.TwinCars = { MESH: MESH, build: build, MIN_ZOOM: 14.3, MIX: MIX, mixTotal: mixTotal };
 })(window);

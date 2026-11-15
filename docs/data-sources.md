@@ -59,12 +59,20 @@ Buses are **not** part of the traffic simulation. They follow the timetable and 
 
 Cameras without a stream of their own show real traffic footage as a stand-in. The clips are loaded at run time from Wikimedia Commons and are **not Abu Dhabi and not the camera's feed**; the camera window states this and shows the credit.
 
-| Clip | Author | Licence |
-| --- | --- | --- |
-| Lake Shore Drive Traffic (Chicago) | Sea Cow | CC BY-SA 4.0 |
-| Jane M. Byrne Interchange Traffic (Chicago) | Sea Cow | CC BY-SA 4.0 |
+| Clip | Used for | Author | Licence |
+| --- | --- | --- | --- |
+| Jane M. Byrne Interchange Traffic (Chicago) | Aerial interchange | Sea Cow | CC BY-SA 4.0 |
+| Lake Shore Drive Traffic (Chicago) | Urban expressway | Sea Cow | CC BY-SA 4.0 |
+| Highway 610 near Braeswood Blvd in Houston Texas | Highway | Texas Army National Guard | Public domain |
+| Causeway Bay Time-lapse videos (afternoon) (Hong Kong) | City street | Wikimedia Commons contributor | CC0 |
+
+The clips are recorded, not live. Each camera gets a clip that suits its road class.
 
 The **Fetch sample media** workflow downloads the clips, converts the first 30 seconds to 480p MP4 (H.264, no audio) and commits them to `assets/video/` with a credits file, so they play on every browser including iPhones. The converted copies stay under CC BY-SA 4.0. The app tries the local MP4 first, then the Wikimedia WebM originals. If nothing can be played within 12 seconds, the camera falls back to the synthetic view. Replace them in `config.js` (`devices.sampleVideos`), or give each camera its own `stream`.
+
+## Railways, cycle tracks and critical sites — OpenStreetMap
+
+The data build also reads railways (`railway=rail`, light rail, tram, subway), cycle tracks (`highway=cycleway`) and sites (schools, universities, hospitals, embassies, military land, police, fire stations, government offices, airports) from the same OpenStreetMap extract (ODbL). OpenStreetMap coverage of sensitive sites is incomplete; see [zones-and-response.md](zones-and-response.md).
 
 ## Branding
 

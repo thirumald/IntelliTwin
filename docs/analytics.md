@@ -1,0 +1,43 @@
+# Predictive analytics
+
+The **Analytics** button in the top bar opens a separate full-screen view (`js/analytics.js`). It has five sections, each with headline tiles, charts with hover values, and tables.
+
+Everything is computed in the browser from the synthetic traffic. **The results illustrate a planning method; they are not forecasts and must not be used for investment or design decisions.** All assumptions are in `config.js` under `analytics`.
+
+## Sections
+
+| Section | What it shows |
+| --- | --- |
+| Overview | Peak network speed today and at the horizon, with and without measures; roads critical at the peak by year; junctions at service level E or F; annual delay cost; the first roads and junctions to act on |
+| Road expansion | Roads ranked by the peak-hour delay one extra lane each way would save; peak speed today, at the horizon and widened; the year each road becomes critical |
+| Traffic signals | Junctions by service level; approach delay by junction; what adaptive control would save |
+| Population and fleet | Residents by region and a projection; vehicles moving at the peak by type; network length by mode (roads, cycle tracks, railway) |
+| Demand, safety, emissions | Network speed through the day for the three demand cases; an accident exposure index by road; CO₂ from traffic by hour |
+
+Growth (3–10% a year) and horizon (5–20 years) can be changed at the top of the view.
+
+## Method
+
+**Growth projection.** Each road link's peak speed ratio `r` (speed ÷ limit, working day at 08:00) is converted to a volume-to-capacity ratio `x` by inverting the volume-delay curve `r = 1 / (1 + a·x^b)` (BPR form, `a` = 0.6, `b` = 4). Demand growth multiplies `x` by `(1 + g)^years`, and the curve gives the future `r`. A free-flowing link with no measurable delay is given `x` = 0.35.
+
+**Road widening.** One extra lane each way divides `x` by `(lanes + 1) / lanes`. The delay saved is the difference in vehicle-hours lost in the peak hour at the horizon. The network line “Widen N roads” applies this to the N roads with the largest saving.
+
+**Critical road.** Peak speed under 40% of the limit (`criticalRatio`).
+
+**Signals.** A junction's approaches are the road links ending within 90 m of a signal position from OpenStreetMap. Service level is a proxy from the approach speed ratio: A ≥ 85%, B ≥ 70%, C ≥ 55%, D ≥ 40%, E ≥ 25%, F below. It is not the delay-based level of service of a signal analysis, because signal timings are not public. Adaptive control is modelled as removing 12% of approach delay (`adaptiveSignalDelayReduction`), an assumption.
+
+**Delay cost.** Daily vehicle-hours of delay × value of time (AED 40 per vehicle-hour) × 250 working days. Both factors are assumptions.
+
+**Population.** Figures quoted from Statistics Centre Abu Dhabi 2024 data as shown on a third-party site ([reference-figures.md](reference-figures.md)); verify before reuse. The projection holds the 2023–2024 growth rate constant, which is a simple extrapolation.
+
+**Vehicle types.** The simulation has one vehicle type. The split into cars, taxis, vans, lorries, buses and motorcycles uses assumed shares (`vehicles.mix`).
+
+**Accident exposure index.** Traffic volume on each road, weighted up where it is slow, scaled so the highest road is 100. It is an exposure measure, not a count or a prediction of accidents.
+
+**CO₂.** Vehicle-kilometres × an emission factor of `150 + 2500 ÷ speed` g/km, an assumed curve that rises in slow traffic.
+
+## Limits
+
+- The base traffic is synthetic and uncalibrated, so every projection inherits that.
+- The projection treats each link separately: traffic does not reroute when a road is widened, and widening does not attract new traffic.
+- Widening is tested as one extra lane with no check of land, cost or feasibility.

@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0b1220">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b1220'/%3E%3Cpath d='M6 22 L13 12 L19 18 L26 8' fill='none' stroke='%232dd4a7' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="css/styles.css?v=20261115d">
+<link rel="stylesheet" href="css/styles.css?v=20261115f">
 </head>
 <body>
 <header class="topbar">
@@ -28,6 +28,7 @@
     </select>
   </label>
   <div class="topbar-right">
+    <button class="alert-btn" id="analyticsBtn" title="Predictive analytics">Analytics</button>
     <button class="alert-btn" id="alertBtn" title="Open alerts"><span data-i18n="alerts">Alerts</span> <b id="alertCount">0</b></button>
     <button class="btn small" id="langBtn" title="Switch language">عربي</button>
     <button class="btn small user" id="userBtn" hidden></button>
@@ -67,6 +68,11 @@
       <span><i class="sw severe"></i><span data-i18n="lgSevere">Severe &lt;40%</span></span>
       <span><i class="pt car"></i><span data-i18n="lgVehicles">Vehicles (zoom in for 3D)</span></span>
       <span id="legendBus" hidden><i class="pt bus"></i>Timetabled bus</span>
+      <span id="legendRail" hidden><i class="sw rail"></i>Railway</span>
+      <span id="legendCycle" hidden><i class="sw cyc"></i>Cycle track</span>
+      <span><i class="pt zone"></i>Critical site</span>
+      <span><i class="pt base"></i>Response unit (synthetic)</span>
+      <span><i class="sw route"></i>Response route</span>
       <span><i class="pt acc"></i><span data-i18n="lgAccident">Accident (illustrative)</span></span>
       <span><i class="pt site"></i><span data-i18n="lgSite">Enforcement camera (synthetic)</span></span>
       <span><i class="pt cam"></i><span data-i18n="lgCam">CCTV camera</span></span>
@@ -125,6 +131,7 @@
       <button role="tab" data-tab="cong" aria-selected="false" data-i18n="congestion">Congestion</button>
       <button role="tab" data-tab="acc" aria-selected="false" data-i18n="accidents">Accidents</button>
       <button role="tab" data-tab="fines" aria-selected="false" data-i18n="fines">Fines</button>
+      <button role="tab" data-tab="zones" aria-selected="false">Zones</button>
       <button role="tab" data-tab="dev" aria-selected="false" data-i18n="devices">Devices</button>
       <button role="tab" data-tab="rep" aria-selected="false" data-i18n="reports">Reports</button>
       <button role="tab" data-tab="model" aria-selected="false" data-i18n="model">Model</button>
@@ -151,6 +158,17 @@
     </section>
 
     <section class="card" data-tab="dash">
+      <div class="card-head"><h2>Response route</h2><span class="muted" id="respNote">Quickest path to a critical alert</span></div>
+      <p class="insight" id="respText">No route yet. Tap an alert, or wait for a critical one.</p>
+      <button type="button" class="btn small" id="respClear" hidden style="margin-top:8px">Clear route</button>
+    </section>
+
+    <section class="card" data-tab="dash">
+      <div class="card-head"><h2>Vehicles by type</h2><span class="muted">Assumed mix</span></div>
+      <div class="bars" id="mixBars"></div>
+    </section>
+
+    <section class="card" data-tab="dash">
       <div class="card-head"><h2 data-i18n="forecast">Forecast</h2><span class="muted" data-i18n="forecastNote">From the synthetic day profile</span></div>
       <div class="kpis three" id="forecastTiles"></div>
     </section>
@@ -174,6 +192,9 @@
       <label class="check"><input id="showCams" type="checkbox" checked><span data-i18n="lyCam">CCTV cameras</span></label>
       <label class="check"><input id="showDet" type="checkbox"><span data-i18n="lyDet">Detectors</span></label>
       <label class="check"><input id="showVms" type="checkbox" checked><span data-i18n="lyVms">Message signs</span></label>
+      <label class="check" id="railRow" hidden><input id="showRail" type="checkbox" checked><span>Railway <span class="muted" id="railNote"></span></span></label>
+      <label class="check" id="cycleRow" hidden><input id="showCycle" type="checkbox" checked><span>Cycle tracks <span class="muted" id="cycleNote"></span></span></label>
+      <label class="check"><input id="showBases" type="checkbox" checked><span>Response units <span class="muted">(synthetic)</span></span></label>
       <label class="check" id="sigRow" hidden><input id="showSig" type="checkbox" checked><span data-i18n="lySig">Traffic signals</span></label>
       <label class="check" id="busRow" hidden><input id="showBuses" type="checkbox" checked><span>Buses from the timetable <span class="muted" id="busNote"></span></span></label>
       <label class="check" id="bldRow" hidden><input id="showBld" type="checkbox"><span>More buildings, Microsoft footprints <span class="muted" id="bldNote"></span></span></label>
@@ -265,6 +286,23 @@
     </section>
 
     <!-- Model -->
+    <!-- Critical zones -->
+    <section class="card" data-tab="zones" hidden>
+      <div class="card-head"><h2>Critical zones</h2><span class="muted" id="zoneNote"></span></div>
+      <p class="notice" id="zoneEmpty" hidden>No site data in this build yet. Sites are read from OpenStreetMap by the data build; you can also list your own in <code>config.js</code>.</p>
+      <div class="kpis three">
+        <div class="kpi"><span class="k-label">Monitored</span><span class="k-value" id="zTotal">–</span></div>
+        <div class="kpi"><span class="k-label">On watch</span><span class="k-value" id="zWatch">–</span></div>
+        <div class="kpi"><span class="k-label">In alert</span><span class="k-value" id="zAlert">–</span></div>
+      </div>
+      <label class="field" style="margin-top:12px"><span>Site type</span><select id="zoneType"></select></label>
+      <label class="check"><input id="showZones" type="checkbox" checked><span>Show sites on the map</span></label>
+    </section>
+    <section class="card" data-tab="zones" hidden>
+      <div class="card-head"><h2>Sites needing attention</h2><span class="muted">Tap to locate</span></div>
+      <ol class="corridors" id="zoneList"></ol>
+    </section>
+
     <section class="card" data-tab="model" hidden>
       <div class="card-head"><h2>The simulated morning</h2><span class="muted" id="winLabel"></span></div>
       <table class="facts" id="tripFacts"></table>
@@ -288,6 +326,69 @@
 </main>
 
 <!-- Demo sign-in -->
+<!-- Predictive analytics: a separate full-screen view -->
+<section class="analytics" id="analytics" hidden aria-label="Predictive analytics">
+  <header class="an-head">
+    <div><h2>Predictive analytics</h2><p>Planning projections from the synthetic model. Illustrations of the method, not forecasts for decisions.</p></div>
+    <div class="an-controls">
+      <label>Growth <select id="anGrowth"></select></label>
+      <label>Horizon <select id="anHorizon"></select></label>
+      <button class="btn" id="anClose">Back to map</button>
+    </div>
+  </header>
+  <nav class="an-menu" id="anMenu" role="tablist" aria-label="Analytics sections">
+    <button role="tab" data-an="over" class="on" aria-selected="true">Overview</button>
+    <button role="tab" data-an="road" aria-selected="false">Road expansion</button>
+    <button role="tab" data-an="sig" aria-selected="false">Traffic signals</button>
+    <button role="tab" data-an="pop" aria-selected="false">Population and fleet</button>
+    <button role="tab" data-an="other" aria-selected="false">Demand, safety, emissions</button>
+  </nav>
+  <div class="an-body" id="anBody">
+    <div data-an-sec="over">
+      <div class="an-tiles" id="anOverTiles"></div>
+      <div class="an-grid">
+        <figure class="an-card wide"><figcaption>Peak network speed by year, km/h<span class="an-key" id="anNetKey"></span></figcaption><canvas id="anNet" class="an-chart"></canvas></figure>
+        <figure class="an-card"><figcaption>Roads critical at the peak, by year<span class="an-key" id="anCritKey"></span></figcaption><canvas id="anCrit" class="an-chart"></canvas></figure>
+        <div class="an-card"><h3>Where to act first</h3><ol class="corridors" id="anRecs"></ol></div>
+      </div>
+    </div>
+    <div data-an-sec="road" hidden>
+      <div class="an-tiles" id="anRoadTiles"></div>
+      <div class="an-grid">
+        <figure class="an-card"><figcaption>Peak-hour delay saved by one extra lane, vehicle-hours</figcaption><canvas id="anRoadBar" class="an-chart"></canvas></figure>
+        <figure class="an-card"><figcaption>Peak speed as a share of the limit, %<span class="an-key" id="anRoadCmpKey"></span></figcaption><canvas id="anRoadCmp" class="an-chart"></canvas></figure>
+        <div class="an-card wide"><h3>Widening candidates</h3><div class="an-scroll"><table class="an-table" id="anRoadTable"></table></div></div>
+      </div>
+    </div>
+    <div data-an-sec="sig" hidden>
+      <div class="an-tiles" id="anSigTiles"></div>
+      <div class="an-grid">
+        <figure class="an-card"><figcaption>Junctions by service level at the peak (A best, F worst)<span class="an-key" id="anLosKey"></span></figcaption><canvas id="anLos" class="an-chart"></canvas></figure>
+        <figure class="an-card"><figcaption>Approach delay at the peak, vehicle-hours</figcaption><canvas id="anSigBar" class="an-chart"></canvas></figure>
+        <div class="an-card wide"><h3>Junctions to retime or put under adaptive control</h3><div class="an-scroll"><table class="an-table" id="anSigTable"></table></div></div>
+      </div>
+    </div>
+    <div data-an-sec="pop" hidden>
+      <div class="an-tiles" id="anPopTiles"></div>
+      <div class="an-grid">
+        <figure class="an-card"><figcaption>Residents by region<span class="an-key" id="anPopRegKey"></span></figcaption><canvas id="anPopReg" class="an-chart"></canvas></figure>
+        <figure class="an-card"><figcaption>Abu Dhabi Region residents, projected, millions<span class="an-key" id="anPopLineKey"></span></figcaption><canvas id="anPopLine" class="an-chart"></canvas></figure>
+        <figure class="an-card"><figcaption>Vehicles moving at the peak, by type (assumed mix)</figcaption><canvas id="anFleet" class="an-chart"></canvas></figure>
+        <figure class="an-card"><figcaption>Network length by mode, km</figcaption><canvas id="anModes" class="an-chart"></canvas></figure>
+      </div>
+    </div>
+    <div data-an-sec="other" hidden>
+      <div class="an-tiles" id="anOtherTiles"></div>
+      <div class="an-grid">
+        <figure class="an-card wide"><figcaption>Network speed through a working day, km/h<span class="an-key" id="anDemandKey"></span></figcaption><canvas id="anDemand" class="an-chart"></canvas></figure>
+        <figure class="an-card"><figcaption>Accident exposure index by road (100 = highest)</figcaption><canvas id="anRisk" class="an-chart"></canvas></figure>
+        <figure class="an-card"><figcaption>CO₂ from traffic by hour, tonnes<span class="an-key" id="anCo2Key"></span></figcaption><canvas id="anCo2" class="an-chart"></canvas></figure>
+      </div>
+    </div>
+    <p class="an-assume"><strong>Assumptions.</strong> <span id="anAssume"></span> Traffic is synthetic and uncalibrated; change the assumptions in <code>config.js</code>.</p>
+  </div>
+</section>
+
 <div class="login" id="login" hidden>
   <div class="login-card">
     <img src="assets/presight-logo.png" alt="Presight" width="496" height="142">
@@ -302,16 +403,19 @@
 <!-- Printed summary -->
 <div id="report" class="report" aria-hidden="true"></div>
 
-<script src="config.js?v=20261115d"></script>
+<script src="config.js?v=20261115f"></script>
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/deck.gl.min.js"></script>
-<script src="js/daymodel.js?v=20261115d"></script>
-<script src="js/events.js?v=20261115d"></script>
-<script src="js/vehicles3d.js?v=20261115d"></script>
-<script src="js/app.js?v=20261115d"></script>
-<script src="js/ops.js?v=20261115d"></script>
-<script src="js/devices.js?v=20261115d"></script>
-<script src="js/i18n.js?v=20261115d"></script>
-<script src="js/assistant.js?v=20261115d"></script>
+<script src="js/daymodel.js?v=20261115f"></script>
+<script src="js/events.js?v=20261115f"></script>
+<script src="js/vehicles3d.js?v=20261115f"></script>
+<script src="js/app.js?v=20261115f"></script>
+<script src="js/ops.js?v=20261115f"></script>
+<script src="js/devices.js?v=20261115f"></script>
+<script src="js/i18n.js?v=20261115f"></script>
+<script src="js/response.js?v=20261115f"></script>
+<script src="js/zones.js?v=20261115f"></script>
+<script src="js/analytics.js?v=20261115f"></script>
+<script src="js/assistant.js?v=20261115f"></script>
 </body>
 </html>

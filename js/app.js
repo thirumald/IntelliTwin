@@ -67,10 +67,11 @@
 
   /* ---------- state ---------- */
   var meta, edges = [], names = [], groups = [], scen = {}, buses = null, buildings = null, signals = null;
+  var rail = null, cycle = null, zones = null, extraShow = { rail: true, cycle: true };
   var map = null, overlay = null, popup = null, vectorBase = false;
   var state = { t: 8 * 3600, playing: true, rate: 1, scenario: 'base', mode: 'live', date: '', cars: true, buses: true, bld: false, acc: true, sites: true };
   var day = null, baseDay = null, ev = null, evCache = {}, calib = {}, fx = null;      // fx: what-if closure effect
-  var startFocus = '';
+  var startFocus = '', zoneHooks = [];
   var dirty = true, orbiting = false, layerProviders = [], minuteHooks = [], readyHooks = [];
   var carProgress = null, simDt = 0, prevT = 0, visibleEdges = [], visibleKey = '';
 
@@ -302,6 +303,14 @@
       }));
     }
     layers.push(roadLayer);
+    // Railways and cycle tracks from OpenStreetMap, drawn under the traffic.
+    if (rail && extraShow.rail) {
+      layers.push(new deck.PathLayer({ id: 'rail', data: rail, getPath: function (p) { return p; }, getColor: [226, 226, 235, 235], getWidth: 6, widthUnits: 'meters', widthMinPixels: 2,
+        getDashArray: [5, 3], dashJustified: true, extensions: deck.PathStyleExtension ? [new deck.PathStyleExtension({ dash: true })] : [] }));
+    }
+    if (cycle && extraShow.cycle && zoom >= 11.5) {
+      layers.push(new deck.PathLayer({ id: 'cycle', data: cycle, getPath: function (p) { return p; }, getColor: [213, 81, 129, 235], getWidth: 3, widthUnits: 'meters', widthMinPixels: 1.4 }));
+    }
 
     // Vehicles: one per vehicle on every link, moving at the link's speed. Dots zoomed out, 3D cars at street level.
     if (state.cars) {
@@ -327,7 +336,7 @@
       if (street) {
         layers.push(new deck.SimpleMeshLayer({
           id: 'cars3d', data: cars, mesh: window.TwinCars.MESH,
-          getPosition: function (c) { return c.p; }, getOrientation: function (c) { return [0, c.yaw, 0]; }, getColor: function (c) { return c.c; },
+          getPosition: function (c) { return c.p; }, getOrientation: function (c) { return [0, c.yaw, 0]; }, getScale: function (c) { return c.s; }, getColor: function (c) { return c.c; },
           sizeScale: zoom >= 17 ? 1.3 : zoom >= 16 ? 2 : zoom >= 15 ? 3 : 4.5,
           material: { ambient: 0.5, diffuse: 0.65, shininess: 28, specularColor: [70, 70, 70] }
         }));
@@ -704,7 +713,8 @@
       occ: function (i) { return occAt(binOf(state.t), i) * 10 / SLOT; }, ratioAt: ratioAt, occAt: function (bin, i) { return occAt(bin, i) * 10 / SLOT; },
       kpiAt: kpiAt, roadStats: roadStats, eventTotals: eventTotals, showPopup: showPopup, flyTo: flyToPoint, locate: locate, listButton: listButton,
       fact: fact, barRow: barRow, addLayers: function (fn) { layerProviders.push(fn); }, onMinute: function (fn) { minuteHooks.push(fn); },
-      startFocus: function () { return startFocus; },
+      startFocus: function () { return startFocus; }, zones: function () { return zones; }, onZones: function (fn) { if (zones) { fn(zones); } else { zoneHooks.push(fn); } },
+      railKm: function () { return (meta.extra || {}).rail_km || 0; }, cycleKm: function () { return (meta.extra || {}).cycle_km || 0; }, setPlaying: setPlaying,
       onReady: function (fn) { if (meta && day) { fn(); } else { readyHooks.push(fn); } }, redraw: redraw, setClosure: setClosure,
       closure: function () { return fx; }, showTab: showTab, prettyDate: prettyDate, daySeriesKpi: function (id) { var d = id === state.scenario ? day : baseDay, bins = scenarioMeta(id).bins, out = []; for (var s = 0; s < SLOTS; s++) { out.push(bins[d.map[s]]); } return out; }
     },
@@ -783,7 +793,7 @@
     setMode('live');
     // Start-up view from config.js: replay speed, full view, and the camera on the most congested road.
     var st = CFG.start || {};
-    if (st.mode === 'replay') { setMode('hist'); setRate(st.rate || 30); setPlaying(true); }
+    if (st.mode === 'replay') { setMode('hist'); setRate(st.rate || 30); setPlaying(true); } else { setRate(1); }
     if (st.fullView) { $('legend').classList.add('min'); $('sites').classList.add('min'); setPanel(false); }
     if (typeof syncFull === 'function') { syncFull(); }
     if (st.focus === 'most-congested' && map) {
@@ -805,6 +815,13 @@
         $('busNote').textContent = '(' + num(meta.buses.runs) + ' runs, ' + clock(meta.sim_begin) + '–' + clock(meta.sim_end) + ')';
       }).catch(function () {});
     }
+    // Railways, cycle tracks and critical sites from OpenStreetMap (present after a data build that exports them).
+    function lines(rows) { return rows.map(function (r) { var p = []; for (var i = 0; i < r.length; i += 2) { p.push([r[i], r[i + 1]]); } return p; }); }
+    getJSON('data/rail.json').then(function (rows) { if (rows.length) { rail = lines(rows); $('railRow').hidden = false; $('legendRail').hidden = false; $('railNote').textContent = '(' + num((meta.extra || {}).rail_km || 0) + ' km)'; redraw(); } }).catch(function () {});
+    getJSON('data/cycle.json').then(function (rows) { if (rows.length) { cycle = lines(rows); $('cycleRow').hidden = false; $('legendCycle').hidden = false; $('cycleNote').textContent = '(' + num((meta.extra || {}).cycle_km || 0) + ' km)'; redraw(); } }).catch(function () {});
+    getJSON('data/zones.json').then(function (rows) { zones = rows; zoneHooks.forEach(function (fn) { fn(rows); }); redraw(); }).catch(function () { zoneHooks.forEach(function (fn) { fn([]); }); });
+    $('showRail').addEventListener('change', function (e) { extraShow.rail = e.target.checked; redraw(); });
+    $('showCycle').addEventListener('change', function (e) { extraShow.cycle = e.target.checked; redraw(); });
     getJSON('data/signals.json').then(function (rows) { signals = rows; $('sigRow').hidden = false; redraw(); }).catch(function () {});
   }).catch(function (err) {
     if (window.console) { console.warn('IntelliTwin data not loaded:', err && err.message); }

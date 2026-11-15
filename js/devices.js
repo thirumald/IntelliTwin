@@ -144,14 +144,16 @@
       } else { v.src = s; }
       v.addEventListener('error', function () { $('videoNote').textContent = 'The stream could not be played in this browser. For HLS streams set devices.hlsScript in config.js.'; });
     } else {
-      var samples = CFG.devices.sampleVideos || [], idx = cams.indexOf(c), sample = samples.length ? samples[Math.max(0, idx) % samples.length] : null;
+      var allSamples = CFG.devices.sampleVideos || [], idx = Math.max(0, cams.indexOf(c)), cls = C.edges()[c.edge] ? C.edges()[c.edge].c : 2;
+      var fit = allSamples.filter(function (v) { return !v.classes || v.classes.indexOf(cls) >= 0; }), samples = fit.length ? fit : allSamples;
+      var sample = samples.length ? samples[idx % samples.length] : null;
       if (sample) {
         // Real traffic footage as a stand-in: the clip is not this camera's feed, and the window says so.
         var sv = document.createElement('video'); sv.controls = true; sv.autoplay = true; sv.muted = true; sv.loop = true; sv.playsInline = true;
         sample.sources.forEach(function (u) { var so = document.createElement('source'); so.src = u; sv.appendChild(so); });
         body.appendChild(sv);
-        $('videoSub').textContent = 'Sample footage · not this camera';
-        $('videoNote').textContent = 'Real traffic footage used as a stand-in until this camera has a stream in config.js. It is not Abu Dhabi and not this camera\u2019s feed. ' + sample.credit + '.';
+        $('videoSub').textContent = 'Sample footage' + (sample.kind ? ' · ' + sample.kind : '') + ' · recorded, not this camera';
+        $('videoNote').textContent = 'Real traffic footage used as a stand-in until this camera has a stream in config.js. It is recorded, not live, not Abu Dhabi and not this camera\u2019s feed. ' + sample.credit + '.';
         var failed = false, giveUp = function () {
           if (failed || open !== c) { return; }
           failed = true; body.innerHTML = ''; synthetic(c, body, 'The sample footage could not be played in this browser. ');

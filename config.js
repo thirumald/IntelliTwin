@@ -19,8 +19,8 @@ window.INTELLITWIN_CONFIG = {
 
   /* ---- Start-up view ------------------------------------------------------------------------- */
   start: {
-    mode: 'replay',             // 'replay' = today from the current time at the rate below; 'live' = follow the clock
-    rate: 30,                   // playback speed: 1, 30, 120 or 600
+    mode: 'live',               // 'live' = follow the Abu Dhabi clock in real time; 'replay' = today at the rate below
+    rate: 30,                   // replay speed when not live: 1, 30, 120 or 600
     fullView: true,             // open with the panel, legend and site shortcuts minimised
     focus: 'most-congested',    // 'most-congested' = open on the slowest busy road; 'all' = whole study area
     orbit: true                 // circle the camera around the opening view
@@ -51,17 +51,19 @@ window.INTELLITWIN_CONFIG = {
     // synthetic view drawn from the simulated traffic at that location.
     cameras: [],
     // Real traffic footage shown by cameras that have no stream of their own. These clips are filmed
-    // in Chicago, not Abu Dhabi, and are not the camera's feed; the camera window says so.
+    // in other cities, not Abu Dhabi, are recorded (not live) and are not the camera's feed; the camera window says so.
     // The first source is an MP4 copy kept in this repository (made by the "Fetch sample media" workflow),
     // which plays on every browser including iPhones; the others are the Wikimedia originals.
-    // Each entry: { sources: [urls tried in order], credit }. Set to [] to use the synthetic view only.
-    sampleVideos: [
-      { sources: ['assets/video/lake-shore-drive.mp4', 'https://upload.wikimedia.org/wikipedia/commons/transcoded/d/d5/Lake_Shore_Drive_Traffic.webm/Lake_Shore_Drive_Traffic.webm.480p.vp9.webm',
-          'https://commons.wikimedia.org/wiki/Special:FilePath/Lake_Shore_Drive_Traffic.webm'],
-        credit: '"Lake Shore Drive Traffic" by Sea Cow, CC BY-SA 4.0, Wikimedia Commons' },
-      { sources: ['assets/video/byrne-interchange.mp4', 'https://upload.wikimedia.org/wikipedia/commons/transcoded/9/90/Jane_M._Byrne_Interchange_Traffic.webm/Jane_M._Byrne_Interchange_Traffic.webm.480p.vp9.webm',
-          'https://commons.wikimedia.org/wiki/Special:FilePath/Jane_M._Byrne_Interchange_Traffic.webm'],
-        credit: '"Jane M. Byrne Interchange Traffic" by Sea Cow, CC BY-SA 4.0, Wikimedia Commons' }
+    // Each entry: { kind, classes: road classes it suits (0 motorway … 4 tertiary), sources: [urls tried in order], credit }. Set to [] to use the synthetic view only.
+sampleVideos: [
+      { kind: 'Aerial interchange', classes: [0, 1], sources: ['assets/video/byrne-interchange.mp4', 'https://commons.wikimedia.org/wiki/Special:FilePath/Jane_M._Byrne_Interchange_Traffic.webm'],
+        credit: '"Jane M. Byrne Interchange Traffic" (Chicago) by Sea Cow, CC BY-SA 4.0, Wikimedia Commons' },
+      { kind: 'Urban expressway', classes: [0, 1, 2], sources: ['assets/video/lake-shore-drive.mp4', 'https://commons.wikimedia.org/wiki/Special:FilePath/Lake_Shore_Drive_Traffic.webm'],
+        credit: '"Lake Shore Drive Traffic" (Chicago) by Sea Cow, CC BY-SA 4.0, Wikimedia Commons' },
+      { kind: 'Highway', classes: [0, 1], sources: ['assets/video/houston-highway.mp4', 'https://commons.wikimedia.org/wiki/Special:FilePath/Highway_610_near_Braeswood_Blvd_in_Houston_Texas.webm'],
+        credit: '"Highway 610 near Braeswood Blvd in Houston Texas" by the Texas Army National Guard, public domain, Wikimedia Commons' },
+      { kind: 'City street', classes: [2, 3, 4], sources: ['assets/video/city-street.mp4', 'https://commons.wikimedia.org/wiki/Special:FilePath/Causeway_Bay_Time-lapse_videos_(afternoon).ogv'],
+        credit: '"Causeway Bay Time-lapse videos (afternoon)" (Hong Kong), CC0, Wikimedia Commons' }
     ],
     syntheticCameras: 40,
     syntheticDetectors: 80,
@@ -91,6 +93,79 @@ window.INTELLITWIN_CONFIG = {
 
   /* ---- Forecast ------------------------------------------------------------------------------ */
   forecast: { horizonsMin: [15, 30, 60] },
+
+  /* ---- Vehicle types ------------------------------------------------------------------------- */
+  // The simulation has one vehicle type. The app draws and reports a mix of types using these
+  // ASSUMED shares; replace them with fleet or classified-count data when available.
+  vehicles: {
+    mix: [
+      { id: 'car', label: 'Cars', share: 0.69 },
+      { id: 'taxi', label: 'Taxis', share: 0.08 },
+      { id: 'van', label: 'Vans and pick-ups', share: 0.10 },
+      { id: 'lorry', label: 'Lorries', share: 0.05 },
+      { id: 'bus', label: 'Buses and staff buses', share: 0.03 },
+      { id: 'moto', label: 'Motorcycles', share: 0.05 }
+    ]
+  },
+
+  /* ---- Response routing ---------------------------------------------------------------------- */
+  // Quickest route from the nearest response unit to a critical alert, over the road network at
+  // current speeds. Unit positions are synthetic placeholders: replace with real bases.
+  response: {
+    auto: true,                 // route automatically when a critical alert is pushed
+    speedFactor: 1.25,          // response vehicles travel this much faster than surrounding traffic
+    bases: [
+      { name: 'Patrol unit, Downtown', lon: 54.3570, lat: 24.4870 },
+      { name: 'Patrol unit, Al Reem', lon: 54.4050, lat: 24.4980 },
+      { name: 'Patrol unit, Grand Mosque district', lon: 54.4750, lat: 24.4128 },
+      { name: 'Patrol unit, Mussafah', lon: 54.5000, lat: 24.3550 },
+      { name: 'Patrol unit, Mohamed Bin Zayed City', lon: 54.5450, lat: 24.3400 },
+      { name: 'Patrol unit, Khalifa City', lon: 54.5770, lat: 24.4200 },
+      { name: 'Patrol unit, Yas Island', lon: 54.6031, lat: 24.4672 }
+    ]
+  },
+
+  /* ---- Critical zones ------------------------------------------------------------------------ */
+  // Sites watched for traffic problems around them. Positions come from OpenStreetMap through the
+  // data build; add your own in "custom". A site goes on WATCH when traffic within its radius is
+  // slow, and into ALERT when it is very slow or an accident or event is active inside the radius.
+  zones: {
+    radiusM: 500,
+    watchRatioBelow: 0.6,           // traffic speed as a share of the limit
+    alertRatioBelow: 0.4,
+    minVehicles: 25,                // ignore near-empty surroundings
+    alert: true,                    // raise an alert when a site goes into ALERT
+    types: {
+      defence: { label: 'Defence site', priority: 3 },
+      embassy: { label: 'Embassy', priority: 3 },
+      government: { label: 'Government building', priority: 2 },
+      police: { label: 'Police station', priority: 2 },
+      hospital: { label: 'Hospital', priority: 3 },
+      fire: { label: 'Fire station', priority: 2 },
+      airport: { label: 'Airport', priority: 3 },
+      school: { label: 'School', priority: 2 },
+      university: { label: 'University or college', priority: 1 }
+    },
+    // Your own sites: { type, name, lon, lat }. "type" may be any key above or a new one.
+    custom: []
+  },
+
+  /* ---- Predictive analytics ------------------------------------------------------------------ */
+  // Planning-level projections computed in the browser. Every number here is an assumption.
+  analytics: {
+    growthPerYear: 0.05,              // traffic growth a year
+    horizonYears: 10,
+    bprAlpha: 0.6, bprBeta: 4,        // volume-delay curve: speed ratio = 1 / (1 + a·x^b)
+    criticalRatio: 0.4,               // a road is "critical" when its peak speed is under this share of its limit
+    roadsToWiden: 10,                 // size of the widening programme tested
+    signalsToUpgrade: 25,             // junctions given adaptive control in the test
+    adaptiveSignalDelayReduction: 0.12,
+    valueOfTimeAedPerHour: 40,
+    workingDaysPerYear: 250,
+    co2: { baseGPerKm: 150, congestionGKmh: 2500 },     // g/km = base + congestion ÷ speed (km/h)
+    // Population, as quoted from Statistics Centre Abu Dhabi 2024 figures on a third-party site. Verify before reuse.
+    population: { emirate: 4135985, abuDhabiRegion: 2823340, alAinRegion: 986910, alDhafraRegion: 325735, growthPerYear: 0.075, year: 2024 }
+  },
 
   /* ---- What-if closure (estimated in the browser, not re-simulated) --------------------------- */
   closure: { radiusM: 1500, speedLoss: 0.4, extraVehicles: 0.3 },

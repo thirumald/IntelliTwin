@@ -94,7 +94,7 @@
     if (e && a.everyAccident) {
       e.active.forEach(function (x) {
         var sv = x.severity === 'Serious injury' ? 3 : x.severity === 'Minor injury' ? 2 : 1;
-        out.push({ key: 'acc:' + x.road + ':' + Math.round(x.t), sev: sv, title: (sv === 3 ? 'Serious accident: ' : 'Accident: ') + x.road,
+        out.push({ at: [x.lon, x.lat], key: 'acc:' + x.road + ':' + Math.round(x.t), sev: sv, title: (sv === 3 ? 'Serious accident: ' : 'Accident: ') + x.road,
           sub: x.severity + ' · reported ' + clock(x.t) + ' · illustrative', go: function () { C.flyTo(x.lon, x.lat); } });
       });
     } else if (e && a.seriousAccident) {
@@ -103,14 +103,26 @@
       });
     }
     opsEvents().forEach(function (ev) {
-      out.push({ key: ev.key, sev: ev.type.sev, title: ev.type.text + ': ' + ev.cam.name, sub: ev.cam.id + ' · raised ' + clock(ev.t) + ' · synthetic',
+      out.push({ at: [ev.cam.lon, ev.cam.lat], key: ev.key, sev: ev.type.sev, title: ev.type.text + ': ' + ev.cam.name, sub: ev.cam.id + ' · raised ' + clock(ev.t) + ' · synthetic',
         go: function () { if (ev.type.text === 'Camera offline') { C.flyTo(ev.cam.lon, ev.cam.lat, 15); } if (ev.type.text !== 'Camera offline' && T.devices) { T.devices.openCamera(ev.cam.id); } } });
     });
+    // Critical sites in alert (defence, embassies, hospitals, schools …).
+    if (CFG.zones && CFG.zones.alert && T.zones) {
+      T.zones.alerts().slice(0, 6).forEach(function (s) {
+        out.push({ at: [s.lon, s.lat], key: 'zone:' + s.id, sev: (CFG.zones.types[s.type] || {}).priority >= 3 ? 3 : 2, title: T.zones.label(s.type) + ' zone: ' + s.name, sub: s.reason,
+          go: function () { T.zones.open(s); } });
+      });
+    }
     C.roadStats(C.binNow(), a.roadMinVehicles).filter(function (r) { return r.ratio < a.roadRatioBelow; }).slice(0, 8).forEach(function (r) {
       out.push({ sev: 1, title: 'Severe congestion: ' + r.name, sub: Math.round(r.speed) + ' km/h · ' + Math.round(r.ratio * 100) + '% of limit · ' + num(r.vehicles) + ' vehicles', go: function () { C.locate(r.g); } });
     });
     out.sort(function (x, y) { return y.sev - x.sev; });
     return out;
+  }
+  // Opening an alert: go to it and, when it has a location and matters, draw the quickest response route.
+  function act(al) {
+    if (al.go) { al.go(); }
+    if (al.at && al.sev >= 2 && T.response) { T.response.routeTo(al.at[0], al.at[1], al.title, { fit: al.sev >= 3 }); }
   }
   // Push: every alert that was not active a minute ago is shown as a notification.
   var known = null, toastCount = 0;
@@ -121,7 +133,9 @@
     t.type = 'button'; t.className = 'toast sev' + al.sev;
     t.innerHTML = '<strong></strong><span></span><em>' + clock(state.t) + ' · synthetic data</em>';
     t.querySelector('strong').textContent = al.title; t.querySelector('span').textContent = al.sub;
-    t.addEventListener('click', function () { if (al.go) { al.go(); } t.remove(); });
+    t.addEventListener('click', function () { act(al); t.remove(); });
+    // A critical alert gets the quickest response route straight away (without moving the map).
+    if (al.sev >= 3 && al.at && T.response && T.response.auto()) { T.response.routeTo(al.at[0], al.at[1], al.title, { fit: false }); }
     box.appendChild(t);
     setTimeout(function () { t.remove(); }, CFG.alerts.pushSeconds * 1000);
     if (document.hidden && window.Notification && Notification.permission === 'granted') {
@@ -145,7 +159,7 @@
     $('alertNote').textContent = current.length ? current.length + ' active' : '';
     var list = $('alertList'); list.innerHTML = '';
     current.slice(0, CFG.alerts.maxShown).forEach(function (al) {
-      list.appendChild(C.listButton(al.sev >= 3 ? 'acc-active' : al.sev === 2 ? 'severe' : 'heavy', al.title, al.sub, '', al.go));
+      list.appendChild(C.listButton(al.sev >= 3 ? 'acc-active' : al.sev === 2 ? 'severe' : 'heavy', al.title, al.sub, '', function () { act(al); }));
     });
     if (!current.length) { list.innerHTML = '<li class="muted">No alerts at this time.</li>'; }
   }
@@ -232,7 +246,7 @@
   }
 
   /* ---------- start ---------- */
-  T.ops = { closeRoad: closeRoad, alerts: function () { return current; }, can: can, user: function () { return user; } };
+  T.ops = { events: opsEvents, closeRoad: closeRoad, alerts: function () { return current; }, can: can, user: function () { return user; } };
   C.onReady(function () {
     initAuth();
     C.majorRoads().forEach(function (g) { var o = document.createElement('option'); o.value = o.textContent = g.name; $('closureRoad').appendChild(o); });

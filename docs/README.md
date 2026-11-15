@@ -10,6 +10,8 @@ Technical and data-source documentation for the IntelliTwin Abu Dhabi mobility t
 | [data-format.md](data-format.md) | The static files in `data/` that the app reads |
 | [operations.md](operations.md) | Running the pipeline on GitHub Actions or locally, configuration, secrets, deployment |
 | [configuration.md](configuration.md) | Every setting in `config.js`, camera video, roles, integration points |
+| [analytics.md](analytics.md) | The predictive analytics view: sections, method and assumptions |
+| [zones-and-response.md](zones-and-response.md) | Critical-zone monitoring, response routing, vehicle types, railway and cycle layers |
 | [assistant.md](assistant.md) | The built-in assistant and how to connect a language model |
 | [limitations.md](limitations.md) | Calibration status, known limits, disclaimer |
 | [reference-figures.md](reference-figures.md) | Published and third-party figures used as benchmarks |
