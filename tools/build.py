@@ -18,6 +18,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config as C  # noqa: E402
+import regions as R  # noqa: E402
 
 import sumolib  # noqa: E402
 
@@ -374,10 +375,66 @@ ZONE_RULES = [  # (type, tag key, accepted values or None for any)
 ]
 
 
+def synthetic_traffic(net, edges, n_bins, out_dir, centre, total_trips):
+    """Traffic for a region without a simulation: a volume-delay pattern by road class, lanes, distance from
+    the centre and time of day. It fills the same files as the SUMO export so the app reads both alike.
+    These figures are a PATTERN, not a simulation result and not measurements."""
+    rng = np.random.default_rng(C.SEED)
+    n = len(edges)
+    per_lane = {"motorway": 1400, "trunk": 1100, "primary": 700, "secondary": 450, "tertiary": 250}   # vehicles per hour per lane at the peak
+    cap_lane = {"motorway": 1900, "trunk": 1600, "primary": 1100, "secondary": 800, "tertiary": 550}
+    cls = [edge_class(e)[0] for e in edges]
+    lanes = np.array([e.getLaneNumber() for e in edges], dtype=float)
+    ff = np.array([e.getSpeed() for e in edges])
+    length = np.array([e.getLength() for e in edges])
+    peak = np.array([per_lane.get(c, 250) for c in cls]) * lanes
+    cap = np.array([cap_lane.get(c, 550) for c in cls]) * lanes
+    mid = np.array([net.convertXY2LonLat(*e.getShape()[len(e.getShape()) // 2]) for e in edges])
+    dist_km = np.hypot((mid[:, 0] - centre[0]) * 101.0, (mid[:, 1] - centre[1]) * 110.6)
+    central = 0.55 + 0.75 * np.exp(-dist_km / 9.0)                    # busier towards the centre
+    local = np.clip(rng.lognormal(0.0, 0.35, n), 0.35, 1.9)           # road-to-road variation
+    profile = np.interp(np.arange(n_bins) * C.BIN_SECONDS, np.arange(len(C.DEPART_PROFILE)) * 900.0, C.DEPART_PROFILE)
+    profile = profile / profile.max()
+    scenarios, base_km = [], None
+    for sc in C.SCENARIOS:
+        ratio = np.zeros((n_bins, n), dtype=np.uint8)
+        occ = np.zeros((n_bins, n), dtype=np.float32)
+        kpis, vkm = [], 0.0
+        for b in range(n_bins):
+            flow = peak * central * local * profile[b] * sc["demand"]             # vehicles per hour
+            r = np.clip(1.0 / (1.0 + 0.6 * (flow / cap) ** 4), 0.12, 1.0)          # speed as a share of the limit
+            secs = flow * C.BIN_SECONDS / 3600.0 * length / (ff * r)                 # vehicle-seconds on the link
+            ratio[b] = np.round(100 * r)
+            occ[b] = secs
+            v = ff * r
+            tot, free = secs.sum(), (secs * r).sum()
+            vkm += (secs * v).sum() / 1000.0
+            kpis.append({"speed": round(3.6 * (secs * v).sum() / tot, 1) if tot else None, "vehicles": int(round(tot / C.BIN_SECONDS)),
+                         "extra": round(100 * (tot / free - 1), 1) if free else 0, "delay_h": round((tot - free) / 3600 * (3600 / C.BIN_SECONDS))})
+        ratio.tofile(os.path.join(out_dir, sc["id"] + "_speed.bin"))
+        np.minimum(np.round(occ / 10), 65535).astype("<u2").tofile(os.path.join(out_dir, sc["id"] + "_occ.bin"))
+        if base_km is None:
+            base_km = vkm
+        scenarios.append({**sc, "trips": int(total_trips * sc["demand"]), "shown_trips": 0, "stats": {"completed": 0}, "bins": kpis})
+    return scenarios, {"total_vehicle_km": round(base_km), "trip_ends": "not simulated: synthetic traffic pattern"}
+
+
 def export_extra(osm_file, out_dir):
     """Railways, cycle tracks and critical sites straight from OpenStreetMap (no simulation involved)."""
     west, south, east, north = C.BBOX
-    nodes, rail, cycle, zones = {}, [], [], []
+    nodes, rail, cycle, zones, energy = {}, [], [], [], []
+
+    def add_energy(tags, lon, lat):
+        kind = tags.get("amenity")
+        if kind in ("fuel", "charging_station") and west <= lon <= east and south <= lat <= north:
+            name = tags.get("name:en") or tags.get("name") or tags.get("brand:en") or tags.get("brand") or tags.get("operator") or ""
+            sockets = 0
+            for k, v in tags.items():
+                if k.startswith("socket:") and k.count(":") == 1 and str(v).isdigit():
+                    sockets += int(v)
+            cap = tags.get("capacity", "")
+            energy.append(["ev" if kind == "charging_station" else "fuel", name, round(lon, 5), round(lat, 5),
+                           tags.get("brand:en") or tags.get("brand") or tags.get("operator") or "", sockets or (int(cap) if str(cap).isdigit() else 0)])
 
     def zone_type(tags):
         for ztype, key, values in ZONE_RULES:
@@ -396,7 +453,9 @@ def export_extra(osm_file, out_dir):
             lon, lat = float(el.get("lon")), float(el.get("lat"))
             nodes[el.get("id")] = (lon, lat)
             if len(el):
-                add_zone({t.get("k"): t.get("v") for t in el.findall("tag")}, lon, lat)
+                ntags = {t.get("k"): t.get("v") for t in el.findall("tag")}
+                add_zone(ntags, lon, lat)
+                add_energy(ntags, lon, lat)
             el.clear()
         elif el.tag == "way":
             tags = {t.get("k"): t.get("v") for t in el.findall("tag")}
@@ -409,7 +468,9 @@ def export_extra(osm_file, out_dir):
                 elif inside and tags.get("highway") == "cycleway":
                     cycle.append(line)
                 else:
-                    add_zone(tags, sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts))
+                    cx, cy = sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts)
+                    add_zone(tags, cx, cy)
+                    add_energy(tags, cx, cy)
             el.clear()
 
     # One marker per site: drop repeats of the same type within about 150 m (a campus mapped as several objects).
@@ -425,13 +486,19 @@ def export_extra(osm_file, out_dir):
                 total += math.hypot((ln[i + 2] - ln[i]) * 101.4, (ln[i + 3] - ln[i + 1]) * 110.6)
         return round(total)
 
-    for name, data in (("rail.json", rail), ("cycle.json", cycle), ("zones.json", kept)):
+    # Fuel and EV charging stations: one per site (a station mapped as a node and as an area is kept once).
+    stations = []
+    for e in sorted(energy, key=lambda e: (e[0], -len(e[1]))):
+        if not any(k[0] == e[0] and abs(k[2] - e[2]) < 0.0006 and abs(k[3] - e[3]) < 0.0006 for k in stations):
+            stations.append(e)
+    for name, data in (("rail.json", rail), ("cycle.json", cycle), ("zones.json", kept), ("energy.json", stations)):
         with open(os.path.join(out_dir, name), "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
     counts = {}
     for z in kept:
         counts[z[0]] = counts.get(z[0], 0) + 1
-    return {"rail_km": km(rail), "cycle_km": km(cycle), "zones": counts}
+    return {"rail_km": km(rail), "cycle_km": km(cycle), "zones": counts,
+            "fuel_stations": sum(1 for e in stations if e[0] == "fuel"), "ev_stations": sum(1 for e in stations if e[0] == "ev")}
 
 
 def main():
@@ -442,9 +509,18 @@ def main():
     ap.add_argument("--osm-timestamp", default="")
     ap.add_argument("--scale", type=float, default=1.0, help="scale demand (for small test networks)")
     ap.add_argument("--extra", default="", help="OSM file with railways, cycle tracks and critical sites")
+    ap.add_argument("--region", default="", help="region id from tools/regions.py; empty = Abu Dhabi city (the default study area)")
+    ap.add_argument("--mode", default="sumo", choices=["sumo", "synthetic"], help="sumo = run the simulation; synthetic = traffic pattern without a simulation")
+    ap.add_argument("--no-buildings", action="store_true", help="skip the building footprints")
     args = ap.parse_args()
     os.makedirs(args.build, exist_ok=True)
     os.makedirs(args.out, exist_ok=True)
+    region = R.REGIONS.get(args.region) if args.region else None
+    if args.region and not region:
+        raise SystemExit(f"unknown region {args.region}")
+    centre = ((C.BBOX[0] + C.BBOX[2]) / 2, (C.BBOX[1] + C.BBOX[3]) / 2)
+    if region:
+        C.BBOX, C.TOTAL_VEHICLE_TRIPS, centre = tuple(region["bbox"]), region["trips"], region["centre"]
     C.TOTAL_VEHICLE_TRIPS = int(C.TOTAL_VEHICLE_TRIPS * args.scale)
 
     net_file = os.path.join(args.build, "net.net.xml")
@@ -466,6 +542,8 @@ def main():
     km_by_class = export_roads(net, edges, os.path.join(args.out, "roads.json"), osm_names(args.osm))
     bld, buildings = None, {"available": False, "reason": "not attempted"}
     try:
+        if args.no_buildings or args.mode == "synthetic":
+            raise RuntimeError("skipped for this build")
         import buildings as B
         bld = B.load(args.build)
         with open(os.path.join(args.out, "buildings.json"), "w") as f:
@@ -476,24 +554,29 @@ def main():
         buildings = {"available": False, "reason": f"{type(exc).__name__}: {exc}"[:200]}
     print("buildings:", buildings, flush=True)
 
-    trip_files, trip_counts, demand_stats = make_demand(net, edges, args.build, bld)
-
     n_bins = (C.SIM_END - C.SIM_BEGIN) // C.BIN_SECONDS
-    scenarios = []
-    # The scenarios are independent, so their simulations run side by side.
-    running = {sc["id"]: simulate(net_file, trip_files[sc["id"]], args.build, sc["id"]) for sc in C.SCENARIOS}
-    for sc in C.SCENARIOS:
-        out, proc, log = running[sc["id"]]
-        code = proc.wait()
-        log.close()
-        print(open(log.name).read()[-1500:], flush=True)
-        if code != 0:
-            raise RuntimeError(f"sumo failed for scenario {sc['id']} (exit {code})")
-        kpis = export_edgedata(out["edgedata"], edge_index, edges, n_bins, os.path.join(args.out, sc["id"]))
-        shown = export_trips(out["vehroute"], net, shapes, os.path.join(args.out, f"{sc['id']}_trips.bin"))
-        scenarios.append({**sc, "trips": trip_counts[sc["id"]], "shown_trips": shown,
-                          "stats": trip_stats(out["tripinfo"]), "bins": kpis})
-        print(sc["id"], scenarios[-1]["stats"], flush=True)
+    if args.mode == "synthetic":
+        scenarios, demand_stats = synthetic_traffic(net, edges, n_bins, args.out, centre, C.TOTAL_VEHICLE_TRIPS)
+        print("synthetic traffic:", [(sc["id"], sc["bins"][18]["speed"], sc["bins"][18]["vehicles"]) for sc in scenarios], flush=True)
+    else:
+        trip_files, trip_counts, demand_stats = make_demand(net, edges, args.build, bld)
+
+        scenarios = []
+        # The scenarios are independent, so their simulations run side by side.
+        running = {sc["id"]: simulate(net_file, trip_files[sc["id"]], args.build, sc["id"]) for sc in C.SCENARIOS}
+        for sc in C.SCENARIOS:
+            out, proc, log = running[sc["id"]]
+            code = proc.wait()
+            log.close()
+            print(open(log.name).read()[-1500:], flush=True)
+            if code != 0:
+                raise RuntimeError(f"sumo failed for scenario {sc['id']} (exit {code})")
+            kpis = export_edgedata(out["edgedata"], edge_index, edges, n_bins, os.path.join(args.out, sc["id"]))
+            # The trip sample is only kept for the default study area; the app draws vehicles from the link statistics.
+            shown = 0 if args.region else export_trips(out["vehroute"], net, shapes, os.path.join(args.out, f"{sc['id']}_trips.bin"))
+            scenarios.append({**sc, "trips": trip_counts[sc["id"]], "shown_trips": shown,
+                              "stats": trip_stats(out["tripinfo"]), "bins": kpis})
+            print(sc["id"], scenarios[-1]["stats"], flush=True)
 
     # Buses in the app are a synthetic example network (js/buses.js). The real timetable import is off
     # unless GTFS_ENABLED is set in tools/config.py.
@@ -515,6 +598,7 @@ def main():
         "built": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "osm_timestamp": args.osm_timestamp.strip() or "unknown",
         "sumo": subprocess.run(["sumo", "--version"], capture_output=True, text=True).stdout.splitlines()[0].strip(),
+        "region": args.region or "abudhabi", "region_name": region["name"] if region else "Abu Dhabi", "traffic": "simulated" if args.mode == "sumo" else "synthetic",
         "bbox": C.BBOX, "sim_begin": C.SIM_BEGIN, "sim_end": C.SIM_END,
         "display_begin": C.DISPLAY_BEGIN, "bin_seconds": C.BIN_SECONDS, "bins": n_bins,
         "trip_sample": C.TRIP_SAMPLE, "sim_sample": C.SIM_SAMPLE,
