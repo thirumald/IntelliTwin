@@ -69,9 +69,9 @@
   var meta, edges = [], names = [], groups = [], scen = {}, buses = null, buildings = null, signals = null;
   var rail = null, cycle = null, zones = null, extraShow = { rail: true, cycle: true };
   var map = null, overlay = null, popup = null, vectorBase = false;
-  var state = { t: 8 * 3600, playing: true, rate: 1, scenario: 'base', mode: 'live', date: '', cars: true, buses: true, bld: false, acc: true, sites: true };
+  var state = { t: 8 * 3600, playing: true, rate: 1, scenario: 'base', mode: 'live', date: '', cars: true, buses: true, bld: false, acc: true, sites: true, people: true };
   var day = null, baseDay = null, ev = null, evCache = {}, calib = {}, fx = null;      // fx: what-if closure effect
-  var startFocus = '', zoneHooks = [];
+  var startFocus = '', zoneHooks = [], peopleInView = 0, theme = 'dark', setTheme = function () {};
   var dirty = true, orbiting = false, layerProviders = [], minuteHooks = [], readyHooks = [];
   var carProgress = null, simDt = 0, prevT = 0, visibleEdges = [], visibleKey = '';
 
@@ -132,7 +132,10 @@
   }
 
   function setMode(m) {
+    // Live runs in real time (1×). Leaving Live for replay switches to the configured replay speed.
+    var wasLive = state.mode === 'live';
     state.mode = m;
+    if (m === 'live') { setRate(1); } else if (wasLive && state.rate === 1) { setRate((CFG.start && CFG.start.rate) || 30); }
     Array.prototype.forEach.call($('mode').children, function (b) {
       var on = b.getAttribute('data-mode') === m; b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false');
     });
@@ -176,47 +179,80 @@
   function initMap() {
     var b = meta.bbox;
     try {
-      // Vector base map (configurable). If it cannot be loaded, fall back to raster tiles, dimmed for the dark theme.
-      var RASTER = {
-        version: 8,
-        sources: { base: { type: 'raster', tileSize: 256, maxzoom: 19, tiles: CFG.map.rasterTiles, attribution: CFG.map.rasterAttribution } },
-        layers: [
-          { id: 'bg', type: 'background', paint: { 'background-color': '#0a101c' } },
-          { id: 'base', type: 'raster', source: 'base', paint: { 'raster-opacity': 0.9, 'raster-brightness-max': 0.42, 'raster-saturation': -0.55, 'raster-contrast': 0.1 } }
-        ]
+      // Base map in a dark or a light theme (both configurable). Each theme has a vector style and a raster
+      // fallback for when the vector style cannot be loaded.
+      var rasterStyle = function (th) {
+        var light = th === 'light';
+        return {
+          version: 8,
+          sources: { base: { type: 'raster', tileSize: 256, maxzoom: 19, tiles: CFG.map.rasterTiles, attribution: CFG.map.rasterAttribution } },
+          layers: [
+            { id: 'bg', type: 'background', paint: { 'background-color': light ? '#e3f1e4' : '#0a101c' } },
+            { id: 'base', type: 'raster', source: 'base', paint: light ? { 'raster-opacity': 0.85, 'raster-saturation': -0.25 } :
+              { 'raster-opacity': 0.9, 'raster-brightness-max': 0.42, 'raster-saturation': -0.55, 'raster-contrast': 0.1 } }
+          ]
+        };
       };
-      map = new maplibregl.Map({
-        container: 'map', style: CFG.map.styleUrl || RASTER,
-        bounds: [[b[0], b[1]], [b[2], b[3]]], fitBoundsOptions: { padding: 10 },
-        minZoom: 8, maxZoom: 19, maxPitch: 70, attributionControl: false
-      });
-      map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
-      var fellBack = !CFG.map.styleUrl;
-      var fallback = function () { if (!vectorBase && !fellBack) { fellBack = true; map.setStyle(RASTER); } };
-      map.on('error', fallback);
-      setTimeout(fallback, 8000);
-      map.once('load', function () {
-        if (fellBack) { return; }
+      var styleUrl = function (th) { return th === 'light' ? CFG.map.styleUrlLight : CFG.map.styleUrl; };
+      // After a vector style loads: tint the light theme pale green and extrude the buildings.
+      var dress = function () {
+        var st = map.getStyle(); if (!st || !st.sources) { return; }
+        var light = theme === 'light', src = Object.keys(st.sources).filter(function (k) { return st.sources[k].type === 'vector'; })[0];
+        if (!src) { return; }
         vectorBase = true;
-        if (!CFG.map.buildings3d) { return; }
-        // Extrude OpenStreetMap buildings from the vector tiles for the 3D view.
-        var sources = map.getStyle().sources, src = Object.keys(sources).filter(function (k) { return sources[k].type === 'vector'; })[0];
-        if (src && !map.getLayer('itw-buildings')) {
+        if (light) { (st.layers || []).forEach(function (ly) { if (ly.type === 'background') { try { map.setPaintProperty(ly.id, 'background-color', CFG.map.lightTint || '#e3f1e4'); } catch (e1) { /* keep the style's own colour */ } } }); }
+        if (CFG.map.buildings3d && !map.getLayer('itw-buildings')) {
           try {
             map.addLayer({
               id: 'itw-buildings', type: 'fill-extrusion', source: src, 'source-layer': 'building', minzoom: 13,
               paint: {
-                'fill-extrusion-color': ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 6], 0, '#2b3850', 60, '#42557a', 200, '#5f77a6'],
+                'fill-extrusion-color': light ? ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 6], 0, '#dfe7dd', 60, '#c3d3c6', 200, '#a9c0b0'] :
+                  ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 6], 0, '#2b3850', 60, '#42557a', 200, '#5f77a6'],
                 'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 6],
                 'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
-                'fill-extrusion-opacity': 0.9
+                'fill-extrusion-opacity': 0.92, 'fill-extrusion-vertical-gradient': true
               }
             });
           } catch (err) { /* the style has no building layer: keep the flat map */ }
         }
+      };
+      var loadSeq = 0;
+      setTheme = function (th) {
+        theme = th === 'light' ? 'light' : 'dark';
+        document.body.classList.toggle('map-light', theme === 'light');
+        $('themeBtn').textContent = theme === 'light' ? 'Dark map' : 'Light map';
+        var seq = ++loadSeq, url = styleUrl(theme), done = false;
+        vectorBase = false;
+        var fallback = function () { if (!done && seq === loadSeq) { done = true; map.setStyle(rasterStyle(theme)); } };
+        if (!url) { fallback(); return; }
+        map.setStyle(url);
+        var onStyle = function () {
+          if (seq !== loadSeq || done) { map.off('style.load', onStyle); return; }
+          var st = map.getStyle(), hasVector = st && Object.keys(st.sources || {}).some(function (k) { return st.sources[k].type === 'vector'; });
+          if (hasVector) { done = true; map.off('style.load', onStyle); dress(); }       // ignore the raster placeholder's own load event
+        };
+        map.on('style.load', onStyle);
+        setTimeout(fallback, 8000);
+        dirty = true; roadLayer = null;
+      };
+      theme = CFG.map.theme === 'light' ? 'light' : 'dark';
+      map = new maplibregl.Map({
+        container: 'map', style: rasterStyle(theme),
+        bounds: [[b[0], b[1]], [b[2], b[3]]], fitBoundsOptions: { padding: 10 },
+        minZoom: 8, maxZoom: 19, maxPitch: 70, attributionControl: false
       });
+      map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
+      map.on('error', function () { /* tile or style errors are handled by the fallback timer */ });
+      setTheme(theme);
       map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-left');
-      overlay = new deck.MapboxOverlay({ interleaved: false, layers: [] });
+      // Sun-like lighting so 3D vehicles, people and buildings have lit and shaded faces.
+      var effects = [];
+      try {
+        effects = [new deck.LightingEffect({ ambient: new deck.AmbientLight({ color: [255, 255, 255], intensity: 1.15 }),
+          sun: new deck.DirectionalLight({ color: [255, 244, 228], intensity: 2.4, direction: [-1.2, -2, -3] }),
+          fill: new deck.DirectionalLight({ color: [200, 215, 255], intensity: 0.7, direction: [2, 1.5, -1] }) })];
+      } catch (errLight) { effects = []; }
+      overlay = new deck.MapboxOverlay({ interleaved: false, layers: [], effects: effects });
       map.addControl(overlay);
     } catch (e) {
       $('map').innerHTML = '<p style="padding:16px;color:#8fa0bd">The map needs WebGL, which is unavailable in this browser. The panels still work.</p>';
@@ -275,6 +311,7 @@
   function buildLayers() {
     if (!overlay || !scen[state.scenario] || !day) { return; }
     var bin = binOf(state.t), key = state.scenario + ':' + bin + ':' + (fx ? fx.name : ''), ctr = map.getCenter(), zoom = map.getZoom();
+    key += ':' + (zoom >= window.TwinCars.MIN_ZOOM) + ':' + theme;
     var sig = [key, state.t, state.rate, state.cars, state.buses && !!buses, state.bld && !!buildings, state.acc, state.sites, zoom.toFixed(2), ctr.lng.toFixed(4), ctr.lat.toFixed(4), layerStamp].join('|');
     if (sig === drawnSig && roadLayer) { return; }
     drawnSig = sig;
@@ -289,6 +326,7 @@
           return [c[0], c[1], c[2], lv === 'free' ? 110 : 235];
         },
         getWidth: function (e) { return CLASS_WIDTH[e.c] * (e.k ? 0.6 : 1); },
+        widthScale: map.getZoom() >= window.TwinCars.MIN_ZOOM ? 0.16 : 1,
         widthUnits: 'meters', widthMinPixels: 1.2, capRounded: true, jointRounded: true,
         updateTriggers: { getColor: key },
         onClick: function (info) { if (info.object) { roadPopup(info.object.i, info.coordinate); } }
@@ -334,17 +372,29 @@
       });
       simDt = 0;
       if (street) {
-        layers.push(new deck.SimpleMeshLayer({
-          id: 'cars3d', data: cars, mesh: window.TwinCars.MESH,
-          getPosition: function (c) { return c.p; }, getOrientation: function (c) { return [0, c.yaw, 0]; }, getScale: function (c) { return c.s; }, getColor: function (c) { return c.c; },
-          sizeScale: zoom >= 17 ? 1.3 : zoom >= 16 ? 2 : zoom >= 15 ? 3 : 4.5,
-          material: { ambient: 0.5, diffuse: 0.65, shininess: 28, specularColor: [70, 70, 70] }
-        }));
+        var carScale = zoom >= 17 ? 1.3 : zoom >= 16 ? 2 : zoom >= 15 ? 3 : 4.5;
+        var carProps = { data: cars, getPosition: function (c) { return c.p; }, getOrientation: function (c) { return [0, c.yaw, 0]; }, getScale: function (c) { return c.s; }, sizeScale: carScale };
+        // Asphalt under the traffic so vehicles sit on a road surface; the congestion colour stays as the thin line on top.
+        layers.splice(layers.indexOf(roadLayer), 0, new deck.PathLayer({
+          id: 'asphalt', data: visibleEdges, getPath: function (i) { return edges[i].path; }, getColor: theme === 'light' ? [92, 100, 110, 255] : [34, 40, 54, 255],
+          getWidth: function (i) { return edges[i].l * 3.5 + 1; }, widthUnits: 'meters', capRounded: true, jointRounded: true, updateTriggers: { getPath: visibleKey } }));
+        layers.push(new deck.SimpleMeshLayer(Object.assign({ id: 'cars3d', mesh: window.TwinCars.MESH, getColor: function (c) { return c.c; },
+          material: { ambient: 0.42, diffuse: 0.7, shininess: 60, specularColor: [150, 150, 150] } }, carProps)));
+        layers.push(new deck.SimpleMeshLayer(Object.assign({ id: 'cars3d-dark', mesh: window.TwinCars.MESH_DARK, getColor: [26, 30, 40],
+          material: { ambient: 0.35, diffuse: 0.5, shininess: 90, specularColor: [190, 200, 220] } }, carProps)));
+        // People on foot (synthetic) at close zoom.
+        if (state.people && zoom >= 15.2) {
+          var walkers = window.TwinCars.buildPeople({ edges: edges, visible: visibleEdges, t: state.t, lat: ctr.lat, max: 2500, perKm: (CFG.people || {}).perKmByClass || [0, 0, 6, 12, 16] });
+          peopleInView = walkers.length;
+          layers.push(new deck.SimpleMeshLayer({ id: 'people', data: walkers, mesh: window.TwinCars.MESH_PERSON, getPosition: function (w) { return w.p; },
+            getOrientation: function (w) { return [0, w.yaw, 0]; }, getColor: function (w) { return w.c; }, sizeScale: zoom >= 17 ? 1.6 : zoom >= 16 ? 2.4 : 3.4,
+            material: { ambient: 0.5, diffuse: 0.6, shininess: 12 } }));
+        } else { peopleInView = 0; }
       } else {
         layers.push(new deck.ScatterplotLayer({
           id: 'cars', data: cars, radiusUnits: 'pixels', getPosition: function (c) { return c.p; },
-          getFillColor: [255, 255, 255, zoom < 11.5 ? 110 : zoom < 13 ? 170 : 230], getRadius: zoom < 11.5 ? 0.6 : zoom < 13 ? 1 : 1.8,
-          updateTriggers: { getFillColor: zoom < 11.5 ? 0 : zoom < 13 ? 1 : 2 }
+          getFillColor: (theme === 'light' ? [20, 40, 60] : [255, 255, 255]).concat([zoom < 11.5 ? 110 : zoom < 13 ? 170 : 230]), getRadius: zoom < 11.5 ? 0.6 : zoom < 13 ? 1 : 1.8,
+          updateTriggers: { getFillColor: (zoom < 11.5 ? 0 : zoom < 13 ? 1 : 2) + theme }
         }));
       }
     }
@@ -662,6 +712,8 @@
 
     $('showAcc').addEventListener('change', function (e) { state.acc = e.target.checked; });
     $('showSites').addEventListener('change', function (e) { state.sites = e.target.checked; });
+    $('showPeople').addEventListener('change', function (e) { state.people = e.target.checked; redraw(); });
+    $('themeBtn').addEventListener('click', function () { setTheme(theme === 'light' ? 'dark' : 'light'); });
     $('showCars').addEventListener('change', function (e) { state.cars = e.target.checked; });
     $('showBuses').addEventListener('change', function (e) { state.buses = e.target.checked; });
     $('showBld').addEventListener('change', function (e) {
@@ -713,7 +765,7 @@
       occ: function (i) { return occAt(binOf(state.t), i) * 10 / SLOT; }, ratioAt: ratioAt, occAt: function (bin, i) { return occAt(bin, i) * 10 / SLOT; },
       kpiAt: kpiAt, roadStats: roadStats, eventTotals: eventTotals, showPopup: showPopup, flyTo: flyToPoint, locate: locate, listButton: listButton,
       fact: fact, barRow: barRow, addLayers: function (fn) { layerProviders.push(fn); }, onMinute: function (fn) { minuteHooks.push(fn); },
-      startFocus: function () { return startFocus; }, zones: function () { return zones; }, onZones: function (fn) { if (zones) { fn(zones); } else { zoneHooks.push(fn); } },
+      startFocus: function () { return startFocus; }, theme: function () { return theme; }, setTheme: function (th) { setTheme(th); }, peopleInView: function () { return peopleInView; }, zones: function () { return zones; }, onZones: function (fn) { if (zones) { fn(zones); } else { zoneHooks.push(fn); } },
       railKm: function () { return (meta.extra || {}).rail_km || 0; }, cycleKm: function () { return (meta.extra || {}).cycle_km || 0; }, setPlaying: setPlaying,
       onReady: function (fn) { if (meta && day) { fn(); } else { readyHooks.push(fn); } }, redraw: redraw, setClosure: setClosure,
       closure: function () { return fx; }, showTab: showTab, prettyDate: prettyDate, daySeriesKpi: function (id) { var d = id === state.scenario ? day : baseDay, bins = scenarioMeta(id).bins, out = []; for (var s = 0; s < SLOTS; s++) { out.push(bins[d.map[s]]); } return out; }
@@ -793,9 +845,28 @@
     setMode('live');
     // Start-up view from config.js: replay speed, full view, and the camera on the most congested road.
     var st = CFG.start || {};
-    if (st.mode === 'replay') { setMode('hist'); setRate(st.rate || 30); setPlaying(true); } else { setRate(1); }
-    if (st.fullView) { $('legend').classList.add('min'); $('sites').classList.add('min'); setPanel(false); }
+    if (st.mode === 'replay') { setMode('hist'); setRate(st.rate || 30); setPlaying(true); }
+    // Full view at start minimises the panel and legend; the site chips stay so the selected site is visible.
+    if (st.fullView) { $('legend').classList.add('min'); setPanel(false); }
     if (typeof syncFull === 'function') { syncFull(); }
+    if (st.focus === 'most-congested-site' && map) {
+      // Pick the major site (one of the chips) with the slowest traffic around it, and select it.
+      var sb = binOf(state.t), kxs = 111320 * Math.cos(24.4 * Math.PI / 180), worst = null;
+      SITES.forEach(function (site) {
+        var occ = 0, free = 0;
+        for (var ei = 0; ei < edges.length; ei++) {
+          var mp = edges[ei].path[edges[ei].path.length >> 1];
+          if (Math.hypot((mp[0] - site[1]) * kxs, (mp[1] - site[2]) * 110570) > 1500) { continue; }
+          var o = occAt(sb, ei); if (o) { occ += o; free += o * ratioAt(sb, ei); }
+        }
+        var veh = occ * 10 / SLOT, ratio = occ ? free / occ : 1;
+        if (veh >= 30 && (!worst || ratio < worst.ratio)) { worst = { site: site, ratio: ratio }; }
+      });
+      var pick = worst ? worst.site : SITES[0];
+      goSite(pick);
+      map.jumpTo({ center: [pick[1], pick[2]], zoom: pick[3], pitch: 55 });      // no fly-in on first load
+      startFocus = pick[0];
+    }
     if (st.focus === 'most-congested' && map) {
       var busy = roadStats(binOf(state.t), 60).filter(function (r) { return r.g.c <= 3; })[0] ||
         roadStats(binOf(state.t), 0).sort(function (a, b) { return b.vehicles - a.vehicles; })[0];

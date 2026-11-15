@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0b1220">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b1220'/%3E%3Cpath d='M6 22 L13 12 L19 18 L26 8' fill='none' stroke='%232dd4a7' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="css/styles.css?v=20261115f">
+<link rel="stylesheet" href="css/styles.css?v=20261115j">
 </head>
 <body>
 <header class="topbar">
@@ -28,6 +28,7 @@
     </select>
   </label>
   <div class="topbar-right">
+    <button class="alert-btn" id="themeBtn" title="Switch between the dark and the light map">Light map</button>
     <button class="alert-btn" id="analyticsBtn" title="Predictive analytics">Analytics</button>
     <button class="alert-btn" id="alertBtn" title="Open alerts"><span data-i18n="alerts">Alerts</span> <b id="alertCount">0</b></button>
     <button class="btn small" id="langBtn" title="Switch language">عربي</button>
@@ -70,6 +71,7 @@
       <span id="legendBus" hidden><i class="pt bus"></i>Timetabled bus</span>
       <span id="legendRail" hidden><i class="sw rail"></i>Railway</span>
       <span id="legendCycle" hidden><i class="sw cyc"></i>Cycle track</span>
+      <span><i class="pt env"></i>Environmental sensor (synthetic)</span>
       <span><i class="pt zone"></i>Critical site</span>
       <span><i class="pt base"></i>Response unit (synthetic)</span>
       <span><i class="sw route"></i>Response route</span>
@@ -132,6 +134,7 @@
       <button role="tab" data-tab="acc" aria-selected="false" data-i18n="accidents">Accidents</button>
       <button role="tab" data-tab="fines" aria-selected="false" data-i18n="fines">Fines</button>
       <button role="tab" data-tab="zones" aria-selected="false">Zones</button>
+      <button role="tab" data-tab="env" aria-selected="false">Environment</button>
       <button role="tab" data-tab="dev" aria-selected="false" data-i18n="devices">Devices</button>
       <button role="tab" data-tab="rep" aria-selected="false" data-i18n="reports">Reports</button>
       <button role="tab" data-tab="model" aria-selected="false" data-i18n="model">Model</button>
@@ -187,6 +190,7 @@
       <div class="card-head"><h2 data-i18n="scenarioLayers">Scenario and layers</h2><span class="muted">Pre-simulated</span></div>
       <label class="field"><span data-i18n="demandCase">Demand case</span><select id="scenario"></select></label>
       <label class="check"><input id="showCars" type="checkbox" checked><span><span data-i18n="vehicles">Vehicles</span> <span class="muted" id="carNote"></span></span></label>
+      <label class="check"><input id="showPeople" type="checkbox" checked><span>People on foot <span class="muted">(synthetic, street zoom)</span></span></label>
       <label class="check"><input id="showAcc" type="checkbox" checked><span><span data-i18n="accidents">Accidents</span> <span class="muted">(illustrative)</span></span></label>
       <label class="check"><input id="showSites" type="checkbox" checked><span data-i18n="lyEnf">Enforcement cameras</span></label>
       <label class="check"><input id="showCams" type="checkbox" checked><span data-i18n="lyCam">CCTV cameras</span></label>
@@ -286,6 +290,23 @@
     </section>
 
     <!-- Model -->
+    <!-- Environment -->
+    <section class="card" data-tab="env" hidden>
+      <p class="notice"><strong>Synthetic sensors and readings.</strong> Example roadside sensors; values are generated from the synthetic traffic and a daily pattern, not measured.</p>
+      <div class="card-head"><h2>Air and noise now</h2><span class="muted" id="envNote"></span></div>
+      <div class="kpis">
+        <div class="kpi"><span class="k-label">Air quality index, average</span><span class="k-value" id="eAqi">–</span></div>
+        <div class="kpi"><span class="k-label">Noise, average</span><span class="k-value" id="eNoise">–</span></div>
+        <div class="kpi"><span class="k-label">PM2.5, average</span><span class="k-value" id="ePm">–</span></div>
+        <div class="kpi"><span class="k-label">NO₂, average</span><span class="k-value" id="eNo2">–</span></div>
+      </div>
+      <label class="check"><input id="showEnv" type="checkbox" checked><span>Show sensors on the map</span></label>
+    </section>
+    <section class="card" data-tab="env" hidden>
+      <div class="card-head"><h2>Sensors, worst air first</h2><span class="muted">Tap to locate</span></div>
+      <ol class="corridors" id="envList"></ol>
+    </section>
+
     <!-- Critical zones -->
     <section class="card" data-tab="zones" hidden>
       <div class="card-head"><h2>Critical zones</h2><span class="muted" id="zoneNote"></span></div>
@@ -341,7 +362,9 @@
     <button role="tab" data-an="road" aria-selected="false">Road expansion</button>
     <button role="tab" data-an="sig" aria-selected="false">Traffic signals</button>
     <button role="tab" data-an="pop" aria-selected="false">Population and fleet</button>
-    <button role="tab" data-an="other" aria-selected="false">Demand, safety, emissions</button>
+    <button role="tab" data-an="env" aria-selected="false">Environment</button>
+    <button role="tab" data-an="safe" aria-selected="false">Accidents and violations</button>
+    <button role="tab" data-an="other" aria-selected="false">Demand</button>
   </nav>
   <div class="an-body" id="anBody">
     <div data-an-sec="over">
@@ -377,12 +400,34 @@
         <figure class="an-card"><figcaption>Network length by mode, km</figcaption><canvas id="anModes" class="an-chart"></canvas></figure>
       </div>
     </div>
+    <div data-an-sec="env" hidden>
+      <div class="an-tiles" id="anEnvTiles"></div>
+      <div class="an-grid">
+        <figure class="an-card"><figcaption>Sensors by air-quality band at the peak</figcaption><div class="an-pie"><canvas id="anAqiPie" class="an-chart"></canvas><div class="an-pie-key" id="anAqiPieKey"></div></div></figure>
+        <figure class="an-card"><figcaption>Pollutants through a working day, µg/m³, sensor average<span class="an-key" id="anPollKey"></span></figcaption><canvas id="anPoll" class="an-chart"></canvas></figure>
+        <figure class="an-card"><figcaption>Noise at each sensor at the peak, dB(A)</figcaption><canvas id="anNoiseBar" class="an-chart"></canvas></figure>
+        <figure class="an-card"><figcaption>Road length by noise band at the peak, km<span class="an-key" id="anNoiseBandKey"></span></figcaption><canvas id="anNoiseBand" class="an-chart"></canvas></figure>
+        <figure class="an-card"><figcaption>CO₂ from traffic by hour, tonnes<span class="an-key" id="anCo2Key"></span></figcaption><canvas id="anCo2" class="an-chart"></canvas></figure>
+        <figure class="an-card"><figcaption>CO₂ by vehicle type, share of the day</figcaption><div class="an-pie"><canvas id="anCo2Pie" class="an-chart"></canvas><div class="an-pie-key" id="anCo2PieKey"></div></div></figure>
+      </div>
+    </div>
+    <div data-an-sec="safe" hidden>
+      <p class="notice"><strong>Illustrative, not real records.</strong> Accidents and violations are generated from the synthetic traffic for the day shown in the twin. No accident or enforcement data is public.</p>
+      <div class="an-tiles" id="anSafeTiles"></div>
+      <div class="an-grid">
+        <figure class="an-card"><figcaption>Accidents by severity</figcaption><div class="an-pie"><canvas id="anAccPie" class="an-chart"></canvas><div class="an-pie-key" id="anAccPieKey"></div></div></figure>
+        <figure class="an-card"><figcaption>Accidents by hour<span class="an-key" id="anAccHourKey"></span></figcaption><canvas id="anAccHour" class="an-chart"></canvas></figure>
+        <figure class="an-card"><figcaption>Violations by type</figcaption><div class="an-pie"><canvas id="anVioPie" class="an-chart"></canvas><div class="an-pie-key" id="anVioPieKey"></div></div></figure>
+        <figure class="an-card"><figcaption>Violations by hour<span class="an-key" id="anVioHourKey"></span></figcaption><canvas id="anVioHour" class="an-chart"></canvas></figure>
+        <figure class="an-card"><figcaption>Accident exposure index by road (100 = highest)</figcaption><canvas id="anRisk" class="an-chart"></canvas></figure>
+        <figure class="an-card"><figcaption>Violations at the busiest enforcement sites</figcaption><canvas id="anVioSites" class="an-chart"></canvas></figure>
+      </div>
+    </div>
     <div data-an-sec="other" hidden>
       <div class="an-tiles" id="anOtherTiles"></div>
       <div class="an-grid">
         <figure class="an-card wide"><figcaption>Network speed through a working day, km/h<span class="an-key" id="anDemandKey"></span></figcaption><canvas id="anDemand" class="an-chart"></canvas></figure>
-        <figure class="an-card"><figcaption>Accident exposure index by road (100 = highest)</figcaption><canvas id="anRisk" class="an-chart"></canvas></figure>
-        <figure class="an-card"><figcaption>CO₂ from traffic by hour, tonnes<span class="an-key" id="anCo2Key"></span></figcaption><canvas id="anCo2" class="an-chart"></canvas></figure>
+        <figure class="an-card wide"><figcaption>Vehicles moving through a working day<span class="an-key" id="anVehDayKey"></span></figcaption><canvas id="anVehDay" class="an-chart"></canvas></figure>
       </div>
     </div>
     <p class="an-assume"><strong>Assumptions.</strong> <span id="anAssume"></span> Traffic is synthetic and uncalibrated; change the assumptions in <code>config.js</code>.</p>
@@ -403,19 +448,20 @@
 <!-- Printed summary -->
 <div id="report" class="report" aria-hidden="true"></div>
 
-<script src="config.js?v=20261115f"></script>
+<script src="config.js?v=20261115j"></script>
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/deck.gl.min.js"></script>
-<script src="js/daymodel.js?v=20261115f"></script>
-<script src="js/events.js?v=20261115f"></script>
-<script src="js/vehicles3d.js?v=20261115f"></script>
-<script src="js/app.js?v=20261115f"></script>
-<script src="js/ops.js?v=20261115f"></script>
-<script src="js/devices.js?v=20261115f"></script>
-<script src="js/i18n.js?v=20261115f"></script>
-<script src="js/response.js?v=20261115f"></script>
-<script src="js/zones.js?v=20261115f"></script>
-<script src="js/analytics.js?v=20261115f"></script>
-<script src="js/assistant.js?v=20261115f"></script>
+<script src="js/daymodel.js?v=20261115j"></script>
+<script src="js/events.js?v=20261115j"></script>
+<script src="js/vehicles3d.js?v=20261115j"></script>
+<script src="js/app.js?v=20261115j"></script>
+<script src="js/ops.js?v=20261115j"></script>
+<script src="js/devices.js?v=20261115j"></script>
+<script src="js/i18n.js?v=20261115j"></script>
+<script src="js/response.js?v=20261115j"></script>
+<script src="js/zones.js?v=20261115j"></script>
+<script src="js/environment.js?v=20261115j"></script>
+<script src="js/analytics.js?v=20261115j"></script>
+<script src="js/assistant.js?v=20261115j"></script>
 </body>
 </html>

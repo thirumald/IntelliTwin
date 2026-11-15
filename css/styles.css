@@ -471,3 +471,24 @@ code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-
 .dot.zone-alert { background: #d03b3b; box-shadow: 0 0 0 3px rgba(208, 59, 59, .3); }
 .dot.zone-watch { background: #fab219; }
 .dot.zone-ok { background: #0ca30c; }
+
+.pt.env { background: #0ca30c; outline: 2px solid #ffffff; }
+.an-pie { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: center; }
+.an-pie .an-chart { height: 210px; }
+.an-pie-key { display: flex; flex-direction: column; gap: 7px; font-size: 12.5px; }
+.an-pie-key div { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; }
+.an-pie-key i { width: 12px; height: 12px; border-radius: 3px; }
+.an-pie-key b { font-variant-numeric: tabular-nums; font-weight: 650; }
+.an-pie-key span { color: #c4cfe3; }
+@media (max-width: 520px) { .an-pie { grid-template-columns: minmax(0, 1fr); } }
+
+/* Light map theme: overlays on the map switch to light surfaces with a pale green tint */
+body.map-light .legend, body.map-light .timeline, body.map-light .sites button, body.map-light .mini {
+  background: rgba(240, 248, 241, .95); color: #16302a; border-color: #b9d3c0;
+}
+body.map-light .legend, body.map-light .mini { color: #3d574f; }
+body.map-light .seg { background: #e3f1e4; border-color: #b9d3c0; }
+body.map-light .seg button { color: #3d574f; }
+body.map-light .timeline .btn { background: #e3f1e4; color: #16302a; border-color: #b9d3c0; }
+body.map-light .sim-clock { color: #16302a; }
+body.map-light #map { background: #e3f1e4; }

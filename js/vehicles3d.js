@@ -21,14 +21,25 @@
       [a, b, d, a, d, e].forEach(function (p) { out.pos.push(p[0], p[1], p[2]); out.nor.push(nx / len, ny / len, nz / len); });
     });
   }
-  var geo = { pos: [], nor: [] };
-  hexahedron(geo, -2.2, 2.2, -0.9, 0.9, 0.22, 0.92, 0.12, 0.08, 0.06);     // body
-  hexahedron(geo, -1.45, 0.75, -0.8, 0.8, 0.92, 1.5, 0.55, 0.3, 0.14);      // cabin, set back from the bonnet
-  var MESH = {
-    positions: { value: new Float32Array(geo.pos), size: 3 },
-    normals: { value: new Float32Array(geo.nor), size: 3 },
-    texCoords: { value: new Float32Array(geo.pos.length / 3 * 2), size: 2 }
-  };
+  function mesh(build) {
+    var geo = { pos: [], nor: [] }; build(geo);
+    return { positions: { value: new Float32Array(geo.pos), size: 3 }, normals: { value: new Float32Array(geo.nor), size: 3 }, texCoords: { value: new Float32Array(geo.pos.length / 3 * 2), size: 2 } };
+  }
+  // The car is drawn in two passes so it reads as a vehicle, not a block: painted body, then dark glass and wheels.
+  var MESH = mesh(function (g) {
+    hexahedron(g, -2.2, 2.2, -0.9, 0.9, 0.3, 0.95, 0.14, 0.08, 0.06);        // body
+    hexahedron(g, -1.2, 0.5, -0.74, 0.74, 1.46, 1.52, 0.1, 0.06, 0.05);       // roof panel
+  });
+  var MESH_DARK = mesh(function (g) {
+    hexahedron(g, -1.45, 0.8, -0.79, 0.79, 0.95, 1.47, 0.5, 0.28, 0.12);      // glasshouse, set back from the bonnet
+    [[-1.35, -0.92], [-1.35, 0.72], [1.3, -0.92], [1.3, 0.72]].forEach(function (w) { hexahedron(g, w[0] - 0.36, w[0] + 0.36, w[1], w[1] + 0.2, 0, 0.66, 0.1, 0.1, 0); });   // wheels
+    hexahedron(g, 2.16, 2.22, -0.8, 0.8, 0.5, 0.74, 0, 0, 0);                 // front grille and lights band
+  });
+  // A walking person: body and head as two simple boxes, 1.75 m tall.
+  var MESH_PERSON = mesh(function (g) {
+    hexahedron(g, -0.14, 0.14, -0.22, 0.22, 0, 1.42, 0.03, 0.03, 0.04);
+    hexahedron(g, -0.12, 0.12, -0.12, 0.12, 1.45, 1.75, 0.02, 0.02, 0.02);
+  });
 
   // Paint colours, weighted towards the whites and silvers common on UAE roads.
   var PAINT = [[240, 240, 240], [240, 240, 240], [240, 240, 240], [240, 240, 240], [196, 200, 206], [196, 200, 206],
@@ -103,5 +114,30 @@
     return cars;
   }
 
-  root.TwinCars = { MESH: MESH, build: build, MIN_ZOOM: 14.3, MIX: MIX, mixTotal: mixTotal };
+  /* ---- people on foot (synthetic) ----
+   * Walkers are placed along both sides of ordinary streets near the view centre. Their number follows an
+   * assumed density by road class and time of day; they are not counted or simulated. */
+  var CLOTHES = [[235, 235, 235], [235, 235, 235], [60, 90, 150], [40, 44, 52], [170, 60, 60], [200, 170, 110], [60, 130, 110]];
+  function buildPeople(o) {
+    var kx = 111320 * Math.cos(o.lat * Math.PI / 180), ky = 110570, out = [], h = o.t / 3600;
+    // Fewer people at night and in the midday heat; more in the morning and evening.
+    var dayFactor = Math.max(0.05, 0.25 + 0.75 * Math.max(Math.exp(-Math.pow((h - 8) / 2.2, 2)), Math.exp(-Math.pow((h - 19) / 2.8, 2)), 0.35 * Math.exp(-Math.pow((h - 13.5) / 3, 2))));
+    for (var v = 0; v < o.visible.length && out.length < o.max; v++) {
+      var ei = o.visible[v], e = o.edges[ei], perKm = o.perKm[e.c] || 0;
+      if (!perKm || e.k) { continue; }
+      prepare(e, kx, ky);
+      var n = Math.floor(perKm * dayFactor * e._len / 1000 + hash01(ei, 313));
+      for (var k = 0; k < n; k++) {
+        var dir = hash01(ei, k + 500) < 0.5 ? 1 : -1, f = (hash01(ei, k + 900) + dir * 1.3 * o.t / e._len) % 1; if (f < 0) { f += 1; }
+        var s = f * e._len, j = 1; while (j < e._cum.length - 1 && e._cum[j] < s) { j++; }
+        var a = e.path[j - 1], b = e.path[j], seg = (e._cum[j] - e._cum[j - 1]) || 1, t = (s - e._cum[j - 1]) / seg;
+        var dx = (b[0] - a[0]) * kx, dy = (b[1] - a[1]) * ky, dl = Math.hypot(dx, dy) || 1, off = e.l * LANE_M / 2 + 2.5 + hash01(ei, k + 40) * 1.5;   // on the pavement, right-hand side
+        out.push({ p: [a[0] + (b[0] - a[0]) * t + (dy / dl) * off / kx, a[1] + (b[1] - a[1]) * t - (dx / dl) * off / ky, 0],
+          yaw: Math.atan2(dy * dir, dx * dir) * 180 / Math.PI, c: CLOTHES[Math.floor(hash01(ei * 13 + k, 71) * CLOTHES.length)] });
+      }
+    }
+    return out;
+  }
+
+  root.TwinCars = { MESH: MESH, MESH_DARK: MESH_DARK, MESH_PERSON: MESH_PERSON, buildPeople: buildPeople, build: build, MIN_ZOOM: 14.3, MIX: MIX, mixTotal: mixTotal };
 })(window);

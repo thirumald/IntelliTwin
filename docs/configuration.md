@@ -8,11 +8,12 @@ All settings are in `config.js` at the repository root. Every value has a workin
 
 | Section | Key | Default | What it does |
 | --- | --- | --- | --- |
-| `start` | `mode`, `rate` | `'live'`, 30 | Opening mode: `'live'` follows the clock in real time; `'replay'` plays today from the current time at `rate` |
+| `start` | `mode`, `rate` | `'live'`, 30 | Opening mode: `'live'` follows the clock in real time; `'replay'` plays today from the current time. `rate` is the replay speed, used as soon as playback leaves Live |
 | | `fullView` | `true` | Open with the panel, legend and site shortcuts minimised |
-| | `focus`, `orbit` | `'most-congested'`, `true` | Open on the slowest busy road in a tilted 3D view, with the camera orbiting; `'all'` opens on the whole area |
+| | `focus`, `orbit` | `'most-congested-site'`, `true` | Open with the most congested major site selected in the site chips, in a tilted 3D view with the camera orbiting. `'most-congested'` opens on the slowest road instead; `'all'` on the whole area |
 | `map` | `styleUrl` | OpenFreeMap dark style | MapLibre style for the vector base map. Use a licensed or self-hosted style in production |
 | | `rasterTiles`, `rasterAttribution` | OpenStreetMap standard tiles | Raster fallback if the vector style cannot load |
+| | `styleUrlLight`, `lightTint`, `theme` | OpenFreeMap positron, `#e3f1e4`, `'dark'` | Light-theme style, its pale green background tint, and the theme at start |
 | | `buildings3d` | `true` | Extrude buildings from the vector tiles |
 | `time` | `timeZone` | `Asia/Dubai` | Clock used for Live mode and dates |
 | | `weekendDays`, `shortDay` | `[6, 0]`, `5` | Weekend days and the shorter working day, used by the synthetic day |
@@ -30,6 +31,9 @@ All settings are in `config.js` at the repository root. Every value has a workin
 | | `syntheticEventsPerHour` | 14 | Synthetic operational events raised at cameras (stopped vehicle, wrong-way vehicle, debris, pedestrian on carriageway, queue, camera offline and similar). 0 turns them off |
 | | `push`, `pushSeconds`, `pushMaxVisible` | `true`, 9, 4 | Push each new alert as an on-screen notification (and a browser notification when the user has allowed them and the page is in the background) |
 | `vehicles` | `mix` | six types | Assumed shares of vehicle types for display and reporting |
+| `people` | `perKmByClass` | `[0, 0, 6, 12, 16]` | Synthetic walkers per km of street by road class, before the time-of-day factor |
+| `environment` | `sensors`, `syntheticSensors`, `radiusM` | `[]`, 18, 400 | Environmental sensors: real positions or a number of synthetic ones; traffic radius used for readings |
+| | `alertAqiAbove`, `alertNoiseAboveDb`, `alert` | 150, 80, `true` | Sensor alert thresholds |
 | `response` | `auto`, `speedFactor`, `bases` | `true`, 1.25, seven units | Response routing: route automatically on critical alerts; speed advantage; unit positions (synthetic placeholders) |
 | `zones` | `radiusM`, `watchRatioBelow`, `alertRatioBelow`, `minVehicles` | 500, 0.6, 0.4, 25 | Critical-zone monitoring thresholds |
 | | `types`, `custom`, `alert` | nine types, `[]`, `true` | Site types with labels and priority; your own sites; whether a site in alert raises an alert |

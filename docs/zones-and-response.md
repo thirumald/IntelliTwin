@@ -20,6 +20,12 @@ When a critical alert is pushed, or when you open an alert that has a location, 
 
 Vehicles on the map are drawn as cars, taxis, vans, lorries, buses and motorcycles in the shares set by `vehicles.mix`, with different sizes and colours in the 3D view. The simulation itself has one vehicle type, so the split is an assumption for display and reporting.
 
+## People on foot and the 3D view
+
+At street zoom the map shows cars with glass and wheels, taxis, vans, lorries, buses and motorcycles on an asphalt surface, lit by a sun-like light, and people walking along both sides of ordinary streets. The walkers are synthetic: their number follows an assumed density per kilometre by road class (`people.perKmByClass`) and time of day. Nobody is counted or tracked.
+
+The map has a dark and a light theme (the **Light map** / **Dark map** button, or `map.theme`); the light theme has a pale green tint (`map.lightTint`).
+
 ## Railway and cycle tracks
 
 Read from OpenStreetMap by the data build (`data/rail.json`, `data/cycle.json`) and drawn as a dashed light line and a magenta line. They are geometry only: no trains or cyclists are simulated, because there is no public timetable or count data for them.

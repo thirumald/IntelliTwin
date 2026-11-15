@@ -1,6 +1,6 @@
 # Predictive analytics
 
-The **Analytics** button in the top bar opens a separate full-screen view (`js/analytics.js`). It has five sections, each with headline tiles, charts with hover values, and tables.
+The **Analytics** button in the top bar opens a separate full-screen view (`js/analytics.js`). It has seven sections, each with headline tiles, charts with hover values, and tables.
 
 Everything is computed in the browser from the synthetic traffic. **The results illustrate a planning method; they are not forecasts and must not be used for investment or design decisions.** All assumptions are in `config.js` under `analytics`.
 
@@ -12,7 +12,9 @@ Everything is computed in the browser from the synthetic traffic. **The results 
 | Road expansion | Roads ranked by the peak-hour delay one extra lane each way would save; peak speed today, at the horizon and widened; the year each road becomes critical |
 | Traffic signals | Junctions by service level; approach delay by junction; what adaptive control would save |
 | Population and fleet | Residents by region and a projection; vehicles moving at the peak by type; network length by mode (roads, cycle tracks, railway) |
-| Demand, safety, emissions | Network speed through the day for the three demand cases; an accident exposure index by road; CO₂ from traffic by hour |
+| Environment | Sensors by air-quality band (donut); pollutants through the day; noise by sensor; road length by noise band; CO₂ by hour; CO₂ by vehicle type (donut). See [environment.md](environment.md) |
+| Accidents and violations | Accidents by severity (donut) and by hour; violations by type (donut) and by hour; accident exposure index by road; busiest enforcement sites. All illustrative |
+| Demand | Network speed and vehicles moving through a working day for the three demand cases |
 
 Growth (3–10% a year) and horizon (5–20 years) can be changed at the top of the view.
 
@@ -34,7 +36,11 @@ Growth (3–10% a year) and horizon (5–20 years) can be changed at the top of 
 
 **Accident exposure index.** Traffic volume on each road, weighted up where it is slow, scaled so the highest road is 100. It is an exposure measure, not a count or a prediction of accidents.
 
-**CO₂.** Vehicle-kilometres × an emission factor of `150 + 2500 ÷ speed` g/km, an assumed curve that rises in slow traffic.
+**CO₂.** Vehicle-kilometres × an emission factor of `150 + 2500 ÷ speed` g/km, an assumed curve that rises in slow traffic. The split by vehicle type weights each type's share by an assumed factor against a car (`co2.typeFactor`).
+
+**Noise by road.** CoRTN basic noise level at 10 m from the kerb, from each road's peak flow, speed and the assumed heavy-vehicle share, reported as LAeq ≈ L10 − 3.
+
+**Accidents and violations.** Counts for the day shown in the twin, from the illustrative generator ([methodology.md](methodology.md)). They are not records.
 
 ## Limits
 

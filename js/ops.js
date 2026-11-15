@@ -106,6 +106,12 @@
       out.push({ at: [ev.cam.lon, ev.cam.lat], key: ev.key, sev: ev.type.sev, title: ev.type.text + ': ' + ev.cam.name, sub: ev.cam.id + ' · raised ' + clock(ev.t) + ' · synthetic',
         go: function () { if (ev.type.text === 'Camera offline') { C.flyTo(ev.cam.lon, ev.cam.lat, 15); } if (ev.type.text !== 'Camera offline' && T.devices) { T.devices.openCamera(ev.cam.id); } } });
     });
+    // Environmental sensors over their thresholds (synthetic readings).
+    if (CFG.environment && CFG.environment.alert && T.environment) {
+      T.environment.alerts().slice(0, 4).forEach(function (x) {
+        out.push({ at: [x.s.lon, x.s.lat], key: 'env:' + x.s.id, sev: x.sev, title: x.text + ': ' + x.s.name, sub: x.s.id + ' · synthetic sensor reading', go: function () { T.environment.open(x.s); } });
+      });
+    }
     // Critical sites in alert (defence, embassies, hospitals, schools …).
     if (CFG.zones && CFG.zones.alert && T.zones) {
       T.zones.alerts().slice(0, 6).forEach(function (s) {

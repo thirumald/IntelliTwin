@@ -10,7 +10,7 @@
   var T = window.IntelliTwin, C = T.core, CFG = C.CFG, $ = C.$, num = C.num, state = T.state;
   var A = CFG.analytics;
   // Categorical colours validated for the dark surface (blue, orange, aqua, yellow), assigned in this fixed order.
-  var COL = ['#3987e5', '#d95926', '#199e70', '#c98500'], INK = '#e8eef9', MUTED = '#8fa0bd', GRID = '#22314d';
+  var COL = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#0ca30c'], INK = '#e8eef9', MUTED = '#8fa0bd', GRID = '#22314d';
   var STATUS = { good: '#0ca30c', warning: '#fab219', serious: '#ec835a', critical: '#d03b3b' };
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
@@ -114,6 +114,28 @@
     cv.onmouseleave = hideTip;
   }
 
+  // Donut: o = { rows: [{ label, value, color }], unit, centre }. The key beside it carries every label and value.
+  function pieChart(id, o) {
+    var cv = $(id); if (!cv || !cv.clientWidth) { return; }
+    var c = setup(cv), g = c.g, rows = o.rows.filter(function (r) { return r.value > 0; }), total = rows.reduce(function (s, r) { return s + r.value; }, 0) || 1;
+    var cx = c.w / 2, cy = c.h / 2, R = Math.min(c.w, c.h) / 2 - 6, r0 = R * 0.58, a = -Math.PI / 2, arcs = [];
+    rows.forEach(function (r) {
+      var da = 2 * Math.PI * r.value / total, gap = rows.length > 1 ? 0.012 : 0;
+      g.beginPath(); g.arc(cx, cy, R, a + gap, a + da - gap); g.arc(cx, cy, r0, a + da - gap, a + gap, true); g.closePath(); g.fillStyle = r.color; g.fill();
+      arcs.push({ from: a, to: a + da, row: r }); a += da;
+    });
+    g.fillStyle = INK; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '600 20px system-ui, sans-serif'; g.fillText(o.centre != null ? o.centre : num(total), cx, cy - 6);
+    g.fillStyle = MUTED; g.font = '11px system-ui, sans-serif'; g.fillText(o.unit || '', cx, cy + 14);
+    $(id + 'Key').innerHTML = o.rows.map(function (r) { return '<div><i style="background:' + r.color + '"></i><span>' + esc(r.label) + '</span><b>' + (o.decimals ? r.value.toFixed(o.decimals) : num(r.value)) + ' · ' + Math.round(100 * r.value / total) + '%</b></div>'; }).join('');
+    cv.onmousemove = function (ev) {
+      var b = cv.getBoundingClientRect(), dx = ev.clientX - b.left - cx, dy = ev.clientY - b.top - cy, d = Math.hypot(dx, dy), ang = Math.atan2(dy, dx);
+      if (ang < -Math.PI / 2) { ang += 2 * Math.PI; }
+      var hit = d >= r0 && d <= R ? arcs.filter(function (x) { return ang >= x.from && ang < x.to; })[0] : null;
+      if (hit) { showTip(ev, '<b>' + esc(hit.row.label) + '</b><div>' + num(hit.row.value) + ' ' + (o.unit || '') + ' · ' + Math.round(100 * hit.row.value / total) + '%</div>'); } else { hideTip(); }
+    };
+    cv.onmouseleave = hideTip;
+  }
+
   /* ================= model ================= */
   var growth = A.growthPerYear, horizon = A.horizonYears, M = null;
   // Volume-delay (BPR): speed ratio r = 1 / (1 + a·x^b), x = volume ÷ capacity. Invert it to read x from today's
@@ -198,7 +220,7 @@
       for (var s2 = h * 12; s2 < h * 12 + 12; s2++) { var k = dayK[s2]; if (k && k.speed) { tot += k.vehicles * k.speed * (A.co2.baseGPerKm + A.co2.congestionGKmh / k.speed) / 12; } }
       hours.push(C.pad(h)); co2.push(tot / 1e6);                         // tonnes in the hour
     }
-    function daySeries(id) { var sm = C.scenarioMeta(id); if (!sm) { return null; } var mp = window.TwinDay.build(sm.bins, '2026-01-06', CFG.time).map, out = []; for (var hh = 0; hh < 24; hh++) { out.push(sm.bins[mp[hh * 12 + 6]].speed); } return out; }
+    function daySeries(id, key) { var sm = C.scenarioMeta(id); if (!sm) { return null; } var mp = window.TwinDay.build(sm.bins, '2026-01-06', CFG.time).map, out = []; for (var hh = 0; hh < 24; hh++) { out.push(sm.bins[mp[hh * 12 + 6]][key || 'speed']); } return out; }
 
     /* ---- accident risk (relative exposure index, illustrative) ---- */
     var risk = C.groups().map(function (g) {
@@ -207,8 +229,37 @@
     }).sort(function (a, b) { return b.value - a.value; }).slice(0, 10);
     var rmax = risk.length ? risk[0].value : 1; risk.forEach(function (r) { r.value = 100 * r.value / rmax; });
 
+    /* ---- noise by road, peak hour ---- */
+    var EV = T.environment, heavy = EV ? EV.heavyPct() : 8, noiseBands = [0, 0, 0, 0, 0];
+    if (EV) {
+      C.groups().forEach(function (g) {
+        var fl = 0, sp = 0, o = 0, len = 0;
+        g.idx.forEach(function (i) { if (occ[i]) { var v = edges[i].s * r0[i]; fl += occ[i] * (v / 3.6) / Math.max(25, edges[i].m) * 3600; sp += occ[i] * v; o += occ[i]; } len += edges[i].m; });
+        if (!o) { return; }
+        var db = EV.noiseDb(fl / g.idx.length * 2, sp / o, heavy), km = len / 2000;
+        noiseBands[db < 60 ? 0 : db < 65 ? 1 : db < 70 ? 2 : db < 75 ? 3 : 4] += km;
+      });
+    }
+    /* ---- environmental sensors: peak readings and the day profile (synthetic) ---- */
+    var env = null;
+    if (EV && EV.sensors().length) {
+      var peakT = 8 * 3600, rows2 = EV.sensors().map(function (sn) { return { s: sn, r: EV.readingAt(sn, peakT) }; }), prof = { pm25: [], pm10: [], no2: [], noise: [] };
+      for (var eh = 0; eh < 24; eh++) { var av = EV.averageAt(eh * 3600 + 1800); prof.pm25.push(av.pm25); prof.pm10.push(av.pm10); prof.no2.push(av.no2); prof.noise.push(av.noise); }
+      env = { rows: rows2, prof: prof, peak: EV.averageAt(peakT) };
+    }
+    /* ---- accidents and violations for the day shown in the twin (illustrative) ---- */
+    var evd = C.events(), safety = null, TY = window.TwinEvents.TYPES;
+    if (evd) {
+      var sev = {}, accHour = new Array(24).fill(0), vioHour = new Array(24).fill(0), E2 = window.TwinEvents;
+      evd.accidents.forEach(function (ac) { sev[ac.severity] = (sev[ac.severity] || 0) + 1; accHour[Math.min(23, Math.floor(ac.t / 3600))]++; });
+      var byType = TY.map(function (ty, i) { var cum = evd.cumByType[i]; return cum[cum.length - 1]; });
+      for (var vh2 = 0; vh2 < 24; vh2++) { TY.forEach(function (ty, i) { vioHour[vh2] += E2.at(evd.cumByType[i], (vh2 + 1) * 3600) - E2.at(evd.cumByType[i], vh2 * 3600); }); }
+      safety = { sev: sev, accHour: accHour, vioHour: vioHour, byType: byType, total: evd.accidents.length,
+        fines: byType.reduce(function (a, b) { return a + b; }, 0), value: byType.reduce(function (a, b, i) { return a + b * TY[i].aed; }, 0),
+        sites: evd.sites.map(function (st) { return { label: st.road, value: st.cum[st.cum.length - 1] }; }).sort(function (a, b) { return b.value - a.value; }).slice(0, 8) };
+    }
     var peakVehicles = 0; for (var pv = 0; pv < n; pv++) { peakVehicles += occ[pv]; }
-    M = { peakVehicles: peakVehicles, railKm: C.railKm(), cycleKm: C.cycleKm(), roads: roads, junctions: junctions, years: years, sDo: sDo, sRoad: sRoad, sBoth: sBoth, critical: critical, dailyDelay: dailyDelay,
+    M = { noiseBands: noiseBands, env: env, safety: safety, vehDay: { base: daySeries('base', 'vehicles'), high: daySeries('high', 'vehicles'), low: daySeries('low', 'vehicles') }, peakVehicles: peakVehicles, railKm: C.railKm(), cycleKm: C.cycleKm(), roads: roads, junctions: junctions, years: years, sDo: sDo, sRoad: sRoad, sBoth: sBoth, critical: critical, dailyDelay: dailyDelay,
       hours: hours, co2: co2, risk: risk, speeds: { base: daySeries('base'), high: daySeries('high'), low: daySeries('low') }, meta: meta };
   }
 
@@ -308,11 +359,52 @@
     $('anOtherTiles').innerHTML =
       tile('Staggered hours at the peak', sp.low ? '+' + Math.round(sp.low[pk] - sp.base[pk]) + ' km/h' : '–', '20% fewer trips at 08:00', 'good') +
       tile('Growth of 20% at the peak', sp.high ? Math.round(sp.high[pk] - sp.base[pk]) + ' km/h' : '–', 'no new capacity', 'bad') +
-      tile('CO₂ from traffic a day', num(co2Day) + ' t', 'emission factor assumed') +
-      tile('Highest-risk road', M.risk.length ? esc(M.risk[0].name) : '–', 'exposure index, illustrative');
+      tile('Peak vehicles moving', num(Math.max.apply(null, M.vehDay.base)), 'typical working day') +
+      tile('Quietest hour', C.pad(M.vehDay.base.indexOf(Math.min.apply(null, M.vehDay.base))) + ':00', 'fewest vehicles moving');
     lineChart('anDemand', { labels: M.hours, unit: 'km/h', yMin: 0, series: ser });
-    hbarChart('anRisk', { unit: '', rows: M.risk.map(function (r) { return { label: r.name, value: r.value, sub: 'Relative exposure index: traffic volume, weighted up where it is slow. Not an accident count.' }; }) });
+    var vser = [{ name: 'Typical weekday', color: COL[0], values: M.vehDay.base }];
+    if (M.vehDay.high) { vser.push({ name: 'Demand +20%', color: COL[1], values: M.vehDay.high }); }
+    if (M.vehDay.low) { vser.push({ name: 'Demand −20% (staggered hours)', color: COL[2], values: M.vehDay.low }); }
+    lineChart('anVehDay', { labels: M.hours, unit: 'vehicles', yMin: 0, series: vser });
+
+    /* ---- environment: air quality, noise, CO2 ---- */
+    var EVN = T.environment, env = M.env, TF = A.co2.typeFactor || {}, mixE = window.TwinCars.MIX;
+    var wsum = mixE.reduce(function (sm, mx) { return sm + mx.share * (TF[mx.id] || 1); }, 0) || 1;
+    var loud = env ? env.rows.filter(function (x) { return x.r.noise >= 70; }).length : 0;
+    $('anEnvTiles').innerHTML = (env ?
+      tile('Air quality index at the peak', Math.round(env.peak.aqi), EVN.band(env.peak.aqi).label + ', sensor average', env.peak.aqi > 100 ? 'bad' : '') +
+      tile('PM2.5 · NO₂ at the peak', env.peak.pm25.toFixed(0) + ' · ' + env.peak.no2.toFixed(0), 'µg/m³, sensor average') +
+      tile('Noise at the peak', env.peak.noise.toFixed(0) + ' dB(A)', loud + ' of ' + env.rows.length + ' sensors at 70 dB(A) or more', loud ? 'bad' : '') :
+      tile('Environmental sensors', '–', 'none available')) +
+      tile('CO₂ from traffic a day', num(co2Day) + ' t', 'emission factor assumed') +
+      tile('Roads at 70 dB(A) or more', num(M.noiseBands[3] + M.noiseBands[4]) + ' km', 'at 10 m from the kerb, peak hour');
+    if (env) {
+      var cnt = EVN.bands.map(function () { return 0; });
+      env.rows.forEach(function (x) { cnt[EVN.bands.indexOf(x.r.band)]++; });
+      pieChart('anAqiPie', { unit: 'sensors', rows: EVN.bands.map(function (bd, i) { return { label: bd.label, value: cnt[i], color: bd.css }; }) });
+      lineChart('anPoll', { labels: M.hours, unit: 'µg/m³', yMin: 0, series: [{ name: 'PM10', color: COL[0], values: env.prof.pm10 }, { name: 'NO₂', color: COL[1], values: env.prof.no2 }, { name: 'PM2.5', color: COL[2], values: env.prof.pm25 }] });
+      hbarChart('anNoiseBar', { unit: 'dB(A)', rows: env.rows.slice().sort(function (x, y) { return y.r.noise - x.r.noise; }).slice(0, 10).map(function (x) { return { label: x.s.id + ' · ' + x.s.name, value: Math.round(x.r.noise), sub: 'Synthetic reading at 08:00' }; }) });
+    }
+    barChart('anNoiseBand', { labels: ['under 60', '60–65', '65–70', '70–75', '75 or more'], unit: 'km', series: [{ name: 'Road length', color: COL[0], values: M.noiseBands.map(Math.round) }] });
     lineChart('anCo2', { labels: M.hours, unit: 't CO₂', yMin: 0, series: [{ name: 'CO₂ per hour', color: COL[0], values: M.co2 }] });
+    pieChart('anCo2Pie', { unit: 't CO₂ a day', rows: mixE.map(function (mx, i) { return { label: mx.label, value: co2Day * mx.share * (TF[mx.id] || 1) / wsum, color: COL[i % COL.length] }; }) });
+
+    /* ---- accidents and violations (illustrative) ---- */
+    var S = M.safety, TYP = window.TwinEvents.TYPES;
+    if (S) {
+      var sevOrder = [['Damage only', STATUS.warning], ['Minor injury', STATUS.serious], ['Serious injury', STATUS.critical]], pkA = S.accHour.indexOf(Math.max.apply(null, S.accHour)), pkV = S.vioHour.indexOf(Math.max.apply(null, S.vioHour));
+      $('anSafeTiles').innerHTML =
+        tile('Accidents in the day', num(S.total), 'illustrative · busiest hour ' + C.pad(pkA) + ':00') +
+        tile('With injury', num((S.sev['Minor injury'] || 0) + (S.sev['Serious injury'] || 0)), num(S.sev['Serious injury'] || 0) + ' serious', (S.sev['Serious injury'] || 0) ? 'bad' : '') +
+        tile('Violations in the day', num(S.fines), 'illustrative · busiest hour ' + C.pad(pkV) + ':00') +
+        tile('Fine value', 'AED ' + num(S.value), 'placeholder fine values');
+      pieChart('anAccPie', { unit: 'accidents', rows: sevOrder.map(function (x) { return { label: x[0], value: S.sev[x[0]] || 0, color: x[1] }; }) });
+      barChart('anAccHour', { labels: M.hours, unit: 'accidents', series: [{ name: 'Accidents', color: COL[0], values: S.accHour }] });
+      pieChart('anVioPie', { unit: 'violations', rows: TYP.map(function (ty, i) { return { label: ty.label, value: Math.round(S.byType[i]), color: COL[i % COL.length] }; }) });
+      lineChart('anVioHour', { labels: M.hours, unit: 'violations', yMin: 0, series: [{ name: 'Violations', color: COL[0], values: S.vioHour.map(Math.round) }] });
+      hbarChart('anVioSites', { unit: 'violations', rows: S.sites.map(function (x) { return { label: x.label, value: Math.round(x.value), sub: 'Illustrative enforcement site' }; }) });
+    }
+    hbarChart('anRisk', { unit: '', rows: M.risk.map(function (r) { return { label: r.name, value: r.value, sub: 'Relative exposure index: traffic volume, weighted up where it is slow. Not an accident count.' }; }) });
     $('anAssume').textContent = 'Growth ' + (growth * 100).toFixed(1) + '% a year over ' + H + ' years · volume-delay curve a = ' + A.bprAlpha + ', b = ' + A.bprBeta +
       ' · value of time AED ' + A.valueOfTimeAedPerHour + ' per vehicle-hour · ' + A.workingDaysPerYear + ' working days · adaptive signals remove ' + Math.round(A.adaptiveSignalDelayReduction * 100) + '% of approach delay.';
   }

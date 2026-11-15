@@ -14,15 +14,19 @@ window.INTELLITWIN_CONFIG = {
     // Raster tiles used if the vector style cannot be loaded.
     rasterTiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
     rasterAttribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    // Light theme: its vector style and the pale green tint applied to the map background.
+    styleUrlLight: 'https://tiles.openfreemap.org/styles/positron',
+    lightTint: '#e3f1e4',
+    theme: 'dark',              // 'dark' or 'light' at start; the Light map / Dark map button switches
     buildings3d: true
   },
 
   /* ---- Start-up view ------------------------------------------------------------------------- */
   start: {
-    mode: 'live',               // 'live' = follow the Abu Dhabi clock in real time; 'replay' = today at the rate below
-    rate: 30,                   // replay speed when not live: 1, 30, 120 or 600
+    mode: 'live',               // 'live' = follow the Abu Dhabi clock in real time; 'replay' = today from now at the rate below
+    rate: 30,                   // replay speed used as soon as playback leaves Live: 1, 30, 120 or 600
     fullView: true,             // open with the panel, legend and site shortcuts minimised
-    focus: 'most-congested',    // 'most-congested' = open on the slowest busy road; 'all' = whole study area
+    focus: 'most-congested-site', // select the major site (map chip) with the slowest traffic; 'most-congested' = slowest road; 'all' = whole area
     orbit: true                 // circle the camera around the opening view
   },
 
@@ -99,14 +103,19 @@ sampleVideos: [
   // ASSUMED shares; replace them with fleet or classified-count data when available.
   vehicles: {
     mix: [
-      { id: 'car', label: 'Cars', share: 0.69 },
+      { id: 'car', label: 'Cars', share: 0.72 },
       { id: 'taxi', label: 'Taxis', share: 0.08 },
       { id: 'van', label: 'Vans and pick-ups', share: 0.10 },
       { id: 'lorry', label: 'Lorries', share: 0.05 },
       { id: 'bus', label: 'Buses and staff buses', share: 0.03 },
-      { id: 'moto', label: 'Motorcycles', share: 0.05 }
+      { id: 'moto', label: 'Motorcycles', share: 0.02 }
     ]
   },
+
+  /* ---- People on foot ------------------------------------------------------------------------- */
+  // Synthetic walkers drawn at street zoom. People per km of street by road class
+  // (motorway, trunk, primary, secondary, tertiary), before the time-of-day factor. Assumed, not counted.
+  people: { perKmByClass: [0, 0, 6, 12, 16] },
 
   /* ---- Response routing ---------------------------------------------------------------------- */
   // Quickest route from the nearest response unit to a critical alert, over the road network at
@@ -150,6 +159,18 @@ sampleVideos: [
     custom: []
   },
 
+  /* ---- Environmental sensors ----------------------------------------------------------------- */
+  // Roadside air-quality and noise sensors. Leave "sensors" empty for synthetic example sensors.
+  // Readings are synthetic in both cases until a real feed is connected (see docs/environment.md).
+  environment: {
+    sensors: [],                    // real positions: { id, name, lon, lat }
+    syntheticSensors: 18,
+    radiusM: 400,                   // traffic within this distance drives a sensor's synthetic readings
+    alertAqiAbove: 150,             // alert when a sensor's air-quality index passes this
+    alertNoiseAboveDb: 80,
+    alert: true
+  },
+
   /* ---- Predictive analytics ------------------------------------------------------------------ */
   // Planning-level projections computed in the browser. Every number here is an assumption.
   analytics: {
@@ -162,7 +183,8 @@ sampleVideos: [
     adaptiveSignalDelayReduction: 0.12,
     valueOfTimeAedPerHour: 40,
     workingDaysPerYear: 250,
-    co2: { baseGPerKm: 150, congestionGKmh: 2500 },     // g/km = base + congestion ÷ speed (km/h)
+    co2: { baseGPerKm: 150, congestionGKmh: 2500,       // g/km = base + congestion ÷ speed (km/h)
+      typeFactor: { car: 1, taxi: 1, van: 1.5, lorry: 4, bus: 4.5, moto: 0.5 } },   // emissions per km against a car
     // Population, as quoted from Statistics Centre Abu Dhabi 2024 figures on a third-party site. Verify before reuse.
     population: { emirate: 4135985, abuDhabiRegion: 2823340, alAinRegion: 986910, alDhafraRegion: 325735, growthPerYear: 0.075, year: 2024 }
   },
