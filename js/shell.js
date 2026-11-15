@@ -16,6 +16,19 @@
     tabs.classList.toggle('panel-closed', !open);
     if (active && title) { title.textContent = active.querySelector('span').textContent; }
   }
+  // Interface style: 'government' (navy and gold, labelled side menu) or 'enterprise'. The choice is remembered in this browser.
+  var cfg = (window.INTELLITWIN_CONFIG || {}).ui || {}, styleBtn = document.getElementById('styleBtn'), style = cfg.style || 'government';
+  try { style = localStorage.getItem('itw-style') || style; } catch (e1) { /* storage unavailable */ }
+  function setStyle(v, save) {
+    style = v === 'enterprise' ? 'enterprise' : 'government';
+    document.body.classList.toggle('ui-gov', style === 'government');
+    if (styleBtn) { styleBtn.textContent = 'Style: ' + (style === 'government' ? 'Government' : 'Enterprise'); }
+    if (save) { try { localStorage.setItem('itw-style', style); } catch (e2) { /* storage unavailable */ } }
+    var T = window.IntelliTwin, m = T && T.getMap && T.getMap();
+    if (m) { setTimeout(function () { m.resize(); if (T.core && T.core.redraw) { T.core.redraw(); } }, 60); }
+  }
+  setStyle(style, false);
+  if (styleBtn) { styleBtn.addEventListener('click', function () { setStyle(style === 'government' ? 'enterprise' : 'government', true); }); }
   new MutationObserver(sync).observe(tabs, { subtree: true, attributes: true, attributeFilter: ['class'], characterData: true, childList: true });
   new MutationObserver(sync).observe(layout, { attributes: true, attributeFilter: ['class'] });
   sync();

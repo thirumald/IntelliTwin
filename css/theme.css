@@ -251,3 +251,58 @@ body:not(.map-light) .badge { color: var(--moderate); }
   .statusbar { height: 24px; padding: 0 10px; font-size: 10.5px; }
   .statusbar .badge { display: none; }
 }
+
+/* ================================================================ Government style
+ * A second look for public-sector users: navy and gold, square corners, larger text and a labelled
+ * side menu instead of the icon rail. Chosen with ui.style in config.js or the Style button in the
+ * status bar. It is a generic formal style; it does not use any government's emblem or branding.
+ */
+body.ui-gov {
+  --bg: #091322; --surface: #0f1c31; --surface-2: #162741; --surface-3: #1e3355; --line: #2a3f63; --line-soft: #1e3050;
+  --text: #f1f4f9; --text-2: #cfd8e6; --muted: #93a3bd;
+  --accent: #d2ab52; --accent-ink: #1b1403; --accent-soft: rgba(210, 171, 82, .15);
+  --glass: rgba(15, 28, 49, .96); --radius: 4px; --radius-s: 3px; --rail: 212px; --panel: 420px;
+  font-size: 14px;
+}
+body.ui-gov.map-light {
+  --bg: #f3f0e8; --surface: #ffffff; --surface-2: #f6f3ec; --surface-3: #e9e3d5; --line: #d3cbb8; --line-soft: #e4ddcd;
+  --text: #14213a; --text-2: #2c3a55; --muted: #5b6577;
+  --accent: #7d5d12; --accent-ink: #ffffff; --accent-soft: rgba(125, 93, 18, .12);
+  --glass: rgba(255, 255, 255, .97);
+}
+body.ui-gov .topbar, body.ui-gov.map-light .topbar {
+  --surface: #0c1f3f; --surface-2: #15305a; --surface-3: #1f3f73; --line: #2c4a7c; --text: #ffffff; --text-2: #dbe3f0; --muted: #a9b8d1;
+  --accent: #d2ab52; --accent-ink: #1b1403; color: var(--text);
+  height: 64px; border-bottom: 3px solid #d2ab52; box-shadow: none;
+}
+body.ui-gov .brand h1 { font-family: Georgia, "Times New Roman", serif; font-size: 18px; font-weight: 600; letter-spacing: .02em; }
+body.ui-gov .panel-head h2 { font-family: Georgia, "Times New Roman", serif; font-size: 17px; font-weight: 600; }
+body.ui-gov .card h2 { font-size: 12px; letter-spacing: .09em; color: var(--text-2); }
+body.ui-gov .card { border-color: var(--line); border-top: 3px solid var(--accent); }
+body.ui-gov .kpi { border-color: var(--line); border-left: 3px solid var(--accent); }
+body.ui-gov .k-value { font-size: 24px; }
+body.ui-gov .panel, body.ui-gov .timeline, body.ui-gov .legend, body.ui-gov .toast, body.ui-gov .panel-head { backdrop-filter: none; }
+body.ui-gov .sites button, body.ui-gov .sites .chip, body.ui-gov .chat-open, body.ui-gov .alert-btn b, body.ui-gov .mini { border-radius: var(--radius); }
+body.ui-gov .seg button, body.ui-gov .seg.small button { border-radius: 2px; }
+body.ui-gov .an-tile { border-top: 3px solid var(--accent); }
+body.ui-gov :focus-visible { outline: 3px solid #d2ab52; outline-offset: 2px; }
+body.ui-gov .statusbar { background: #0c1f3f; color: #c9d4e6; border-top: 0; }
+body.ui-gov .statusbar .mode-note { color: #c9d4e6; }
+body.ui-gov .statusbar .badge { color: #f0cf7f; border-color: #d2ab52; }
+.style-btn { background: none; border: 1px solid currentColor; color: inherit; font: inherit; font-size: 10.5px; border-radius: 4px; padding: 1px 8px; cursor: pointer; opacity: .85; flex: none; }
+.style-btn:hover { opacity: 1; }
+@media (min-width: 861px) {
+  /* Labelled side menu */
+  body.ui-gov .rail { padding: 10px 0; gap: 0; }
+  body.ui-gov .rail button { flex-direction: row; justify-content: flex-start; gap: 12px; padding: 11px 18px; border-radius: 0; font-size: 13.5px; font-weight: 600; color: var(--text-2); border-bottom: 1px solid var(--line-soft); }
+  body.ui-gov .rail button span { text-align: left; }
+  body.ui-gov .rail button.on { background: var(--accent-soft); color: var(--text); }
+  body.ui-gov .rail button.on::before { left: 0; top: 0; bottom: 0; width: 4px; border-radius: 0; }
+  body.ui-gov .rail .rail-extra { margin: 0 12px; border: 1px solid var(--accent); border-radius: var(--radius); color: var(--text); justify-content: center; }
+}
+@media (max-width: 860px) { body.ui-gov .topbar { height: 52px; } .style-btn { margin-left: auto; } }
+
+.statusbar .strap { flex: none; font-weight: 700; letter-spacing: .04em; color: var(--accent); }
+body.ui-gov .statusbar .strap { color: #f0cf7f; }
+body .seg button.on, body .seg.small button.on { color: var(--accent-ink); }
+@media (max-width: 860px) { .statusbar .strap { display: none; } }

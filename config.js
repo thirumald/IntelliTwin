@@ -22,6 +22,10 @@ window.INTELLITWIN_CONFIG = {
   },
 
   /* ---- Start-up view ------------------------------------------------------------------------- */
+  // Interface style: 'government' (navy and gold, square corners, labelled side menu) or 'enterprise' (compact icon rail).
+  // Visitors can switch with the Style button in the status bar.
+  ui: { style: 'government' },
+
   start: {
     mode: 'live',               // 'live' = start at the Abu Dhabi clock and play at the rate below; 'replay' = today from now, as Historical
     rate: 30,                   // playback speed, Live included: 1 (Live then stays locked to the clock), 30, 120 or 600

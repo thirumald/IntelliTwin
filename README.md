@@ -19,7 +19,7 @@ IntelliTwin is a static traffic digital twin demonstrator for Abu Dhabi city. A 
 - **Environmental sensors:** example roadside sensors with synthetic air-quality and noise readings, on the map, in an Environment tab and in the analytics ([docs/environment.md](docs/environment.md)).
 - **Dark and light map**, with a pale green light theme; 3D cars with glass and wheels, and synthetic people on foot at street zoom.
 - **Individual vehicles:** one per vehicle on each road, dots when zoomed out and 3D cars at street level.
-- **Application shell:** one top bar (Live / Historical, road search, alerts, theme, language), a navigation rail for the sections, a docked panel and a status bar; dark and light themes; a bottom bar on phones.
+- **Application shell:** one top bar (Live / Historical, road search, alerts, theme, language), a navigation rail for the sections, a docked panel and a status bar; dark and light themes; a bottom bar on phones. Two interface styles: **Government** (default: navy and gold, labelled side menu) and **Enterprise**.
 - **Buses:** an example bus network with routes, stops, a timetable and delays, in its own section. Synthetic, not Abu Dhabi's real services.
 - **Live and Historical, 24 hours:** Live starts at the Abu Dhabi clock and plays at 30× by default (1× stays locked to the clock); Historical takes any date and a 24-hour time. Both use synthetic data.
 - **Dashboard:** KPIs, alerts, 15/30/60-minute forecast, day profile, demand cases.
