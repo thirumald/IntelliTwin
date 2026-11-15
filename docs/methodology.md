@@ -90,7 +90,7 @@ The counts and speeds are the simulation's. The individual cars are drawn to mat
 
 ## 8. Buses
 
-Bus runs come from the GTFS timetable for a Tuesday service day. Positions follow the route shape where the feed has one, at constant speed between consecutive timetabled stops; otherwise they move in straight lines between stops. Buses do not load the simulated roads.
+Buses are a synthetic example network built in the browser: routes from `config.js`, stops every 600 m, a timetable from the configured headways, and delays taken from the synthetic traffic on each route. See [buses.md](buses.md). They are not real services and are not part of the traffic simulation.
 
 ## 9. The synthetic day: live, historical and 24 hours
 

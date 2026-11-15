@@ -30,7 +30,10 @@ All settings are in `config.js` at the repository root. Every value has a workin
 | | `seriousAccident`, `maxShown` | `true`, 12 | Alert on serious accidents; list length |
 | | `everyAccident` | `true` | Alert on every new accident, not only serious ones |
 | | `syntheticEventsPerHour` | 14 | Synthetic operational events raised at cameras (stopped vehicle, wrong-way vehicle, debris, pedestrian on carriageway, queue, camera offline and similar). 0 turns them off |
-| | `push`, `pushSeconds`, `pushMaxVisible` | `true`, 9, 4 | Push each new alert as an on-screen notification (and a browser notification when the user has allowed them and the page is in the background) |
+| | `push` | `true` | Push each new alert as a small on-screen notification (and a browser notification when the user has allowed them and the page is in the background) |
+| | `pushSeconds` | 8 | Seconds before a notification closes by itself. 0 keeps it until it is closed with × |
+| | `pushPosition` | `'top-right'` | Corner of the map for notifications: `'top-right'` or `'top-left'` |
+| | `pushMaxVisible` | 3 | Most notifications on screen at once |
 | `vehicles` | `mix` | six types | Assumed shares of vehicle types for display and reporting |
 | `people` | `perKmByClass` | `[0, 0, 6, 12, 16]` | Synthetic walkers per km of street by road class, before the time-of-day factor |
 | `environment` | `sensors`, `syntheticSensors`, `radiusM` | `[]`, 18, 400 | Environmental sensors: real positions or a number of synthetic ones; traffic radius used for readings |

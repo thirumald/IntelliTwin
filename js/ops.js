@@ -135,15 +135,19 @@
   function toast(al) {
     var box = $('toasts');
     while (box.children.length >= CFG.alerts.pushMaxVisible) { box.removeChild(box.firstChild); }
-    var t = document.createElement('button');
-    t.type = 'button'; t.className = 'toast sev' + al.sev;
-    t.innerHTML = '<strong></strong><span></span><em>' + clock(state.t) + ' · synthetic data</em>';
+    box.className = 'toasts ' + (CFG.alerts.pushPosition === 'top-left' ? 'at-left' : 'at-right');
+    var t = document.createElement('div');
+    t.className = 'toast sev' + al.sev; t.setAttribute('role', 'status');
+    t.innerHTML = '<button type="button" class="toast-body" title="Show on the map"><strong></strong><span></span><em>' + clock(state.t) + ' · synthetic data</em></button>' +
+      '<button type="button" class="toast-close" aria-label="Close notification" title="Close">×</button>';
     t.querySelector('strong').textContent = al.title; t.querySelector('span').textContent = al.sub;
-    t.addEventListener('click', function () { act(al); t.remove(); });
+    t.querySelector('.toast-body').addEventListener('click', function () { act(al); t.remove(); });
+    t.querySelector('.toast-close').addEventListener('click', function () { t.remove(); });
     // A critical alert gets the quickest response route straight away (without moving the map).
     if (al.sev >= 3 && al.at && T.response && T.response.auto()) { T.response.routeTo(al.at[0], al.at[1], al.title, { fit: false }); }
     box.appendChild(t);
-    setTimeout(function () { t.remove(); }, CFG.alerts.pushSeconds * 1000);
+    // Auto-close after alerts.pushSeconds; 0 keeps it until it is closed by hand.
+    if (CFG.alerts.pushSeconds > 0) { setTimeout(function () { t.remove(); }, CFG.alerts.pushSeconds * 1000); }
     if (document.hidden && window.Notification && Notification.permission === 'granted') {
       try { new Notification('IntelliTwin alert', { body: al.title + ' — ' + al.sub + ' (synthetic data)', tag: 'itw-' + (toastCount++ % 6) }); } catch (e) { /* notifications unavailable */ }
     }

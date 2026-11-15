@@ -48,8 +48,6 @@ jobs:
           path: build/gcc-states.osm.pbf
           key: geofabrik-gcc-${{ steps.week.outputs.week }}
       - name: Build network, simulate, export
-        env:
-          MOBILITY_DATABASE_REFRESH_TOKEN: ${{ secrets.MOBILITY_DATABASE_REFRESH_TOKEN }}
         run: python tools/build.py --osm build/roads.osm --build build --out data --extra build/extra.osm --osm-timestamp "$(cat build/osm_timestamp.txt)"
       - name: Summary
         run: |

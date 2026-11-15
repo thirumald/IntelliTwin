@@ -495,12 +495,15 @@ def main():
                           "stats": trip_stats(out["tripinfo"]), "bins": kpis})
         print(sc["id"], scenarios[-1]["stats"], flush=True)
 
-    buses = {"available": False, "reason": "not attempted"}
-    try:
-        import gtfs_buses
-        buses = gtfs_buses.build(os.path.join(args.out, "buses.bin"), args.build)
-    except Exception as exc:  # the bus layer is optional; never fail the build for it
-        buses = {"available": False, "reason": f"{type(exc).__name__}: {exc}"[:200]}
+    # Buses in the app are a synthetic example network (js/buses.js). The real timetable import is off
+    # unless GTFS_ENABLED is set in tools/config.py.
+    buses = {"available": False, "reason": "real timetable import is switched off; the app uses a synthetic bus network"}
+    if getattr(C, "GTFS_ENABLED", False):
+        try:
+            import gtfs_buses
+            buses = gtfs_buses.build(os.path.join(args.out, "buses.bin"), args.build)
+        except Exception as exc:  # the bus layer is optional; never fail the build for it
+            buses = {"available": False, "reason": f"{type(exc).__name__}: {exc}"[:200]}
     print("buses:", buses, flush=True)
 
     signal_nodes = [n for n in net.getNodes() if n.getType() in ("traffic_light", "traffic_light_right_on_red")]

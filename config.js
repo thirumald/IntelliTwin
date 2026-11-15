@@ -95,8 +95,9 @@ sampleVideos: [
     // Push each new alert as an on-screen notification, and as a browser notification when the
     // user has allowed them and the page is in the background.
     push: true,
-    pushSeconds: 9,
-    pushMaxVisible: 4
+    pushSeconds: 8,                         // auto-close after this many seconds; 0 = stay until closed with ×
+    pushPosition: 'top-right',              // 'top-right' or 'top-left' corner of the map
+    pushMaxVisible: 3                       // most notifications on screen at once
   },
 
   /* ---- Forecast ------------------------------------------------------------------------------ */

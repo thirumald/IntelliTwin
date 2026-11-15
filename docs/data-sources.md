@@ -29,20 +29,13 @@ Residential and service streets are left out to keep the network and the browser
 
 If the download fails, the build continues. Trip ends then fall back to road length × lanes, and `meta.json` records `buildings.available = false`.
 
-## 3. Bus timetable — Integrated Transport Centre GTFS (optional)
+## 3. Buses — synthetic network
 
-| | |
-| --- | --- |
-| Provider | Integrated Transport Centre / Department of Municipalities and Transport, Abu Dhabi |
-| Catalogue | Mobility Database feed `mdb-1329`: <https://mobilitydatabase.org/feeds/gtfs/mdb-1329> |
-| Licence | Not stated in the catalogue entry. Treat reuse terms as unconfirmed |
-| Fetched by | `tools/gtfs_buses.py` |
-| Used for | Positions of timetabled bus runs during the simulated window, drawn as a separate layer |
-| Currency | The public copy is old (the producer file name carries a 2022 timestamp). Routes and times may have changed |
+The app shows an **example bus network generated in the browser** (`js/buses.js`, see [buses.md](buses.md)). Routes, stops, timetables and delays are invented; they are not the Integrated Transport Centre's services.
 
-Access: the pipeline first tries the Mobility Database API if the repository secret `MOBILITY_DATABASE_REFRESH_TOKEN` is set (see [operations.md](operations.md)), then a direct file address. If neither works, the build continues without buses.
+The real timetable (Integrated Transport Centre GTFS, Mobility Database feed `mdb-1329`) is no longer imported: its download was refused (HTTP 403), and the public copy dates from 2022. The importer, `tools/gtfs_buses.py`, is kept but switched off (`GTFS_ENABLED = False` in `tools/config.py`).
 
-Buses are **not** part of the traffic simulation. They follow the timetable and do not interact with simulated traffic.
+Buses are **not** part of the traffic simulation. They follow the synthetic timetable; only their delay is taken from the synthetic traffic.
 
 ## 4. Base map — OpenStreetMap data, OpenFreeMap vector tiles
 
@@ -95,4 +88,4 @@ SCAD figures are **not downloaded or used by the pipeline**. They are quoted in 
 
 ## Attribution text for deployments
 
-> Roads and base map data © OpenStreetMap contributors (ODbL); vector tiles by OpenFreeMap. Buildings: Microsoft Global ML Building Footprints. Bus timetable: Integrated Transport Centre Abu Dhabi GTFS via the Mobility Database. Simulation: Eclipse SUMO. Rendering: deck.gl, MapLibre GL JS.
+> Roads and base map data © OpenStreetMap contributors (ODbL); vector tiles by OpenFreeMap. Buildings: Microsoft Global ML Building Footprints. Buses: synthetic example network. Simulation: Eclipse SUMO. Rendering: deck.gl, MapLibre GL JS.

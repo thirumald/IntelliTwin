@@ -400,13 +400,6 @@
         }));
       }
     }
-    if (state.buses && buses) {
-      layers.push(new deck.TripsLayer({
-        id: 'buses', data: buses, getPath: function (v) { return v.path; }, getTimestamps: function (v) { return v.ts; },
-        getColor: [88, 166, 255], widthMinPixels: 5, capRounded: true, jointRounded: true,
-        trailLength: Math.max(18, state.rate * 0.3), currentTime: state.t, fadeTrail: true
-      }));
-    }
     if (state.sites && ev) {
       layers.push(new deck.ScatterplotLayer({
         id: 'sites', data: ev.sites, pickable: true, radiusUnits: 'pixels', stroked: true, lineWidthUnits: 'pixels',
@@ -575,7 +568,7 @@
       fact('Roads in the model', 'motorway to tertiary, by direction', num(nw.km) + ' km') + fact('Motorway · trunk', '', num(kc.motorway || 0) + ' · ' + num(kc.trunk || 0) + ' km') +
       fact('Primary · secondary · tertiary', '', num(kc.primary || 0) + ' · ' + num(kc.secondary || 0) + ' · ' + num(kc.tertiary || 0) + ' km') +
       fact('Road links · junctions', '', num(nw.edges) + ' · ' + num(nw.junctions)) + fact('Traffic signals', 'positions from OpenStreetMap; timings generic', num(nw.signals)) +
-      fact('Bus runs in the window', bs.available ? num(bs.lines) + ' lines, from the timetable' : 'timetable not loaded in this build', bs.available ? num(bs.runs) : '–') +
+      fact('Buses', 'synthetic example network, not real services', (CFG.buses && CFG.buses.routes ? CFG.buses.routes.length : 0) + ' routes') +
       fact('Building footprints', bl.available ? num(bl.shown) + ' largest available as a layer' : 'not loaded in this build', bl.available ? num(bl.count) : '–') +
       fact('Road data date', 'OpenStreetMap via Geofabrik', String(meta.osm_timestamp).slice(0, 10));
   }
@@ -718,7 +711,6 @@
     $('showPeople').addEventListener('change', function (e) { state.people = e.target.checked; redraw(); });
     $('themeBtn').addEventListener('click', function () { setTheme(theme === 'light' ? 'dark' : 'light'); });
     $('showCars').addEventListener('change', function (e) { state.cars = e.target.checked; });
-    $('showBuses').addEventListener('change', function (e) { state.buses = e.target.checked; });
     $('showBld').addEventListener('change', function (e) {
       state.bld = e.target.checked;
       if (state.bld && !buildings) {
@@ -883,12 +875,6 @@
     if (st.orbit && map) { setOrbit(true); }
     readyHooks.forEach(function (fn) { fn(); });
     requestAnimationFrame(frame);
-    if (meta.buses && meta.buses.available) {
-      getBuf('data/buses.bin').then(function (buf) {
-        buses = parsePaths(buf, meta.sim_begin); $('busRow').hidden = false; $('legendBus').hidden = false;
-        $('busNote').textContent = '(' + num(meta.buses.runs) + ' runs, ' + clock(meta.sim_begin) + '–' + clock(meta.sim_end) + ')';
-      }).catch(function () {});
-    }
     // Railways, cycle tracks and critical sites from OpenStreetMap (present after a data build that exports them).
     function lines(rows) { return rows.map(function (r) { var p = []; for (var i = 0; i < r.length; i += 2) { p.push([r[i], r[i + 1]]); } return p; }); }
     getJSON('data/rail.json').then(function (rows) { if (rows.length) { rail = lines(rows); $('railRow').hidden = false; $('legendRail').hidden = false; $('railNote').textContent = '(' + num((meta.extra || {}).rail_km || 0) + ' km)'; redraw(); } }).catch(function () {});

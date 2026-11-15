@@ -13,15 +13,9 @@ The run summary page lists the network size, demand split, speeds by half hour a
 
 To run it by hand: repository → **Actions** → **Build twin data** → **Run workflow**. Manual dispatch is only offered once the workflow file is on the default branch.
 
-### Secret for the bus timetable (optional)
+### Bus timetable
 
-The Mobility Database API needs a token. Without it the pipeline still tries a direct download, and skips buses if that fails.
-
-1. Sign in at <https://mobilitydatabase.org/account/api-access> and copy the **refresh token** (the long-lived one; access tokens expire after about an hour).
-2. Repository → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
-3. Name: `MOBILITY_DATABASE_REFRESH_TOKEN`. Value: the refresh token.
-
-Never commit a token to the repository. If a token has been shared anywhere outside the secret store, generate a new one.
+The build no longer downloads a bus timetable and no longer reads the `MOBILITY_DATABASE_REFRESH_TOKEN` secret; the app uses a synthetic bus network. The secret can be deleted from the repository settings. To import a real GTFS file again, set `GTFS_ENABLED = True` in `tools/config.py` and put the file at `build/gtfs.zip`.
 
 ## Build locally
 
@@ -40,9 +34,8 @@ Useful options and overrides:
 | What | How |
 | --- | --- |
 | Quick test with less traffic | `--scale 0.1` on `build.py` |
-| Use a GTFS file you already have | Put it at `build/gtfs.zip` |
+| Use a GTFS file you already have | Set `GTFS_ENABLED = True` in `tools/config.py` and put it at `build/gtfs.zip` |
 | Use footprint tiles you already have | Put the `.csv.gz` files in `build/buildings/` |
-| Bus token locally | `export MOBILITY_DATABASE_REFRESH_TOKEN=…` before running |
 
 ## Configuration
 

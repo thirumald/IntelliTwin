@@ -4,7 +4,7 @@ The **Buses** section and the blue routes and buses on the map come from `js/bus
 
 ## Why it is synthetic
 
-The public Integrated Transport Centre timetable could not be downloaded: the Mobility Database accepted the API token, but the file download was refused (HTTP 403). So the app builds an example network instead. **The route numbers, stops, timetables and delays are invented. They are not Abu Dhabi's real bus services**, and the section says so on screen.
+The app uses an example network instead of the public Integrated Transport Centre timetable, whose download was refused (HTTP 403) and whose public copy dates from 2022. **The route numbers, stops, timetables and delays are invented. They are not Abu Dhabi's real bus services**, and the section says so on screen.
 
 ## How it is built
 
@@ -19,4 +19,4 @@ The public Integrated Transport Centre timetable could not be downloaded: the Mo
 
 ## Using real services
 
-Replace `buses.routes` with real end points and headways, or connect a GTFS feed in place of the route builder in `js/buses.js`. If you have the timetable file from the Integrated Transport Centre, the data build can also read it from `build/gtfs.zip` (see [operations.md](operations.md)).
+Replace `buses.routes` in `config.js` with real end points and headways, or connect a GTFS feed in place of the route builder in `js/buses.js`. The old GTFS import in the data build is switched off (see [operations.md](operations.md)).

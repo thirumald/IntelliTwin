@@ -49,7 +49,9 @@ REROUTE_PROBABILITY = 0.3      # share of drivers who re-plan their route while 
 REROUTE_PERIOD = 600            # seconds between re-plans
 SEED = 42
 
-# Bus timetable (optional). Integrated Transport Centre GTFS, Mobility Database feed mdb-1329.
+# Bus timetable. Switched off: the app shows a synthetic bus network instead (js/buses.js).
+# Set GTFS_ENABLED = True to import the Integrated Transport Centre GTFS (Mobility Database feed mdb-1329) again.
+GTFS_ENABLED = False
 GTFS_FEED_ID = "mdb-1329"
 GTFS_URLS = [
     "https://files.mobilitydatabase.org/mdb-1329/latest.zip",
