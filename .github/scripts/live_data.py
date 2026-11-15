@@ -4,6 +4,7 @@ Sources (each optional; a missing key or a failed call leaves the previous file 
   NASA FIRMS   fire and heat detections from satellites     FIRMS_API_KEY
   N2YO         orbital elements of satellites over the UAE   N2YO_API_KEY
   aisstream.io vessel positions (AIS) in UAE waters          AIS_API_KEY
+  Flightradar24 aircraft to and from UAE airports           FLIGHT_RADAR (billed: 8 credits for each flight returned)
 
 The keys come from the environment (GitHub Actions secrets) and are never written to the output or the log.
 status.json records, for each source, whether the last attempt worked and when.
@@ -34,7 +35,7 @@ os.makedirs(OUT, exist_ok=True)
 def scrub(text):
     """Remove any key from a message before it is printed or stored."""
     text = str(text)
-    for name in ("FIRMS_API_KEY", "N2YO_API_KEY", "AIS_API_KEY"):
+    for name in ("FIRMS_API_KEY", "N2YO_API_KEY", "AIS_API_KEY", "FLIGHT_RADAR"):
         key = os.environ.get(name) or ""
         if key:
             text = text.replace(key, "***")
@@ -173,6 +174,49 @@ def vessels():
     return f"{len(ships)} vessels from {msgs} messages" + (f", {len(log)} reconnects" if log else "")
 
 
+UAE_AIRPORTS = ["AUH", "DXB", "DWC", "SHJ", "RKT", "FJR", "AAN", "AZI"]
+
+
+class Skip(Exception):
+    """Not an error: the source was left alone on purpose (the previous file stays)."""
+
+
+def flights(prev):
+    """Aircraft flying to or from UAE airports. Flightradar24 bills 8 credits for each flight returned, so the
+    number of flights per call (FR24_LIMIT) and the time between calls (FR24_MIN_HOURS) are both capped."""
+    key = (os.environ.get("FLIGHT_RADAR") or "").strip()
+    if not key:
+        raise RuntimeError("the Flightradar24 key is not set (secret FLIGHT_RADAR)")
+    limit = max(1, min(200, int(os.environ.get("FR24_LIMIT") or 30)))
+    min_hours = float(os.environ.get("FR24_MIN_HOURS") or 8)
+    last = prev.get("updated") if prev.get("ok") else None
+    if last and os.environ.get("FR24_FORCE") != "1":
+        age = (time.time() - time.mktime(time.strptime(last, "%Y-%m-%dT%H:%M:%SZ")) + time.timezone) / 3600
+        if age < min_hours:
+            raise Skip(f"last fetched {age:.1f} h ago; next after {min_hours:g} h")
+    url = ("https://fr24api.flightradar24.com/api/live/flight-positions/full?bounds="
+           f"{BBOX[3]},{BBOX[1]},{BBOX[0]},{BBOX[2]}&airports=" + ",".join("both:" + a for a in UAE_AIRPORTS) + f"&limit={limit}")
+    req = urllib.request.Request(url, headers={"Accept": "application/json", "Accept-Version": "v1", "Authorization": "Bearer " + key,
+                                               "User-Agent": "IntelliTwin live data (github.com/thirumald/IntelliTwin)"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            data = json.loads(r.read().decode("utf-8", "replace"))
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"Flightradar24 answered {e.code}: " + scrub(e.read().decode("utf-8", "replace")))
+    rows = []
+    for f in data.get("data") or []:
+        if f.get("lat") is None or f.get("lon") is None:
+            continue
+        rows.append({"id": f.get("fr24_id"), "flight": f.get("flight") or "", "call": f.get("callsign") or "", "lat": round(f["lat"], 4), "lon": round(f["lon"], 4),
+                     "track": f.get("track") or 0, "alt": f.get("alt") or 0, "gs": f.get("gspeed") or 0, "vs": f.get("vspeed") or 0, "type": f.get("type") or "",
+                     "reg": f.get("reg") or "", "airline": f.get("operating_as") or f.get("painted_as") or "", "from": f.get("orig_iata") or "", "to": f.get("dest_iata") or "",
+                     "eta": f.get("eta") or "", "t": f.get("timestamp") or ""})
+    credits = max(1, 8 * len(rows))
+    save("flights.json", {"updated": NOW, "source": "Flightradar24 API, aircraft to or from UAE airports inside the UAE area", "airports": UAE_AIRPORTS,
+                          "limit": limit, "flights": rows})
+    return f"{len(rows)} flights (limit {limit}), about {credits} credits", credits
+
+
 status_path = os.path.join(OUT, "status.json")
 try:
     with open(status_path, encoding="utf-8") as f:
@@ -181,16 +225,27 @@ except (OSError, ValueError):
     status = {}
 status["checked"] = NOW
 failed = 0
-for name, fn in (("fires", fires), ("satellites", satellites), ("vessels", vessels)):
+SOURCES = (("fires", fires), ("satellites", satellites), ("vessels", vessels), ("flights", flights))
+skipped = 0
+for name, fn in SOURCES:
     prev = status.get(name) or {}
     try:
-        note = fn()
-        status[name] = {"ok": True, "updated": NOW, "note": note}
+        if name == "flights":
+            note, credits = fn(prev)
+            day = NOW[:10]
+            used = (prev.get("credits_today") or 0) if prev.get("credits_day") == day else 0
+            status[name] = {"ok": True, "updated": NOW, "note": note, "credits_day": day, "credits_today": used + credits}
+        else:
+            note = fn()
+            status[name] = {"ok": True, "updated": NOW, "note": note}
         print(f"{name}: OK - {note}", flush=True)
+    except Skip as why:
+        skipped += 1
+        print(f"{name}: kept - {why}", flush=True)
     except Exception as err:  # one source failing must not stop the others
         failed += 1
         msg = scrub(f"{type(err).__name__}: {err}")
         status[name] = {"ok": False, "updated": prev.get("updated") if prev.get("ok") or prev.get("updated") else None, "error": msg, "tried": NOW}
         print(f"{name}: FAILED - {msg}", flush=True)
 save("status.json", status)
-print(f"{3 - failed} of 3 sources updated", flush=True)
+print(f"{len(SOURCES) - failed - skipped} of {len(SOURCES)} sources updated, {skipped} kept, {failed} failed", flush=True)

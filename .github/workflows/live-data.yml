@@ -3,7 +3,7 @@ name: Live data
 # Fetches NASA FIRMS fire detections, N2YO satellite orbits and aisstream.io vessel positions, and publishes
 # them as small JSON files on the "live-data" branch. The site reads them from there, so the API keys stay in
 # GitHub and the main branch gets no data commits. Keys: repository secrets (or variables) FIRMS_API_KEY,
-# N2YO_API_KEY and AIS_API_KEY.
+# N2YO_API_KEY, AIS_API_KEY and FLIGHT_RADAR (Flightradar24).
 on:
   schedule:
     - cron: '7,37 * * * *'
@@ -39,6 +39,11 @@ jobs:
           FIRMS_API_KEY: ${{ secrets.FIRMS_API_KEY || vars.FIRMS_API_KEY }}
           N2YO_API_KEY: ${{ secrets.N2YO_API_KEY || vars.N2YO_API_KEY }}
           AIS_API_KEY: ${{ secrets.AIS_API_KEY || vars.AIS_API_KEY }}
+          # Flightradar24 bills 8 credits for each flight returned. FR24_LIMIT flights per call, one call every
+          # FR24_MIN_HOURS hours (30 flights every 8 hours is about 720 credits a day). Set repository variables to change.
+          FLIGHT_RADAR: ${{ secrets.FLIGHT_RADAR || secrets.FLIGHT_RADAR_KEY || secrets.FLIGHT_RADAR_API_KEY || secrets.FR24_API_KEY || vars.FLIGHT_RADAR || vars.FLIGHT_RADAR_KEY || vars.FLIGHT_RADAR_API_KEY }}
+          FR24_LIMIT: ${{ vars.FR24_LIMIT || '30' }}
+          FR24_MIN_HOURS: ${{ vars.FR24_MIN_HOURS || '8' }}
         run: python .github/scripts/live_data.py out
       - name: Publish on the live-data branch
         run: |
