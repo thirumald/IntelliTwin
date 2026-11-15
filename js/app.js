@@ -75,6 +75,8 @@
   var dirty = true, orbiting = false, layerProviders = [], minuteHooks = [], readyHooks = [];
   var carProgress = null, simDt = 0, prevT = 0, visibleEdges = [], visibleKey = '';
 
+  // Theme colours for canvas drawing, read from the stylesheet so charts follow the dark and light themes.
+  function cssVar(name, fallback) { var v = getComputedStyle(document.body).getPropertyValue(name).trim(); return v || fallback; }
   function scenarioMeta(id) { return meta.scenarios.filter(function (s) { return s.id === id; })[0]; }
   function slotOf(t) { return Math.max(0, Math.min(SLOTS - 1, Math.floor((((t % DAY) + DAY) % DAY) / SLOT))); }
   function binOf(t) { return day.map[slotOf(t)]; }
@@ -132,10 +134,9 @@
   }
 
   function setMode(m) {
-    // Live runs in real time (1×). Leaving Live for replay switches to the configured replay speed.
-    var wasLive = state.mode === 'live';
+    // Live starts at the Abu Dhabi clock and plays at the configured speed (30× by default); at 1× it stays locked to the clock.
     state.mode = m;
-    if (m === 'live') { setRate(1); } else if (wasLive && state.rate === 1) { setRate((CFG.start && CFG.start.rate) || 30); }
+    if (m === 'live') { setRate((CFG.start && CFG.start.rate) || 30); }
     Array.prototype.forEach.call($('mode').children, function (b) {
       var on = b.getAttribute('data-mode') === m; b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false');
     });
@@ -160,7 +161,7 @@
     $('dateLabel').textContent = prettyDate(state.date);
     $('clock').textContent = shown;
     if (state.mode === 'live') {
-      $('modeNote').textContent = 'Live: following the Abu Dhabi clock. Synthetic feed for a ' + day.typeLabel + ', not measured traffic.';
+      $('modeNote').textContent = (state.rate === 1 ? 'Live: following the Abu Dhabi clock.' : 'Live: started at the Abu Dhabi clock, playing at ' + state.rate + '× so it runs ahead of the clock.') + ' Synthetic feed for a ' + day.typeLabel + ', not measured traffic.';
     } else {
       if (document.activeElement !== $('hHour') && document.activeElement !== $('hMin')) {
         $('hHour').value = pad(Math.floor(state.t / 3600) % 24); $('hMin').value = pad(Math.floor(state.t % 3600 / 300) * 5);
@@ -220,6 +221,7 @@
       setTheme = function (th) {
         theme = th === 'light' ? 'light' : 'dark';
         document.body.classList.toggle('map-light', theme === 'light');
+        setTimeout(function () { try { drawChart(); } catch (eChart) { /* chart not ready yet */ } }, 0);
         $('themeBtn').textContent = theme === 'light' ? 'Dark map' : 'Light map';
         var seq = ++loadSeq, url = styleUrl(theme), done = false;
         vectorBase = false;
@@ -592,7 +594,7 @@
     var padL = 30, padR = 8, padT = 8, padB = 20, n = cur.length;
     function x(f) { return padL + (w - padL - padR) * f; }
     function y(v) { return padT + (h - padT - padB) * (1 - (v - bottom) / (top - bottom)); }
-    g.font = '10.5px system-ui, sans-serif'; g.fillStyle = '#8fa0bd'; g.strokeStyle = '#22314d'; g.lineWidth = 1;
+    g.font = '10.5px system-ui, sans-serif'; g.fillStyle = cssVar('--muted', '#8fa0bd'); g.strokeStyle = cssVar('--line', '#22314d'); g.lineWidth = 1;
     g.textAlign = 'right'; g.textBaseline = 'middle';
     [bottom, (top + bottom) / 2, top].forEach(function (v) { g.beginPath(); g.moveTo(padL, y(v)); g.lineTo(w - padR, y(v)); g.stroke(); g.fillText(Math.round(v), padL - 6, y(v)); });
     g.textAlign = 'center'; g.textBaseline = 'top';
@@ -601,11 +603,11 @@
       g.beginPath(); arr.forEach(function (v, i) { var px = x(i / (n - 1)); if (i) { g.lineTo(px, y(v)); } else { g.moveTo(px, y(v)); } });
       g.strokeStyle = color; g.lineWidth = width; g.setLineDash(dash); g.stroke(); g.setLineDash([]);
     }
-    line(base, '#6f84a8', [4, 4], 1.5);
+    line(base, cssVar('--muted', '#6f84a8'), [4, 4], 1.5);
     line(cur, 'rgb(45,212,167)', [], 2);
     var mx = x(state.t / DAY), k = kpiAt(state.scenario, state.t);
-    g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(mx, padT); g.lineTo(mx, h - padB); g.stroke();
-    g.fillStyle = '#fff'; g.beginPath(); g.arc(mx, y(Math.max(bottom, Math.min(top, k.speed || 0))), 3.5, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = cssVar('--text', '#fff'); g.lineWidth = 1.5; g.beginPath(); g.moveTo(mx, padT); g.lineTo(mx, h - padB); g.stroke();
+    g.fillStyle = cssVar('--text', '#fff'); g.beginPath(); g.arc(mx, y(Math.max(bottom, Math.min(top, k.speed || 0))), 3.5, 0, Math.PI * 2); g.fill();
   }
 
   /* ---------- controls ---------- */
@@ -654,7 +656,8 @@
     $('rate').addEventListener('click', function (e) {
       var b = e.target.closest('button'); if (!b) { return; }
       var r = Number(b.getAttribute('data-rate'));
-      if (state.mode === 'live' && r !== 1) { setMode('hist'); }       // faster than real time leaves the live clock
+      if (state.mode === 'live' && r === 1) { state.t = nowLocal().tod; }   // 1× in Live locks back onto the clock
+      updateModeUI(true);
       setRate(r); setPlaying(true);
     });
     $('play').addEventListener('click', function () { if (state.mode === 'live') { setMode('hist'); setPlaying(false); } else { setPlaying(!state.playing); } });
@@ -732,7 +735,7 @@
   var last = performance.now(), lastKey = '', lastLabel = '';
   function frame(now) {
     var dt = Math.min((now - last) / 1000, 0.25); last = now;
-    if (state.mode === 'live') {
+    if (state.mode === 'live' && state.rate === 1) {
       var n = nowLocal();
       if (n.iso !== state.date) { state.date = n.iso; rebuildDay(); }
       state.t = n.tod;

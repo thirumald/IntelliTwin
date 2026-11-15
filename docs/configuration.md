@@ -8,7 +8,7 @@ All settings are in `config.js` at the repository root. Every value has a workin
 
 | Section | Key | Default | What it does |
 | --- | --- | --- | --- |
-| `start` | `mode`, `rate` | `'live'`, 30 | Opening mode: `'live'` follows the clock in real time; `'replay'` plays today from the current time. `rate` is the replay speed, used as soon as playback leaves Live |
+| `start` | `mode`, `rate` | `'live'`, 30 | Opening mode and speed. `'live'` starts at the Abu Dhabi clock and plays at `rate` (30× by default, so it runs ahead of the clock; choose 1× to stay locked to it). `'replay'` opens today's synthetic day as Historical |
 | | `fullView` | `true` | Open with the panel, legend and site shortcuts minimised |
 | | `focus`, `orbit` | `'most-congested-site'`, `true` | Open with the most congested major site selected in the site chips, in a tilted 3D view with the camera orbiting. `'most-congested'` opens on the slowest road instead; `'all'` on the whole area |
 | `map` | `styleUrl` | OpenFreeMap dark style | MapLibre style for the vector base map. Use a licensed or self-hosted style in production |

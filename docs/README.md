@@ -1,6 +1,6 @@
 # IntelliTwin documentation
 
-Technical and data-source documentation for the IntelliTwin Abu Dhabi mobility twin.
+Technical and data-source documentation for the IntelliTwin traffic twin for Abu Dhabi.
 
 | Document | What it covers |
 | --- | --- |
@@ -12,6 +12,7 @@ Technical and data-source documentation for the IntelliTwin Abu Dhabi mobility t
 | [configuration.md](configuration.md) | Every setting in `config.js`, camera video, roles, integration points |
 | [analytics.md](analytics.md) | The predictive analytics view: sections, method and assumptions |
 | [zones-and-response.md](zones-and-response.md) | Critical-zone monitoring, response routing, vehicle types, railway and cycle layers |
+| [buses.md](buses.md) | The synthetic bus network: routes, timetable, delays |
 | [environment.md](environment.md) | Environmental sensors: synthetic readings, air-quality index, noise |
 | [assistant.md](assistant.md) | The built-in assistant and how to connect a language model |
 | [limitations.md](limitations.md) | Calibration status, known limits, disclaimer |

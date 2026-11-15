@@ -23,8 +23,8 @@ window.INTELLITWIN_CONFIG = {
 
   /* ---- Start-up view ------------------------------------------------------------------------- */
   start: {
-    mode: 'live',               // 'live' = follow the Abu Dhabi clock in real time; 'replay' = today from now at the rate below
-    rate: 30,                   // replay speed used as soon as playback leaves Live: 1, 30, 120 or 600
+    mode: 'live',               // 'live' = start at the Abu Dhabi clock and play at the rate below; 'replay' = today from now, as Historical
+    rate: 30,                   // playback speed, Live included: 1 (Live then stays locked to the clock), 30, 120 or 600
     fullView: true,             // open with the panel, legend and site shortcuts minimised
     focus: 'most-congested-site', // select the major site (map chip) with the slowest traffic; 'most-congested' = slowest road; 'all' = whole area
     orbit: true                 // circle the camera around the opening view
@@ -109,6 +109,30 @@ sampleVideos: [
       { id: 'lorry', label: 'Lorries', share: 0.05 },
       { id: 'bus', label: 'Buses and staff buses', share: 0.03 },
       { id: 'moto', label: 'Motorcycles', share: 0.02 }
+    ]
+  },
+
+  /* ---- Buses ---------------------------------------------------------------------------------- */
+  // A SYNTHETIC bus network: no usable public timetable could be obtained. Each route runs between
+  // two points along the quickest road path. Replace with real routes or a GTFS feed when available.
+  buses: {
+    scheduleKmh: 22,              // timetabled speed including stops
+    stopSpacingM: 600,
+    firstHour: 5.5, lastHour: 23.5,
+    offPeakFactor: 1.5,           // headway outside 06:00–09:30 and 16:00–20:00, against the peak headway
+    delayShare: 0.35,             // share of the route's extra traffic time that delays its buses
+    onTimeWithinMin: 3,
+    routes: [
+      { id: '101', name: 'Downtown – Mussafah', from: [54.3570, 24.4870], to: [54.5000, 24.3550], headwayMin: 10 },
+      { id: '102', name: 'Corniche – Yas Island', from: [54.3400, 24.4750], to: [54.6031, 24.4672], headwayMin: 15 },
+      { id: '103', name: 'Al Reem Island – Airport', from: [54.4050, 24.4980], to: [54.6511, 24.4330], headwayMin: 20 },
+      { id: '110', name: 'Downtown – Khalifa City', from: [54.3570, 24.4870], to: [54.5770, 24.4200], headwayMin: 12 },
+      { id: '120', name: 'Mina Zayed – Mohamed Bin Zayed City', from: [54.3780, 24.5220], to: [54.5450, 24.3400], headwayMin: 15 },
+      { id: '160', name: 'Saadiyat Island – ADNEC', from: [54.3983, 24.5338], to: [54.4370, 24.4180], headwayMin: 20 },
+      { id: '170', name: 'Emirates Palace – Grand Mosque', from: [54.3170, 24.4615], to: [54.4750, 24.4128], headwayMin: 10 },
+      { id: '200', name: 'Mussafah – Yas Island', from: [54.5000, 24.3550], to: [54.6031, 24.4672], headwayMin: 20 },
+      { id: '210', name: 'Khalifa City – Masdar City', from: [54.5770, 24.4200], to: [54.6170, 24.4290], headwayMin: 15 },
+      { id: '300', name: 'Downtown – Al Maryah Island', from: [54.3570, 24.4870], to: [54.3900, 24.5020], headwayMin: 8 }
     ]
   },
 

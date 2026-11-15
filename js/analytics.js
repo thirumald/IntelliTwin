@@ -11,6 +11,8 @@
   var A = CFG.analytics;
   // Categorical colours validated for the dark surface (blue, orange, aqua, yellow), assigned in this fixed order.
   var COL = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#0ca30c'], INK = '#e8eef9', MUTED = '#8fa0bd', GRID = '#22314d';
+  // Text and grid colours follow the page theme.
+  function themeInk() { var cs = getComputedStyle(document.body), g = function (n, f) { return cs.getPropertyValue(n).trim() || f; }; INK = g('--text', '#e8eef9'); MUTED = g('--muted', '#8fa0bd'); GRID = g('--line', '#22314d'); }
   var STATUS = { good: '#0ca30c', warning: '#fab219', serious: '#ec835a', critical: '#d03b3b' };
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
@@ -270,6 +272,7 @@
   function locate(fn) { return function () { close(); fn(); }; }
 
   function render() {
+    themeInk();
     if (!M) { build(); }
     var H = horizon, roads = M.roads, J = M.junctions, last = M.years.length - 1;
     var cost = M.dailyDelay * A.valueOfTimeAedPerHour * A.workingDaysPerYear, fMid = Math.min(5, H);

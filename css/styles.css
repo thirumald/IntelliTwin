@@ -492,3 +492,5 @@ body.map-light .seg button { color: #3d574f; }
 body.map-light .timeline .btn { background: #e3f1e4; color: #16302a; border-color: #b9d3c0; }
 body.map-light .sim-clock { color: #16302a; }
 body.map-light #map { background: #e3f1e4; }
+
+.pt.synbus { background: #4696eb; outline: 2px solid #08142c; }

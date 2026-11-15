@@ -36,10 +36,10 @@
     return best;
   }
   // Seconds to drive a link at the current speed, for a response vehicle.
-  function cost(i) {
+  var cost = function (i) {
     var e = C.edges()[i], kmh = Math.max(4, Math.min(e.s * 1.15, e.s * C.ratio(i) * R.speedFactor));
     return e.m / (kmh / 3.6);
-  }
+  };
 
   /* ---- Dijkstra over links, with a small binary heap ---- */
   function shortest(from, to) {
@@ -62,6 +62,19 @@
     var chain = []; for (var x = to; x !== -1; x = prev[x]) { chain.push(x); }
     chain.reverse();
     return { seconds: time[to], links: chain };
+  }
+
+  // Free-flow path between two points, for other modules (for example the synthetic bus routes).
+  function pathBetween(a, b) {
+    if (!next) { buildGraph(); }
+    var edges = C.edges(), saved = cost;
+    cost = function (i) { return edges[i].m / (edges[i].s / 3.6); };
+    var r = shortest(nearestEdge(a, true), nearestEdge(b, false));
+    cost = saved;
+    if (!r) { return null; }
+    var path = [], metres = 0;
+    r.links.forEach(function (i) { edges[i].path.forEach(function (p, k) { if (k || !path.length) { path.push(p); } }); metres += edges[i].m; });
+    return { path: path, links: r.links, metres: metres };
   }
 
   function routeTo(lon, lat, label, opts) {
@@ -113,5 +126,5 @@
     $('showBases').addEventListener('change', function (e) { show = e.target.checked; C.redraw(); });
   });
 
-  T.response = { routeTo: routeTo, clear: clear, current: function () { return route; }, auto: function () { return !!R.auto; } };
+  T.response = { pathBetween: pathBetween, routeTo: routeTo, clear: clear, current: function () { return route; }, auto: function () { return !!R.auto; } };
 })();
