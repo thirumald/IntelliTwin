@@ -1,0 +1,77 @@
+name: Add buildings to regions
+
+# Adds the 3D building layer (Microsoft Global ML Building Footprints) to regions that are already built.
+# Roads and traffic are left as they are. Takes a few minutes.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        region: [dubai, sharjah, ajman, ummalquwain, rasalkhaimah, fujairah, alain]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -q -r tools/requirements.txt
+      - run: python .github/scripts/add_buildings.py --region "${{ matrix.region }}" --out "out/${{ matrix.region }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bld-${{ matrix.region }}
+          path: out/${{ matrix.region }}
+          retention-days: 2
+
+  commit:
+    needs: build
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bld-*
+          path: incoming
+      - name: Commit the buildings and redeploy the site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4; do
+            git fetch -q origin "${GITHUB_REF_NAME}"
+            git reset -q --hard "origin/${GITHUB_REF_NAME}"
+            for d in incoming/bld-*; do
+              r="${d#incoming/bld-}"
+              [ -s "$d/buildings.json" ] && [ -s "data/$r/meta.json" ] || continue
+              cp "$d/buildings.json" "data/$r/buildings.json"
+              python3 - "$r" "$d/buildings_meta.json" <<'PY'
+          import json, sys
+          r, src = sys.argv[1], sys.argv[2]
+          p = f"data/{r}/meta.json"
+          m = json.load(open(p)); m["buildings"] = json.load(open(src))
+          json.dump(m, open(p, "w"), separators=(",", ":"))
+          print("region", r, m["buildings"])
+          PY
+            done
+            git add data
+            if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
+            git commit -q -m "Add region buildings [skip ci]"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              gh workflow run jekyll-gh-pages.yml --ref "${GITHUB_REF_NAME}" || true
+              exit 0
+            fi
+            echo "push rejected, attempt $attempt"; sleep $((attempt * 7))
+          done
+          exit 1
