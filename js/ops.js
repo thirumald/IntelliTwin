@@ -56,6 +56,32 @@
     if (saved && CFG.auth.roles[saved.role]) { user = saved; applyRole(); } else { $('login').hidden = false; }
   }
 
+  /* ---------- synthetic operational events ---------- */
+  // Generated, not detected: each simulated minute may raise one event at a camera, chosen by a hash of
+  // the date and minute, so the same date always replays the same events.
+  var EVENT_TYPES = [
+    { text: 'Stopped vehicle', sev: 2, min: 6, max: 18 }, { text: 'Stopped vehicle', sev: 2, min: 6, max: 18 },
+    { text: 'Wrong-way vehicle', sev: 3, min: 3, max: 8 }, { text: 'Debris on road', sev: 2, min: 8, max: 25 },
+    { text: 'Pedestrian on carriageway', sev: 3, min: 3, max: 10 }, { text: 'Queue building', sev: 1, min: 8, max: 20 },
+    { text: 'Queue building', sev: 1, min: 8, max: 20 }, { text: 'Camera offline', sev: 1, min: 10, max: 30 },
+    { text: 'Illegal stopping', sev: 1, min: 4, max: 12 }, { text: 'Slow vehicle in fast lane', sev: 1, min: 4, max: 10 }
+  ];
+  function hashStr(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function rnd(seed, k) { var h = (Math.imul(seed ^ (k * 2654435761), 2246822519)) >>> 0; h ^= h >>> 13; h = Math.imul(h, 3266489917) >>> 0; h ^= h >>> 16; return (h >>> 0) / 4294967296; }
+  function opsEvents() {
+    var perHour = CFG.alerts.syntheticEventsPerHour || 0, cams = T.devices ? T.devices.cameras() : [];
+    if (!perHour || !cams.length) { return []; }
+    var out = [], nowMin = Math.floor(state.t / 60), dateSeed = hashStr(state.date);
+    for (var m = Math.max(0, nowMin - 30); m <= nowMin; m++) {
+      var seed = (dateSeed + m * 7919) >>> 0;
+      if (rnd(seed, 1) >= perHour / 60) { continue; }
+      var ty = EVENT_TYPES[Math.floor(rnd(seed, 2) * EVENT_TYPES.length)], cam = cams[Math.floor(rnd(seed, 3) * cams.length)];
+      var dur = (ty.min + rnd(seed, 4) * (ty.max - ty.min)) * 60, start = m * 60;
+      if (state.t < start + dur) { out.push({ type: ty, cam: cam, t: start, key: 'ops:' + state.date + ':' + m }); }
+    }
+    return out;
+  }
+
   /* ---------- alerts ---------- */
   var current = [];
   function computeAlerts() {
@@ -65,11 +91,21 @@
       out.push({ key: 'network-speed', sev: 2, title: 'Network speed ' + Math.round(k.speed) + ' km/h', sub: 'Below the ' + a.networkSpeedBelowKmh + ' km/h threshold', go: function () { C.showTab('cong'); } });
     }
     var e = C.eventTotals(state.scenario, state.t);
-    if (e && a.seriousAccident) {
+    if (e && a.everyAccident) {
+      e.active.forEach(function (x) {
+        var sv = x.severity === 'Serious injury' ? 3 : x.severity === 'Minor injury' ? 2 : 1;
+        out.push({ key: 'acc:' + x.road + ':' + Math.round(x.t), sev: sv, title: (sv === 3 ? 'Serious accident: ' : 'Accident: ') + x.road,
+          sub: x.severity + ' · reported ' + clock(x.t) + ' · illustrative', go: function () { C.flyTo(x.lon, x.lat); } });
+      });
+    } else if (e && a.seriousAccident) {
       e.active.filter(function (x) { return x.severity === 'Serious injury'; }).forEach(function (x) {
         out.push({ sev: 3, title: 'Serious accident: ' + x.road, sub: 'Reported ' + clock(x.t) + ' · illustrative', go: function () { C.flyTo(x.lon, x.lat); } });
       });
     }
+    opsEvents().forEach(function (ev) {
+      out.push({ key: ev.key, sev: ev.type.sev, title: ev.type.text + ': ' + ev.cam.name, sub: ev.cam.id + ' · raised ' + clock(ev.t) + ' · synthetic',
+        go: function () { if (ev.type.text === 'Camera offline') { C.flyTo(ev.cam.lon, ev.cam.lat, 15); } if (ev.type.text !== 'Camera offline' && T.devices) { T.devices.openCamera(ev.cam.id); } } });
+    });
     C.roadStats(C.binNow(), a.roadMinVehicles).filter(function (r) { return r.ratio < a.roadRatioBelow; }).slice(0, 8).forEach(function (r) {
       out.push({ sev: 1, title: 'Severe congestion: ' + r.name, sub: Math.round(r.speed) + ' km/h · ' + Math.round(r.ratio * 100) + '% of limit · ' + num(r.vehicles) + ' vehicles', go: function () { C.locate(r.g); } });
     });
@@ -93,7 +129,7 @@
     }
   }
   function pushNew(list) {
-    if (!CFG.alerts.push) { return; }
+    if (!CFG.alerts.push || !$('login').hidden) { return; }      // nothing is pushed behind the sign-in screen
     var now = {};
     list.forEach(function (al) { now[al.key || al.title] = 1; });
     var fresh = list.filter(function (al) { return !known || !known[al.key || al.title]; });

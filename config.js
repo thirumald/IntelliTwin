@@ -52,12 +52,14 @@ window.INTELLITWIN_CONFIG = {
     cameras: [],
     // Real traffic footage shown by cameras that have no stream of their own. These clips are filmed
     // in Chicago, not Abu Dhabi, and are not the camera's feed; the camera window says so.
+    // The first source is an MP4 copy kept in this repository (made by the "Fetch sample media" workflow),
+    // which plays on every browser including iPhones; the others are the Wikimedia originals.
     // Each entry: { sources: [urls tried in order], credit }. Set to [] to use the synthetic view only.
     sampleVideos: [
-      { sources: ['https://upload.wikimedia.org/wikipedia/commons/transcoded/d/d5/Lake_Shore_Drive_Traffic.webm/Lake_Shore_Drive_Traffic.webm.480p.vp9.webm',
+      { sources: ['assets/video/lake-shore-drive.mp4', 'https://upload.wikimedia.org/wikipedia/commons/transcoded/d/d5/Lake_Shore_Drive_Traffic.webm/Lake_Shore_Drive_Traffic.webm.480p.vp9.webm',
           'https://commons.wikimedia.org/wiki/Special:FilePath/Lake_Shore_Drive_Traffic.webm'],
         credit: '"Lake Shore Drive Traffic" by Sea Cow, CC BY-SA 4.0, Wikimedia Commons' },
-      { sources: ['https://upload.wikimedia.org/wikipedia/commons/transcoded/9/90/Jane_M._Byrne_Interchange_Traffic.webm/Jane_M._Byrne_Interchange_Traffic.webm.480p.vp9.webm',
+      { sources: ['assets/video/byrne-interchange.mp4', 'https://upload.wikimedia.org/wikipedia/commons/transcoded/9/90/Jane_M._Byrne_Interchange_Traffic.webm/Jane_M._Byrne_Interchange_Traffic.webm.480p.vp9.webm',
           'https://commons.wikimedia.org/wiki/Special:FilePath/Jane_M._Byrne_Interchange_Traffic.webm'],
         credit: '"Jane M. Byrne Interchange Traffic" by Sea Cow, CC BY-SA 4.0, Wikimedia Commons' }
     ],
@@ -72,9 +74,13 @@ window.INTELLITWIN_CONFIG = {
   /* ---- Alerts -------------------------------------------------------------------------------- */
   alerts: {
     networkSpeedBelowKmh: 40,        // network average speed
-    roadRatioBelow: 0.3,             // road speed as a share of its limit …
-    roadMinVehicles: 150,            // … with at least this many vehicles on it
+    roadRatioBelow: 0.45,             // road speed as a share of its limit …
+    roadMinVehicles: 80,            // … with at least this many vehicles on it
     seriousAccident: true,
+    everyAccident: true,
+    // Synthetic operational events (stopped vehicle, wrong-way driver, device fault …) raised at the
+    // cameras, so the alert feed is active at any hour. 0 turns them off.
+    syntheticEventsPerHour: 14,             // also alert on each new accident, whatever its severity
     maxShown: 12,
     // Push each new alert as an on-screen notification, and as a browser notification when the
     // user has allowed them and the page is in the background.
@@ -97,7 +103,7 @@ window.INTELLITWIN_CONFIG = {
     roles: {
       admin: { label: 'Administrator', can: ['whatif', 'export', 'audit', 'settings', 'video'] },
       operator: { label: 'Operator', can: ['whatif', 'export', 'video'] },
-      viewer: { label: 'Viewer', can: [] }
+      viewer: { label: 'Viewer', can: ['video'] }
     }
   },
 

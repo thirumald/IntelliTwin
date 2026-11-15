@@ -98,7 +98,7 @@
     }
     if (/\bcamera|\bcctv|\bvideo|\bfootage/.test(q)) {
       var dv = window.IntelliTwin.devices, cam = dv ? dv.openCamera(findByName(dv.cameras().map(function (c) { return c.name; }), q) || '') : null;
-      return cam ? 'Opened ' + cam.id + ' on ' + cam.name + '. ' + (cam.stream ? 'It is playing the configured stream.' : 'No stream is configured, so it shows a synthetic view, not footage.') : 'No cameras are available.';
+      return cam ? 'Opened ' + cam.id + ' on ' + cam.name + '. ' + (cam.stream ? 'It is playing the configured stream.' : 'No stream is configured for it, so it plays sample traffic footage (not this camera, not Abu Dhabi), or a synthetic view if the footage cannot load.') : 'No cameras are available.';
     }
 
     // View controls

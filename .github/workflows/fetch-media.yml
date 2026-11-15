@@ -1,0 +1,62 @@
+name: Fetch sample media
+
+# Downloads the sample traffic clips from Wikimedia Commons, converts them to small MP4 files that
+# play on every browser, commits them to assets/video/ and redeploys the site.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/fetch-media.yml'
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  media:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ffmpeg
+        run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+      - name: Download and convert
+        run: |
+          set -euo pipefail
+          mkdir -p assets/video tmp
+          UA="IntelliTwin-media-fetch/1.0 (https://github.com/thirumald/IntelliTwin)"
+          fetch() {  # name, Commons file name
+            curl -fL --retry 4 --retry-all-errors --retry-delay 15 -A "$UA" -o "tmp/$1.webm" \
+              "https://commons.wikimedia.org/wiki/Special:FilePath/$2"
+            # 480p H.264, no audio, at most 30 seconds, small enough to keep in the repository
+            ffmpeg -y -loglevel error -i "tmp/$1.webm" -t 30 -an -vf "scale=-2:480,fps=25" \
+              -c:v libx264 -profile:v main -pix_fmt yuv420p -crf 30 -preset slow -movflags +faststart "assets/video/$1.mp4"
+            ls -lh "assets/video/$1.mp4"
+          }
+          fetch lake-shore-drive Lake_Shore_Drive_Traffic.webm
+          fetch byrne-interchange Jane_M._Byrne_Interchange_Traffic.webm
+          cat > assets/video/CREDITS.md <<'TXT'
+          # Sample traffic footage
+
+          Converted to MP4 (480p, no audio, first 30 seconds) from Wikimedia Commons. Both clips are by
+          Sea Cow and licensed CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/); these
+          converted copies are shared under the same licence.
+
+          - lake-shore-drive.mp4: "Lake Shore Drive Traffic", https://commons.wikimedia.org/wiki/File:Lake_Shore_Drive_Traffic.webm
+          - byrne-interchange.mp4: "Jane M. Byrne Interchange Traffic", https://commons.wikimedia.org/wiki/File:Jane_M._Byrne_Interchange_Traffic.webm
+
+          The footage shows Chicago. It is used as stand-in camera video and is not Abu Dhabi.
+          TXT
+          sed -i 's/^          //' assets/video/CREDITS.md
+      - name: Commit and redeploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/video
+          git diff --cached --quiet && exit 0
+          git commit -m "Add sample traffic footage as MP4 [skip ci]"
+          git pull --rebase -q origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          gh workflow run jekyll-gh-pages.yml --ref "${GITHUB_REF_NAME}"

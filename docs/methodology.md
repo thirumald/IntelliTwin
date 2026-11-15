@@ -130,6 +130,11 @@ No accident or enforcement data is public for Abu Dhabi. `js/events.js` generate
 | Audit log | Actions are stored in the browser's local storage (last 300), and posted to `api.auditUrl` if set | Not tamper-proof |
 | Sign-in | A role is chosen in the browser | Not a security control |
 
+
+## Synthetic operational events
+
+So that the alert feed is active at any hour, `js/ops.js` raises synthetic operational events at the cameras: stopped vehicle, wrong-way vehicle, debris on road, pedestrian on carriageway, queue building, camera offline, illegal stopping, slow vehicle in fast lane. Each simulated minute raises one with probability `alerts.syntheticEventsPerHour / 60`, chosen by a hash of the date and minute, so a given date always replays the same events. Each lasts 3 to 30 minutes. **They are generated, not detected by any analytics**, and every alert built from them is labelled synthetic. In a real deployment these would come from video analytics or incident detection.
+
 ## 11. Tuning history
 
 All builds used the real OpenStreetMap network (20,801 links). “Typical weekday” results:

@@ -64,7 +64,7 @@ Cameras without a stream of their own show real traffic footage as a stand-in. T
 | Lake Shore Drive Traffic (Chicago) | Sea Cow | CC BY-SA 4.0 |
 | Jane M. Byrne Interchange Traffic (Chicago) | Sea Cow | CC BY-SA 4.0 |
 
-The clips are WebM (VP9). If a browser cannot play them, or they cannot be reached within 12 seconds, the camera falls back to the synthetic view. Replace them in `config.js` (`devices.sampleVideos`), or give each camera its own `stream`.
+The **Fetch sample media** workflow downloads the clips, converts the first 30 seconds to 480p MP4 (H.264, no audio) and commits them to `assets/video/` with a credits file, so they play on every browser including iPhones. The converted copies stay under CC BY-SA 4.0. The app tries the local MP4 first, then the Wikimedia WebM originals. If nothing can be played within 12 seconds, the camera falls back to the synthetic view. Replace them in `config.js` (`devices.sampleVideos`), or give each camera its own `stream`.
 
 ## Branding
 

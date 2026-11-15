@@ -69,7 +69,11 @@
     }
     if (show.det && ctx.zoom >= 11.5) { out.push(dots('detectors', dets, [140, 210, 190, 230], 4, detPopup)); }
     if (show.vms && ctx.zoom >= 10.5) { out.push(dots('signs', signs, [255, 190, 60, 245], 6, vmsPopup)); }
-    if (show.cams && ctx.zoom >= 10.5) { out.push(dots('cameras', cams, [70, 200, 255, 245], 6, camPopup)); }
+    if (show.cams) {
+      // Cameras stay visible at every zoom and are drawn larger, with a white ring, so they are easy to click.
+      var camLayer = dots('cameras', cams, [70, 200, 255, 255], ctx.zoom >= 13 ? 9 : 7, camPopup);
+      out.push(camLayer.clone({ getLineColor: [255, 255, 255], getLineWidth: 2 }));
+    }
     var sig = C.signals();
     if (show.sig && sig && ctx.zoom >= 13.5) {
       var cyc = CFG.devices.signalCycleSeconds, sec = Math.floor(state.t);
@@ -97,6 +101,8 @@
     var r = reading(c.edge), allowed = !T.ops || T.ops.can('video');
     var box = C.showPopup([c.lon, c.lat], c.id + ' · ' + c.name, [['Speed', Math.round(r.speed) + ' km/h'], ['Flow', num(r.flow) + ' veh/h'], ['Feed', c.stream ? 'Video stream' : (CFG.devices.sampleVideos || []).length ? 'Sample footage' : 'Synthetic view']],
       c.real ? 'Camera from config.js' : 'Synthetic camera position');
+    // Clicking a camera opens its video straight away; the button reopens it after closing.
+    if (allowed) { openVideo(c); }
     if (box && allowed) {
       var b = document.createElement('button'); b.className = 'btn small'; b.textContent = 'Open camera view'; b.style.marginTop = '8px';
       b.addEventListener('click', function () { openVideo(c); });

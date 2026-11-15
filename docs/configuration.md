@@ -24,8 +24,10 @@ All settings are in `config.js` at the repository root. Every value has a workin
 | | `hlsScript` | `null` | URL of an HLS player script for browsers without native HLS |
 | | `signalCycleSeconds` | 90 | Generic signal cycle shown on the map |
 | `alerts` | `networkSpeedBelowKmh` | 40 | Alert when network speed falls below this |
-| | `roadRatioBelow`, `roadMinVehicles` | 0.3, 150 | Alert for a road below this share of its limit with at least this many vehicles |
+| | `roadRatioBelow`, `roadMinVehicles` | 0.45, 80 | Alert for a road below this share of its limit with at least this many vehicles |
 | | `seriousAccident`, `maxShown` | `true`, 12 | Alert on serious accidents; list length |
+| | `everyAccident` | `true` | Alert on every new accident, not only serious ones |
+| | `syntheticEventsPerHour` | 14 | Synthetic operational events raised at cameras (stopped vehicle, wrong-way vehicle, debris, pedestrian on carriageway, queue, camera offline and similar). 0 turns them off |
 | | `push`, `pushSeconds`, `pushMaxVisible` | `true`, 9, 4 | Push each new alert as an on-screen notification (and a browser notification when the user has allowed them and the page is in the background) |
 | `forecast` | `horizonsMin` | `[15, 30, 60]` | Forecast horizons |
 | `closure` | `radiusM`, `speedLoss`, `extraVehicles` | 1500, 0.4, 0.3 | The what-if closure estimate: affected radius, maximum speed loss, extra vehicles on nearby roads |
