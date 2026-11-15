@@ -424,7 +424,11 @@ def main():
         buses = {"available": False, "reason": f"{type(exc).__name__}: {exc}"[:200]}
     print("buses:", buses, flush=True)
 
-    tls = sum(1 for n in net.getNodes() if n.getType() in ("traffic_light", "traffic_light_right_on_red"))
+    signal_nodes = [n for n in net.getNodes() if n.getType() in ("traffic_light", "traffic_light_right_on_red")]
+    tls = len(signal_nodes)
+    # Signal positions for the app's signal layer (timings are not public, so the app shows a generic cycle).
+    with open(os.path.join(args.out, "signals.json"), "w") as f:
+        json.dump([[round(v, 5) for v in net.convertXY2LonLat(*n.getCoord())] for n in signal_nodes], f, separators=(",", ":"))
     meta = {
         "built": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "osm_timestamp": args.osm_timestamp.strip() or "unknown",
