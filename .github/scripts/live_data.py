@@ -112,35 +112,46 @@ def satellites():
 
 
 async def ais_collect(key, seconds):
+    """Listen for the given time, reconnecting if the stream drops; returns the vessels heard and a short log."""
     import websockets
-    ships = {}
-    sub = {"APIKey": key, "BoundingBoxes": [[[BBOX[1], BBOX[0]], [BBOX[3], BBOX[2]]]], "FilterMessageTypes": ["PositionReport", "ShipStaticData", "StandardClassBPositionReport"]}
-    end = time.time() + seconds
-    async with websockets.connect("wss://stream.aisstream.io/v0/stream", open_timeout=30) as ws:
-        await ws.send(json.dumps(sub))
-        while time.time() < end:
-            try:
-                raw = await asyncio.wait_for(ws.recv(), timeout=max(1, end - time.time()))
-            except asyncio.TimeoutError:
-                break
-            m = json.loads(raw)
-            if "error" in m:
-                raise RuntimeError("aisstream answered: " + scrub(m["error"]))
-            meta, kind = m.get("MetaData") or {}, m.get("MessageType")
-            mmsi = meta.get("MMSI")
-            if not mmsi:
-                continue
-            s = ships.setdefault(mmsi, {"mmsi": mmsi, "name": (meta.get("ShipName") or "").strip()})
-            body = (m.get("Message") or {}).get(kind) or {}
-            if kind in ("PositionReport", "StandardClassBPositionReport"):
-                s.update(lon=round(meta.get("longitude", body.get("Longitude", 0)), 5), lat=round(meta.get("latitude", body.get("Latitude", 0)), 5),
-                         sog=round(body.get("Sog", 0), 1), cog=round(body.get("Cog", 0)), hdg=body.get("TrueHeading", 511), nav=body.get("NavigationalStatus", 15),
-                         t=(meta.get("time_utc") or "")[:19])
-            elif kind == "ShipStaticData":
-                s.update(type=body.get("Type", 0), dest=(body.get("Destination") or "").strip(" @"), call=(body.get("CallSign") or "").strip())
-                d = body.get("Dimension") or {}
-                s["len"] = (d.get("A") or 0) + (d.get("B") or 0)
-    return [s for s in ships.values() if "lon" in s]
+    ships, log, msgs = {}, [], 0
+    sub = {"APIKey": key.strip(), "BoundingBoxes": [[[BBOX[1], BBOX[0]], [BBOX[3], BBOX[2]]]]}
+    end, attempt = time.time() + seconds, 0
+    while time.time() < end - 5 and attempt < 6:
+        attempt += 1
+        try:
+            async with websockets.connect("wss://stream.aisstream.io/v0/stream", open_timeout=30, ping_interval=None, max_size=None) as ws:
+                await ws.send(json.dumps(sub))
+                while time.time() < end:
+                    try:
+                        raw = await asyncio.wait_for(ws.recv(), timeout=max(1, end - time.time()))
+                    except asyncio.TimeoutError:
+                        break
+                    m = json.loads(raw)
+                    if "error" in m:
+                        raise RuntimeError("aisstream answered: " + scrub(m["error"]))
+                    msgs += 1
+                    meta, kind = m.get("MetaData") or {}, m.get("MessageType")
+                    mmsi = meta.get("MMSI")
+                    if not mmsi:
+                        continue
+                    s = ships.setdefault(mmsi, {"mmsi": mmsi, "name": (meta.get("ShipName") or "").strip()})
+                    body = (m.get("Message") or {}).get(kind) or {}
+                    if kind in ("PositionReport", "StandardClassBPositionReport", "ExtendedClassBPositionReport"):
+                        s.update(lon=round(meta.get("longitude", body.get("Longitude", 0)), 5), lat=round(meta.get("latitude", body.get("Latitude", 0)), 5),
+                                 sog=round(body.get("Sog", 0), 1), cog=round(body.get("Cog", 0)), hdg=body.get("TrueHeading", 511), nav=body.get("NavigationalStatus", 15),
+                                 t=(meta.get("time_utc") or "")[:19])
+                    elif kind == "ShipStaticData":
+                        s.update(type=body.get("Type", 0), dest=(body.get("Destination") or "").strip(" @"), call=(body.get("CallSign") or "").strip())
+                        d = body.get("Dimension") or {}
+                        s["len"] = (d.get("A") or 0) + (d.get("B") or 0)
+        except RuntimeError:
+            raise
+        except Exception as err:  # the stream dropped: note it and connect again
+            code = getattr(getattr(err, "rcvd", None), "code", None)
+            log.append(scrub(f"{type(err).__name__}{' ' + str(code) if code else ''}: {err}")[:120])
+            await asyncio.sleep(min(10, 2 * attempt))
+    return [s for s in ships.values() if "lon" in s], msgs, attempt, log
 
 
 def vessels():
@@ -148,11 +159,11 @@ def vessels():
     if not key:
         raise RuntimeError("AIS_API_KEY is not set")
     seconds = int(os.environ.get("AIS_SECONDS", "150"))
-    ships = asyncio.run(ais_collect(key, seconds))
+    ships, msgs, attempts, log = asyncio.run(ais_collect(key, seconds))
     if not ships:
-        raise RuntimeError(f"no vessel position was received in {seconds} seconds")
+        raise RuntimeError(f"no vessel position was received in {seconds} seconds ({msgs} messages, {attempts} connections" + (f"; last drop: {log[-1]}" if log else "") + ")")
     save("vessels.json", {"updated": NOW, "source": f"aisstream.io AIS, positions heard in {seconds} seconds", "bbox": BBOX, "ships": ships})
-    return f"{len(ships)} vessels"
+    return f"{len(ships)} vessels from {msgs} messages" + (f", {len(log)} reconnects" if log else "")
 
 
 status_path = os.path.join(OUT, "status.json")
