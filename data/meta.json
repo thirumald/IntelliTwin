@@ -1,5 +1,5 @@
 {
- "built": "2026-11-15 02:33 UTC",
+ "built": "2026-11-15 04:10 UTC",
  "osm_timestamp": "2026-11-13T21:22:20Z",
  "sumo": "Eclipse SUMO sumo 1.28.0",
  "bbox": [
@@ -846,7 +846,7 @@
  ],
  "buses": {
   "available": false,
-  "reason": "RuntimeError: GTFS download failed: HTTP Error 403: Forbidden"
+  "reason": "RuntimeError: GTFS download failed: HTTP Error 403: Forbidden; no API token step error"
  },
  "buildings": {
   "available": true,
@@ -854,5 +854,21 @@
   "shown": 15000,
   "measured_heights": 0,
   "source": "https://bfppub.blob.core.windows.net/%24web/2026-08-13/dataset-links.csv"
+ },
+ "extra": {
+  "available": true,
+  "rail_km": 137,
+  "cycle_km": 261,
+  "zones": {
+   "airport": 3,
+   "defence": 95,
+   "embassy": 52,
+   "fire": 16,
+   "government": 158,
+   "hospital": 80,
+   "police": 33,
+   "school": 188,
+   "university": 20
+  }
  }
 }
