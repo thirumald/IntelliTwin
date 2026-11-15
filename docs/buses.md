@@ -1,4 +1,4 @@
-# Public transport: buses, taxis and shuttles (synthetic)
+# Public transport: buses, taxis, shuttles, ships and aircraft (synthetic)
 
 The **Transit** section covers buses (`js/buses.js`) and taxis and on-demand shuttles (`js/transit.js`). All vehicles, numbers, positions, statuses and waits in it are synthetic. Only the railway track is real, from OpenStreetMap.
 
@@ -34,6 +34,20 @@ The app uses an example network instead of the public Integrated Transport Centr
 ## On-demand shuttles and rail
 
 `shuttles.zones` lists the service zones with their radius, vehicles and usual booking wait. Shuttles circulate on streets inside their zone; passengers on board and waits are generated. The railway figure is the length of real OpenStreetMap track in the area; no passenger timetable is published, so no trains are shown.
+
+## Ships and aircraft
+
+`js/seaair.js` adds two cards to the Transit section, with moving icons on the map.
+
+| Element | Method |
+| --- | --- |
+| Ships | A vessel starts every 22 minutes on one of the example sea lanes off Mina Zayed, inbound or outbound, at its type's speed (container ship, tanker, cruise ship, ferry, cargo dhow). Drawn as a ship icon with a fading wake |
+| Port | Berths in use are generated per two-hour period |
+| Aircraft | 16 movements an hour, alternating arrivals and departures on four example paths at the airport. Each is in view for seven minutes, descending to or climbing from the runway. Drawn as an aircraft icon at height with a fading trail; 20% of flights are delayed by 10 to 45 minutes |
+| Board | The next arrivals and departures with scheduled time, expected time and status |
+| Tracking | Tap a ship or an aircraft in the air to follow it |
+
+**Vessel names, flight numbers, times and positions are invented.** The sea lanes and flight paths in `config.js` (`sea.lanes`, `air.routes`) are approximate lines for demonstration; they are not charted channels or published flight procedures, and they should be checked against the base map and corrected before a client demonstration. For real positions, replace the generators with a vessel feed (AIS) and a flight feed (ADS-B) from a licensed provider.
 
 ## Using real services
 

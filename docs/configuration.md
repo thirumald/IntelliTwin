@@ -38,6 +38,7 @@ All settings are in `config.js` at the repository root. Every value has a workin
 | `incidents`, `signalControl`, `planned`, `emergency`, `parking`, `vehicleSearch`, `freight`, `pedestrians`, `weather`, `assets`, `reports` | see file | examples | Settings for the operations, mobility and support modules; see [operations-modules.md](operations-modules.md) |
 | `platform` | `feeds`, `nodes`, `services`, `storage` | examples | Synthetic platform monitoring; see [platform-monitoring.md](platform-monitoring.md) |
 | `taxis` | `count`, `speedKmh`, `hiredSharePeak/Day/Night`, `bookingShare`, `ranks` | 260, 32, 0.7/0.5/0.25, 0.1, 11 ranks | Synthetic taxi fleet and taxi ranks (name, position, bays) |
+| `sea`, `air` | `lanes`, `types`, `berths`; `routes`, `movementsPerHour`, `cities` | examples | Synthetic ships and aircraft: approximate sea lanes and flight paths, vessel types, movement rates |
 | `shuttles` | `seats`, `speedKmh`, `zones` | 12, 24, 4 zones | Synthetic on-demand shuttle zones: name, centre, radius, vehicles, usual wait |
 | `vehicles` | `mix` | six types | Assumed shares of vehicle types for display and reporting |
 | `people` | `perKmByClass` | `[0, 0, 6, 12, 16]` | Synthetic walkers per km of street by road class, before the time-of-day factor |

@@ -174,6 +174,31 @@ sampleVideos: [
     ]
   },
 
+  /* ---- Ships and aircraft (synthetic) ----------------------------------------------------------- */
+  // Example movements. The sea lanes and flight paths are approximate lines for demonstration, not
+  // charted channels or published procedures. Paths are [longitude, latitude] points.
+  sea: {
+    portName: 'Mina Zayed', port: [54.3800, 24.5270], view: [54.3600, 24.5900], berths: 8, everyMin: 22, wakeSec: 900, namePrefix: 'MV Example',
+    lanes: [   // drawn from the port out to sea
+      { name: 'North-west approach lane', path: [[54.3720, 24.5350], [54.3550, 24.5600], [54.3200, 24.6000], [54.2600, 24.6500], [54.1800, 24.7000]] },
+      { name: 'Northern coastal lane', path: [[54.3720, 24.5350], [54.3620, 24.5750], [54.4200, 24.6250], [54.5200, 24.6650], [54.6300, 24.7000]] }
+    ],
+    types: [
+      { kind: 'Container ship', knots: 14, colour: [57, 135, 229] }, { kind: 'Tanker', knots: 12, colour: [217, 89, 38] },
+      { kind: 'Cruise ship', knots: 16, colour: [255, 255, 255] }, { kind: 'Ferry', knots: 20, colour: [25, 158, 112] }, { kind: 'Cargo dhow', knots: 9, colour: [201, 133, 0] }
+    ]
+  },
+  air: {
+    airport: [54.6511, 24.4330], movementsPerHour: 16, inViewSec: 420, topAltM: 2600, trailSec: 150, delayedShare: 0.2, flightPrefix: 'FLT',
+    cities: ['Riyadh', 'Doha', 'Cairo', 'Mumbai', 'London', 'Istanbul', 'Delhi', 'Muscat', 'Kuwait City', 'Singapore', 'Frankfurt', 'Karachi'],
+    routes: [   // arrivals end at the airport; departures start there
+      { name: 'Approach from the north-west', arrival: true, path: [[54.3600, 24.6500], [54.5200, 24.5320], [54.6511, 24.4330]] },
+      { name: 'Approach from the south-east', arrival: true, path: [[54.9400, 24.2150], [54.7900, 24.3280], [54.6511, 24.4330]] },
+      { name: 'Departure to the north-west', arrival: false, path: [[54.6511, 24.4330], [54.5300, 24.5250], [54.4000, 24.6600]] },
+      { name: 'Departure to the south-east', arrival: false, path: [[54.6511, 24.4330], [54.7800, 24.3350], [54.9300, 24.1900]] }
+    ]
+  },
+
   /* ---- Operations modules (synthetic examples) ------------------------------------------------- */
   incidents: { responseTargetMin: 12 },              // target time from report to a unit on scene
   signalControl: { adaptiveJunctions: 25, progressionKmh: 60, prioritySavingSec: 12 },
