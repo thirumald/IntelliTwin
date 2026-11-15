@@ -9,6 +9,9 @@ IntelliTwin is a static traffic digital twin demonstrator for Abu Dhabi city. A 
 ## What the app shows
 
 - **Full-view 3D map** on OpenStreetMap data with extruded buildings; every overlay minimises.
+- **Opening view:** by default the app opens in full view on the most congested road, in 3D with the camera orbiting, replaying today at 30×. This is set in `config.js`.
+- **Pushed alerts:** each new alert appears as an on-screen notification, generated from the synthetic data.
+- **Camera video:** cameras play real traffic footage (sample clips from Wikimedia Commons, not Abu Dhabi) until a stream is configured.
 - **Individual vehicles:** one per vehicle on each road, dots when zoomed out and 3D cars at street level.
 - **Live and Historical, 24 hours:** Live follows the Abu Dhabi clock; Historical takes any date and a 24-hour time. Both use a synthetic feed built from the simulated traffic states.
 - **Dashboard:** KPIs, alerts, 15/30/60-minute forecast, day profile, demand cases.
