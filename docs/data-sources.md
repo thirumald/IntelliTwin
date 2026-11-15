@@ -57,7 +57,7 @@ Buses are **not** part of the traffic simulation. They follow the timetable and 
 
 ## Branding
 
-The header shows the Presight logo, loaded at run time from `https://www.presight.ai/hubfs/Presight_2026/Logo.svg`. If that address changes or is unreachable, the logo is omitted and the header shows the product name only. The logo is Presight's trademark; use it only where Presight has approved the branding.
+The header shows the Presight logo from `assets/presight-logo.png` (496 × 142 px, white lettering on a transparent background, supplied by the project owner). It is displayed 34 px high, so it stays sharp on high-density screens. The logo is Presight's trademark; use it only where Presight has approved the branding. To change it, replace the file.
 
 ## 5. Population and employment — Statistics Centre Abu Dhabi (reference only)
 

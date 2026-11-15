@@ -346,3 +346,7 @@ body { height: 100%; }
   .chat-open { top: 92px; bottom: auto; right: 8px; }
   .layout.panel-open .chat-open { display: none; }
 }
+
+/* Self-hosted Presight logo, white-on-transparent, shown directly on the dark bar */
+.brand-logo { background: none; border-radius: 0; padding: 0; height: 34px; width: auto; display: block; }
+@media (max-width: 860px) { .brand-logo { height: 28px; } }
