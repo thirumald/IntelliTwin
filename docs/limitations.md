@@ -50,3 +50,5 @@ The traffic shown is simulated, not observed. Results are indicative and must no
 6. An equilibrium assignment with documented convergence.
 - **Public transport is invented.** Bus routes, stops, timetables and delays, taxis, taxi ranks and on-demand shuttles are example data, not real services or vehicle positions (see [buses.md](buses.md)).
 - **Live is not a live feed.** Live starts at the Abu Dhabi clock and, at the default 30×, runs ahead of it; all traffic in it is synthetic.
+- **The operations modules are demonstrations.** Incidents, signal plans, events and roadworks, parking, evacuation estimates, plate reads, crossings, freight, weather and work orders are generated examples (see [operations-modules.md](operations-modules.md)).
+- **Platform monitoring is synthetic.** There are no servers or feeds behind this static app (see [platform-monitoring.md](platform-monitoring.md)).

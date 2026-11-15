@@ -28,6 +28,10 @@ IntelliTwin is a static traffic digital twin demonstrator for Abu Dhabi city. A 
 - **Devices:** CCTV cameras with a video window, enforcement cameras, detectors, message signs and traffic signals. Devices are synthetic unless listed in `config.js`; a camera without a stream shows a synthetic view.
 - **Reports:** CSV exports, a printable summary and an audit log.
 - **Sign-in with roles** (demo only), **Arabic interface** for fixed labels, and a built-in assistant, **Twin Advisor**.
+- **Operations modules (synthetic):** incident management with response times, signal control with green-wave corridors and emergency priority, planned events and roadworks, parking, evacuation planning, vehicle search, pedestrian and school safety, freight and lorry bans, weather and visibility, asset maintenance, scheduled reports and a before/after study.
+- **Platform monitoring (synthetic):** live data-ingestion and infrastructure figures: feeds, latency, queue, servers, services, storage.
+- **Vision-language model sample:** the camera window describes the scene and answers questions about it. Sample answers come from synthetic data unless a model service is connected (`api.vlmUrl`).
+- **Natural disaster exercises:** flood, storm surge, sandstorm, earthquake and extreme heat scenarios in the Emergency section, on example areas.
 - **One configuration file**, `config.js`, for map tiles, feeds, cameras, alert thresholds, roles and services.
 
 Everything shown is simulated, synthetic or illustrative except the road network and building footprints. See [docs/limitations.md](docs/limitations.md).

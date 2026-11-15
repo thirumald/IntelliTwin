@@ -626,7 +626,9 @@
       sec.hidden = sec.getAttribute('data-tab') !== id || sec.getAttribute('data-locked') === '1';
     });
     setPanel(true); drawChart();
+    tabHooks.forEach(function (fn) { safe(fn, id); });
   }
+  var tabHooks = [];
   function setPanel(open) {
     document.querySelector('.layout').classList.toggle('panel-open', open); $('panelOpen').hidden = open;
     if (open) { drawChart(); }
@@ -772,7 +774,7 @@
       startFocus: function () { return startFocus; }, theme: function () { return theme; }, setTheme: function (th) { setTheme(th); }, peopleInView: function () { return peopleInView; }, zones: function () { return zones; }, onZones: function (fn) { if (zones) { fn(zones); } else { zoneHooks.push(fn); } },
       railKm: function () { return (meta.extra || {}).rail_km || 0; }, cycleKm: function () { return (meta.extra || {}).cycle_km || 0; }, setPlaying: setPlaying,
       onReady: function (fn) { if (meta && day) { fn(); } else { readyHooks.push(fn); } }, redraw: redraw, setClosure: setClosure,
-      closure: function () { return fx; }, showTab: showTab, prettyDate: prettyDate, daySeriesKpi: function (id) { var d = id === state.scenario ? day : baseDay, bins = scenarioMeta(id).bins, out = []; for (var s = 0; s < SLOTS; s++) { out.push(bins[d.map[s]]); } return out; }
+      closure: function () { return fx; }, showTab: showTab, onTab: function (fn) { tabHooks.push(fn); }, prettyDate: prettyDate, daySeriesKpi: function (id) { var d = id === state.scenario ? day : baseDay, bins = scenarioMeta(id).bins, out = []; for (var s = 0; s < SLOTS; s++) { out.push(bins[d.map[s]]); } return out; }
     },
     // Used by js/assistant.js to read the data and operate the twin.
     api: {

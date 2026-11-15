@@ -13,6 +13,9 @@ Technical and data-source documentation for the IntelliTwin traffic twin for Abu
 | [analytics.md](analytics.md) | The predictive analytics view: sections, method and assumptions |
 | [zones-and-response.md](zones-and-response.md) | Critical-zone monitoring, response routing, vehicle types, railway and cycle layers |
 | [buses.md](buses.md) | Public transport: synthetic buses (stops, timetable, tracking), taxis and shuttles |
+| [operations-modules.md](operations-modules.md) | Incidents, signals, events and roadworks, parking, evacuation, vehicle search, pedestrians, freight, weather, assets, reports |
+| [vlm.md](vlm.md) | Vision-language model sample in the camera window, and how to connect a real model |
+| [platform-monitoring.md](platform-monitoring.md) | Platform monitoring: data ingestion and infrastructure (synthetic) |
 | [environment.md](environment.md) | Environmental sensors: synthetic readings, air-quality index, noise |
 | [assistant.md](assistant.md) | The built-in assistant and how to connect a language model |
 | [limitations.md](limitations.md) | Calibration status, known limits, disclaimer |

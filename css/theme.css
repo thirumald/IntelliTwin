@@ -434,3 +434,48 @@ body.map-light .sites .chip.on { background: var(--accent); color: var(--accent-
 body.map-light .sim-clock { color: var(--text); }
 body.map-light .k-label em, body.map-light .badge { color: #6b4e00; }
 body.map-light .topbar .seg { background: var(--surface-2); border-color: var(--line); }
+
+/* ---------------------------------------------------------------- operations, mobility and support modules */
+.btn-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.search-row { display: flex; gap: 6px; }
+.search-row input, .two-col input, .field input[type=date] { flex: 1; min-width: 0; height: 34px; padding: 0 10px; font: inherit; font-size: 13px; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius-s); }
+body:not(.map-light) .two-col input { color-scheme: dark; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
+.inline-field { font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.inline-field select { height: 28px; font-size: 12px; }
+.wx-alert { border-color: #fab219 !important; }
+.k-value { overflow-wrap: anywhere; }
+#frBan, #pdWindow, #wxNow, #wxLimit { font-size: 16px; line-height: 1.3; }
+
+/* ---------------------------------------------------------------- platform monitoring */
+.spark { display: block; width: 100%; height: 26px; margin-top: 4px; }
+.sy-node { padding: 8px 0 10px; border-bottom: 1px solid var(--line-soft); }
+.sy-node:last-child { border-bottom: 0; }
+.sy-node-head { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; margin-bottom: 4px; }
+.sy-node-head span { color: var(--muted); font-size: 11.5px; }
+.sy-issues { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--text-2); }
+.sy-issues li { margin: 2px 0; }
+
+/* ---------------------------------------------------------------- VLM scene analysis in the camera window */
+.video { max-height: calc(100% - 170px); overflow-y: auto; }
+.vlm { padding: 8px 10px; border-top: 1px solid var(--line); font-size: 12px; }
+.vlm-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.vlm-head span { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.vlm-find { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.vlm-find span { background: var(--surface-2); border: 1px solid var(--line-soft); border-radius: var(--radius-s); padding: 3px 8px; font-size: 10.5px; color: var(--muted); display: flex; flex-direction: column; }
+.vlm-find b { font-size: 12.5px; color: var(--text); }
+.vlm-q { margin: 6px 0 2px; font-size: 11px; color: var(--muted); }
+.vlm-a { margin: 0; color: var(--text); line-height: 1.4; }
+.vlm-src { margin: 3px 0 6px; font-size: 10.5px; color: var(--muted); }
+.vlm-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.vlm-chips button { background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; font: inherit; font-size: 11px; cursor: pointer; }
+.vlm form { display: flex; gap: 6px; }
+.vlm form input { flex: 1; min-width: 0; height: 30px; padding: 0 8px; font: inherit; font-size: 12px; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius-s); }
+.vlm details { margin-top: 6px; } .vlm summary { cursor: pointer; color: var(--muted); font-size: 11px; }
+.vlm pre { margin: 4px 0 0; padding: 6px 8px; background: var(--surface-2); border-radius: var(--radius-s); font-size: 10.5px; max-height: 140px; overflow: auto; white-space: pre-wrap; }
+/* Fact tables: keep both columns inside the panel when the value is long */
+.facts { width: 100%; table-layout: fixed; }
+.facts td { overflow-wrap: anywhere; vertical-align: top; }
+.facts td:first-child { width: 46%; }
+.facts td:last-child { text-align: right; }

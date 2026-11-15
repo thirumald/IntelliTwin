@@ -8,8 +8,8 @@
 <meta name="theme-color" content="#0b1220">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b1220'/%3E%3Cpath d='M6 22 L13 12 L19 18 L26 8' fill='none' stroke='%232dd4a7' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="css/styles.css?v=20261116d">
-<link rel="stylesheet" href="css/theme.css?v=20261116d">
+<link rel="stylesheet" href="css/styles.css?v=20261116i">
+<link rel="stylesheet" href="css/theme.css?v=20261116i">
 </head>
 <body>
 <header class="topbar">
@@ -51,16 +51,25 @@
   <nav class="rail" id="tabs" role="tablist" aria-label="Sections">
     <button type="button" class="rail-toggle" id="railToggle" aria-expanded="false" title="Expand the menu"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Menu</span></button>
     <button role="tab" data-tab="dash" aria-selected="true" class="on" title="Dashboard"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h7v9H4zM13 4h7v5h-7zM13 11h7v9h-7zM4 15h7v5H4z"/></svg><span data-i18n="dashboard">Dashboard</span></button>
-    <button type="button" class="rail-item" id="analyticsBtn" title="Analytics and city KPIs"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg><span>Analytics</span></button>
     <button role="tab" data-tab="cong" aria-selected="false" title="Congestion"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 5 21M16 3l3 18M12 4v3M12 10.5v3M12 17v3"/></svg><span data-i18n="congestion">Congestion</span></button>
+    <button role="tab" data-tab="inc" aria-selected="false" title="Incident management"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Incidents</span></button>
     <button role="tab" data-tab="acc" aria-selected="false" title="Accidents"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2.5 20h19zM12 9.5v5M12 17.3v.2"/></svg><span data-i18n="accidents">Accidents</span></button>
     <button role="tab" data-tab="fines" aria-selected="false" title="Fines"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg><span data-i18n="fines">Fines</span></button>
+    <button role="tab" data-tab="sig" aria-selected="false" title="Signal control"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 2h6v20H9zM12 6.5h.01M12 12h.01M12 17.5h.01"/></svg><span>Signals</span></button>
     <button role="tab" data-tab="bus" aria-selected="false" title="Public transport"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v12H5zM5 11h14M8 21v-2M16 21v-2M8.5 15h.01M15.5 15h.01"/></svg><span>Transit</span></button>
+    <button role="tab" data-tab="park" aria-selected="false" title="Parking"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zM10 17V7h3a3 3 0 0 1 0 6h-3"/></svg><span>Parking</span></button>
+    <button role="tab" data-tab="frt" aria-selected="false" title="Freight and restricted vehicles"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6h11v10H2zM13 9h5l3 3v4h-8zM7 19a1.5 1.5 0 1 0 0-.01M17 19a1.5 1.5 0 1 0 0-.01"/></svg><span>Freight</span></button>
+    <button role="tab" data-tab="ped" aria-selected="false" title="Pedestrian and school safety"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 4a1.5 1.5 0 1 0 0-.01M9 21l2-6-2-2 1-5 3 1 2 3 3 1M13 15l2 6"/></svg><span>Pedestrians</span></button>
+    <button role="tab" data-tab="plan" aria-selected="false" title="Planned events and roadworks"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16v15H4zM4 10h16M8 3v4M16 3v4"/></svg><span>Events</span></button>
+    <button role="tab" data-tab="emg" aria-selected="false" title="Emergency and evacuation planning"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 5a1.5 1.5 0 1 0 0-.01M7 21l3-6-2-3 3-4 3 3 3 1M10 15l4 2v4"/></svg><span>Emergency</span></button>
+    <button role="tab" data-tab="anpr" aria-selected="false" title="Vehicle search"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5"/></svg><span>Search</span></button>
     <button role="tab" data-tab="zones" aria-selected="false" title="Zones"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4.5 6v6c0 4.5 3.2 7.7 7.5 9 4.3-1.300 7.5-4.5 7.5-9V6z"/></svg><span>Zones</span></button>
     <button role="tab" data-tab="env" aria-selected="false" title="Environment"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 5-13 14-14-1 9-6 14-14 14zM5 19l7-7"/></svg><span>Environment</span></button>
     <button role="tab" data-tab="dev" aria-selected="false" title="Devices"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l12-4 2 5-12 4zM15 9l4 1.5-1 3-4-1.500M8 13v5h4"/></svg><span data-i18n="devices">Devices</span></button>
     <button role="tab" data-tab="rep" aria-selected="false" title="Reports"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 16h5"/></svg><span data-i18n="reports">Reports</span></button>
+    <button role="tab" data-tab="sys" aria-selected="false" title="Platform monitoring"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v6H4zM4 14h16v6H4zM7.5 7h.01M7.5 17h.01M11 7h6M11 17h6"/></svg><span>Platform</span></button>
     <button role="tab" data-tab="model" aria-selected="false" title="Model"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.500v.2"/></svg><span data-i18n="model">Model</span></button>
+    <button type="button" class="rail-item" id="analyticsBtn" title="Analytics and city KPIs"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg><span>Analytics</span></button>
   </nav>
 
 <main class="layout">
@@ -272,6 +281,31 @@
     </section>
 
     <!-- Reports -->
+    <section class="card" data-tab="dev" hidden>
+      <p class="notice"><strong>Synthetic asset health.</strong> Availability and work orders are generated examples, not a maintenance system.</p>
+      <div class="card-head"><h2>Asset health and maintenance</h2><span class="muted">Availability today</span></div>
+      <div class="kpis">
+        <div class="kpi"><span class="k-label">Field assets</span><span class="k-value" id="asTotal">–</span></div>
+        <div class="kpi"><span class="k-label">Working now</span><span class="k-value" id="asAvail">–</span></div>
+        <div class="kpi"><span class="k-label">Open work orders</span><span class="k-value" id="asOpen">–</span></div>
+        <div class="kpi"><span class="k-label">Overdue</span><span class="k-value" id="asOverdue">–</span></div>
+      </div>
+      <div id="asBars"></div>
+      <div class="card-head sub-head"><h2>Work orders</h2><span class="muted">Priority</span></div>
+      <ol class="corridors" id="asList"></ol>
+    </section>
+    <section class="card" data-tab="rep" hidden data-need="export">
+      <div class="card-head"><h2>Scheduled reports</h2><span class="muted">Tap to generate now</span></div>
+      <p class="muted">This static app cannot send reports by itself; the schedule shows when each would run on a server. Generating one downloads it as a file.</p>
+      <ol class="corridors" id="rpList"></ol>
+    </section>
+    <section class="card" data-tab="rep" hidden data-need="export">
+      <div class="card-head"><h2>Before and after study</h2></div>
+      <p class="muted">Compares two synthetic days. They differ only by day type (weekday, Friday, weekend), so this shows the method, not the effect of a real measure.</p>
+      <div class="two-col"><label class="field"><span>Before</span><input type="date" id="baBefore"></label><label class="field"><span>After</span><input type="date" id="baAfter"></label></div>
+      <button type="button" class="btn small" id="baRun">Compare</button>
+      <table class="facts" id="baFacts"></table>
+    </section>
     <section class="card" data-tab="rep" hidden data-need="export">
       <div class="card-head"><h2 data-i18n="exports">Exports</h2><span class="muted" id="repLabel"></span></div>
       <div class="btn-col">
@@ -352,7 +386,197 @@
       <table class="facts" id="railFact"></table>
     </section>
 
+    <!-- Incidents -->
+    <section class="card" data-tab="inc" hidden>
+      <p class="notice"><strong>Illustrative incidents.</strong> Incidents follow the illustrative accident records; response steps are generated unless an operator acts. Not real incidents.</p>
+      <div class="card-head"><h2>Incidents today</h2><span class="muted" id="incNote"></span></div>
+      <div class="kpis">
+        <div class="kpi"><span class="k-label">Open now</span><span class="k-value" id="incOpen">–</span></div>
+        <div class="kpi"><span class="k-label">Cleared today</span><span class="k-value" id="incCleared">–</span></div>
+        <div class="kpi"><span class="k-label">Average response</span><span class="k-value" id="incResp">–</span></div>
+        <div class="kpi"><span class="k-label">On scene within target</span><span class="k-value" id="incSla">–</span></div>
+      </div>
+      <button type="button" class="btn small" id="incExport" data-need="export">Export incidents (CSV)</button>
+    </section>
+    <section class="card track-card" data-tab="inc" id="incDetail" data-locked="1" hidden>
+      <div class="card-head"><h2 id="incTitle">Incident</h2></div>
+      <table class="facts" id="incFacts"></table>
+      <div class="btn-row"><button type="button" class="btn small" id="incAck">Acknowledge</button><button type="button" class="btn small" id="incDisp">Dispatch a unit</button><button type="button" class="btn small" id="incClose">Close incident</button></div>
+    </section>
+    <section class="card" data-tab="inc" hidden>
+      <div class="card-head"><h2>Incident register</h2><span class="muted">Tap to open</span></div>
+      <ol class="corridors" id="incList"></ol>
+    </section>
+
+    <!-- Signals -->
+    <section class="card" data-tab="sig" hidden>
+      <p class="notice"><strong>Example signal plans.</strong> Junction positions are from OpenStreetMap and service levels from the simulation; cycle times, plans and adaptive status are examples, not the real controller settings.</p>
+      <div class="card-head"><h2>Signal control</h2><span class="muted" id="sgNote"></span></div>
+      <div class="kpis">
+        <div class="kpi"><span class="k-label">Signalised junctions</span><span class="k-value" id="sgCount">–</span></div>
+        <div class="kpi"><span class="k-label">Adaptive (example pilot)</span><span class="k-value" id="sgAdaptive">–</span></div>
+        <div class="kpi"><span class="k-label">Average cycle now</span><span class="k-value" id="sgCycle">–</span></div>
+        <div class="kpi"><span class="k-label">At service level E or F</span><span class="k-value" id="sgPoor">–</span></div>
+      </div>
+    </section>
+    <section class="card" data-tab="sig" hidden>
+      <div class="card-head"><h2>Emergency vehicle priority</h2></div>
+      <p class="muted" id="sgPriorityNote"></p>
+      <button type="button" class="btn small" id="sgPriority">Hold signals green along the response route</button>
+    </section>
+    <section class="card" data-tab="sig" hidden>
+      <div class="card-head"><h2>Green-wave corridors</h2><span class="muted">Share of green band kept</span></div>
+      <ol class="corridors" id="sgCorr"></ol>
+      <div class="card-head sub-head"><h2>Junctions with most delay</h2><span class="muted">Cycle time</span></div>
+      <ol class="corridors" id="sgList"></ol>
+    </section>
+
+    <!-- Parking -->
+    <section class="card" data-tab="park" hidden>
+      <p class="notice"><strong>Synthetic parking.</strong> Example car parks and on-street zones with generated occupancy. Not a real parking feed.</p>
+      <div class="card-head"><h2>Parking now</h2><span class="muted">Tap for guidance</span></div>
+      <div class="kpis">
+        <div class="kpi"><span class="k-label">Spaces</span><span class="k-value" id="pkSpaces">–</span></div>
+        <div class="kpi"><span class="k-label">Occupied</span><span class="k-value" id="pkUsed">–</span></div>
+        <div class="kpi"><span class="k-label">Full or nearly full</span><span class="k-value" id="pkFull">–</span></div>
+        <div class="kpi"><span class="k-label">Parking violations today</span><span class="k-value" id="pkFines">–</span></div>
+      </div>
+      <ol class="corridors" id="pkList"></ol>
+    </section>
+
+    <!-- Freight -->
+    <section class="card" data-tab="frt" hidden>
+      <p class="notice"><strong>Synthetic freight data.</strong> Lorry numbers come from the assumed vehicle mix; the restricted zone, ban hours, weigh stations and hazardous loads are examples from <code>config.js</code>.</p>
+      <div class="card-head"><h2>Freight now</h2><span class="muted" id="frNote"></span></div>
+      <div class="kpis">
+        <div class="kpi"><span class="k-label">Lorries on the network</span><span class="k-value" id="frLorries">–</span></div>
+        <div class="kpi"><span class="k-label">Lorry ban</span><span class="k-value" id="frBan">–</span></div>
+        <div class="kpi"><span class="k-label">Lorries in the zone during the ban</span><span class="k-value" id="frViol">–</span></div>
+        <div class="kpi"><span class="k-label">Hazardous loads tracked</span><span class="k-value" id="frHaz">–</span></div>
+      </div>
+      <table class="facts" id="frFacts"></table>
+      <div class="card-head sub-head"><h2>Weigh stations</h2><span class="muted">Overweight share</span></div>
+      <ol class="corridors" id="frList"></ol>
+    </section>
+
+    <!-- Pedestrians and schools -->
+    <section class="card" data-tab="ped" hidden>
+      <p class="notice"><strong>Synthetic pedestrian data.</strong> Schools are real OpenStreetMap sites; nearby speeds come from the simulated traffic; crossing counts and crowd levels are generated.</p>
+      <div class="card-head"><h2>Pedestrian and school safety</h2><span class="muted" id="pdNote"></span></div>
+      <div class="kpis">
+        <div class="kpi"><span class="k-label">Schools watched</span><span class="k-value" id="pdSchools">–</span></div>
+        <div class="kpi"><span class="k-label">School time</span><span class="k-value" id="pdWindow">–</span></div>
+        <div class="kpi"><span class="k-label">Schools with fast traffic nearby</span><span class="k-value" id="pdFast">–</span></div>
+        <div class="kpi"><span class="k-label">People crossing an hour</span><span class="k-value" id="pdFlow">–</span></div>
+      </div>
+      <div class="card-head sub-head"><h2>Schools with fast traffic nearby</h2><span class="muted">Tap to open</span></div>
+      <ol class="corridors" id="pdSchoolList"></ol>
+      <div class="card-head sub-head"><h2>Crossings to review</h2><span class="muted">Crossing away from the signal</span></div>
+      <ol class="corridors" id="pdCrossList"></ol>
+      <div class="card-head sub-head"><h2>Crowd level at major sites</h2></div>
+      <table class="facts" id="pdCrowd"></table>
+    </section>
+
+    <!-- Planned events and roadworks -->
+    <section class="card" data-tab="plan" hidden>
+      <p class="notice"><strong>Example calendar.</strong> These roadworks and events are examples set in <code>config.js</code>, dated from the day on the map. They are not real permits or events.</p>
+      <div class="card-head"><h2>Planned events and roadworks</h2><span class="muted">Next two weeks</span></div>
+      <div class="kpis">
+        <div class="kpi"><span class="k-label">Active now</span><span class="k-value" id="plNow">–</span></div>
+        <div class="kpi"><span class="k-label">Today</span><span class="k-value" id="plToday">–</span></div>
+        <div class="kpi"><span class="k-label">Roadworks</span><span class="k-value" id="plWorks">–</span></div>
+        <div class="kpi"><span class="k-label">Events</span><span class="k-value" id="plEvents">–</span></div>
+      </div>
+      <ol class="corridors" id="plList"></ol>
+      <div class="card-head sub-head"><h2>Test a roadworks closure</h2></div>
+      <label class="field"><span>Road</span><select id="plRoad"></select></label>
+      <button type="button" class="btn small" id="plTest">Estimate the effect of closing it</button>
+    </section>
+
+    <!-- Emergency and evacuation -->
+    <section class="card" data-tab="emg" hidden>
+      <p class="notice"><strong>Planning estimate.</strong> Sites are from OpenStreetMap. People, assembly points and road capacity are assumptions in <code>config.js</code>; the clearance time is a simple estimate, not an approved evacuation plan.</p>
+      <div class="card-head"><h2>Evacuation planning</h2></div>
+      <label class="field"><span>Site to evacuate</span><select id="emSite"><option value="">Choose a site…</option></select></label>
+    </section>
+    <section class="card" data-tab="emg" hidden>
+      <p class="notice"><strong>What-if exercise.</strong> Natural disaster scenarios use example hazard areas from <code>config.js</code>. They are for planning exercises; they are not warnings, forecasts or hazard maps.</p>
+      <div class="card-head"><h2>Natural disaster scenarios</h2></div>
+      <label class="field"><span>Scenario</span><select id="dzType"><option value="">Choose a scenario…</option></select></label>
+      <div id="dzResult" hidden>
+        <div class="card-head sub-head"><h2 id="dzTitle">Scenario</h2></div>
+        <table class="facts" id="dzFacts"></table>
+        <div class="card-head sub-head"><h2>Response checklist</h2></div>
+        <ul class="sy-issues" id="dzActions"></ul>
+        <p class="map-key"><span><i class="pt" style="background:#3987e5"></i>Exercise area</span><span><i class="pt" style="background:#ec835a"></i>Affected roads</span><span><i class="pt" style="background:#d03b3b"></i>Critical sites</span><span><i class="pt" style="background:#0ca30c"></i>Assembly points</span></p>
+      </div>
+    </section>
+    <section class="card track-card" data-tab="emg" id="emResult" hidden>
+      <div class="card-head"><h2 id="emTitle">Site</h2></div>
+      <table class="facts" id="emFacts"></table>
+      <p class="map-key"><span><i class="pt" style="background:#0ca30c"></i>Evacuation route</span><span><i class="pt" style="background:#d55181"></i>From hospital</span><span><i class="pt" style="background:#3987e5"></i>From police</span><span><i class="pt" style="background:#d95926"></i>From fire station</span></p>
+    </section>
+
+    <!-- Vehicle search -->
+    <section class="card" data-tab="anpr" hidden data-need="search">
+      <p class="notice"><strong>Synthetic plate reads.</strong> Plates, sightings and the watch list are generated examples at synthetic cameras; no real vehicle is tracked. Every search is written to the audit log.</p>
+      <div class="card-head"><h2>Vehicle search</h2></div>
+      <form id="vsForm" class="search-row" autocomplete="off"><input id="vsPlate" type="text" placeholder="Plate, for example DEMO-48213" aria-label="Plate number"><button class="btn small" type="submit">Search</button><button class="btn small" type="button" id="vsClear">Clear</button></form>
+    </section>
+    <section class="card track-card" data-tab="anpr" id="vsResult" hidden data-need="search">
+      <div class="card-head"><h2 id="vsTitle">Plate</h2></div>
+      <table class="facts" id="vsFacts"></table>
+      <ol class="corridors" id="vsList"></ol>
+    </section>
+    <section class="card" data-tab="anpr" hidden data-need="search">
+      <div class="card-head"><h2>Watch list</h2><span class="muted">Example entries</span></div>
+      <ol class="corridors" id="vsWatch"></ol>
+    </section>
+
+    <!-- Platform monitoring -->
+    <section class="card" data-tab="sys" hidden>
+      <p class="notice"><strong>Synthetic platform figures.</strong> This demonstrator runs in the browser with no servers or live feeds behind it. The figures show what the monitoring view of a deployed platform would look like.</p>
+      <div class="card-head"><h2>Platform now</h2><span class="muted" id="syClock"></span></div>
+      <div class="kpis">
+        <div class="kpi"><span class="k-label">Events ingested</span><span class="k-value" id="syRate">–</span><canvas class="spark" id="spRate" aria-hidden="true"></canvas></div>
+        <div class="kpi"><span class="k-label">End-to-end latency</span><span class="k-value" id="syLatency">–</span><canvas class="spark" id="spLatency" aria-hidden="true"></canvas></div>
+        <div class="kpi"><span class="k-label">Feeds healthy</span><span class="k-value" id="syFeeds">–</span></div>
+        <div class="kpi"><span class="k-label">Queue backlog</span><span class="k-value" id="syQueue">–</span><canvas class="spark" id="spQueue" aria-hidden="true"></canvas></div>
+        <div class="kpi"><span class="k-label">CPU, average</span><span class="k-value" id="syCpu">–</span><canvas class="spark" id="spCpu" aria-hidden="true"></canvas></div>
+        <div class="kpi"><span class="k-label">GPU, average</span><span class="k-value" id="syGpu">–</span><canvas class="spark" id="spGpu" aria-hidden="true"></canvas></div>
+      </div>
+    </section>
+    <section class="card" data-tab="sys" hidden>
+      <div class="card-head"><h2>Open issues</h2><span class="muted" id="syHealth"></span></div>
+      <ul class="sy-issues" id="syIssues"></ul>
+    </section>
+    <section class="card" data-tab="sys" hidden>
+      <div class="card-head"><h2>Data ingestion</h2><span class="muted">Messages a second</span></div>
+      <ol class="corridors" id="syFeedList"></ol>
+    </section>
+    <section class="card" data-tab="sys" hidden>
+      <div class="card-head"><h2>Infrastructure</h2><span class="muted">Servers and clusters</span></div>
+      <div id="syNodes"></div>
+    </section>
+    <section class="card" data-tab="sys" hidden>
+      <div class="card-head"><h2>Services</h2><span class="muted">Response time</span></div>
+      <ol class="corridors" id="sySvc"></ol>
+      <div class="card-head sub-head"><h2>Storage and backup</h2></div>
+      <table class="facts" id="syStore"></table>
+    </section>
+
     <!-- Environment -->
+    <section class="card" data-tab="env" id="wxCard" hidden>
+      <p class="notice"><strong>Synthetic weather.</strong> Conditions are generated for the day; the advice follows an example rule set. Use the selector to demonstrate fog, a sandstorm or rain. The traffic simulation does not change.</p>
+      <div class="card-head"><h2>Weather and visibility</h2><label class="inline-field">Show <select id="wxDemo"><option value="auto">Today (generated)</option><option value="clear">Clear</option><option value="fog">Fog</option><option value="sand">Sandstorm</option><option value="rain">Rain</option></select></label></div>
+      <div class="kpis">
+        <div class="kpi"><span class="k-label">Conditions</span><span class="k-value" id="wxNow">–</span></div>
+        <div class="kpi"><span class="k-label">Visibility</span><span class="k-value" id="wxVis">–</span></div>
+        <div class="kpi"><span class="k-label">Wind</span><span class="k-value" id="wxWind">–</span></div>
+        <div class="kpi"><span class="k-label">Advised motorway limit</span><span class="k-value" id="wxLimit">–</span></div>
+      </div>
+      <table class="facts" id="wxFacts"></table>
+    </section>
     <section class="card" data-tab="env" hidden>
       <p class="notice"><strong>Synthetic sensors and readings.</strong> Example roadside sensors; values are generated from the synthetic traffic and a daily pattern, not measured.</p>
       <div class="card-head"><h2>Air and noise now</h2><span class="muted" id="envNote"></span></div>
@@ -524,23 +748,28 @@
 <!-- Printed summary -->
 <div id="report" class="report" aria-hidden="true"></div>
 
-<script src="config.js?v=20261116d"></script>
+<script src="config.js?v=20261116i"></script>
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/deck.gl.min.js"></script>
-<script src="js/daymodel.js?v=20261116d"></script>
-<script src="js/events.js?v=20261116d"></script>
-<script src="js/vehicles3d.js?v=20261116d"></script>
-<script src="js/app.js?v=20261116d"></script>
-<script src="js/ops.js?v=20261116d"></script>
-<script src="js/devices.js?v=20261116d"></script>
-<script src="js/i18n.js?v=20261116d"></script>
-<script src="js/response.js?v=20261116d"></script>
-<script src="js/zones.js?v=20261116d"></script>
-<script src="js/environment.js?v=20261116d"></script>
-<script src="js/buses.js?v=20261116d"></script>
-<script src="js/transit.js?v=20261116d"></script>
-<script src="js/analytics.js?v=20261116d"></script>
-<script src="js/assistant.js?v=20261116d"></script>
-<script src="js/shell.js?v=20261116d"></script>
+<script src="js/daymodel.js?v=20261116i"></script>
+<script src="js/events.js?v=20261116i"></script>
+<script src="js/vehicles3d.js?v=20261116i"></script>
+<script src="js/app.js?v=20261116i"></script>
+<script src="js/ops.js?v=20261116i"></script>
+<script src="js/devices.js?v=20261116i"></script>
+<script src="js/i18n.js?v=20261116i"></script>
+<script src="js/response.js?v=20261116i"></script>
+<script src="js/zones.js?v=20261116i"></script>
+<script src="js/environment.js?v=20261116i"></script>
+<script src="js/buses.js?v=20261116i"></script>
+<script src="js/transit.js?v=20261116i"></script>
+<script src="js/operations.js?v=20261116i"></script>
+<script src="js/mobility.js?v=20261116i"></script>
+<script src="js/support.js?v=20261116i"></script>
+<script src="js/platform.js?v=20261116i"></script>
+<script src="js/vlm.js?v=20261116i"></script>
+<script src="js/analytics.js?v=20261116i"></script>
+<script src="js/assistant.js?v=20261116i"></script>
+<script src="js/shell.js?v=20261116i"></script>
 </body>
 </html>

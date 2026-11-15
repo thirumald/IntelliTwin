@@ -174,6 +174,135 @@ sampleVideos: [
     ]
   },
 
+  /* ---- Operations modules (synthetic examples) ------------------------------------------------- */
+  incidents: { responseTargetMin: 12 },              // target time from report to a unit on scene
+  signalControl: { adaptiveJunctions: 25, progressionKmh: 60, prioritySavingSec: 12 },
+  // Planned roadworks and events. Days count from the date on the map (0 = that day). roadIndex picks a
+  // major road from the alphabetical list. These are examples, not real permits or events.
+  planned: {
+    peoplePerCar: 2.5, carShare: 0.6,
+    items: [
+      { type: 'roadworks', roadIndex: 3, fromDay: 0, toDay: 4, start: '22:00', end: '05:00', lanes: 1 },
+      { type: 'roadworks', roadIndex: 9, fromDay: 0, toDay: 1, start: '09:30', end: '15:00', lanes: 1 },
+      { type: 'roadworks', roadIndex: 15, fromDay: 2, toDay: 9, start: '21:00', end: '05:00', lanes: 2 },
+      { type: 'roadworks', roadIndex: 21, fromDay: 6, toDay: 13, start: '10:00', end: '14:00', lanes: 1 },
+      { type: 'event', title: 'Exhibition at ADNEC (example)', at: [54.4370, 24.4180], fromDay: 0, toDay: 2, start: '10:00', end: '19:00', attendance: 18000 },
+      { type: 'event', title: 'Evening concert, Yas Island (example)', at: [54.6031, 24.4672], fromDay: 1, toDay: 1, start: '18:00', end: '23:30', attendance: 25000 },
+      { type: 'event', title: 'Corniche fun run (example)', at: [54.3400, 24.4750], fromDay: 5, toDay: 5, start: '06:00', end: '10:00', attendance: 6000 },
+      { type: 'event', title: 'Football match (example)', at: [54.4530, 24.4160], fromDay: 3, toDay: 3, start: '19:00', end: '22:30', attendance: 30000 }
+    ]
+  },
+  // Evacuation planning assumptions. Assembly points are example open areas, not designated sites.
+  emergency: {
+    occupancy: { school: 900, university: 4000, hospital: 600, embassy: 80, government: 400, defence: 500, airport: 12000, police: 120, fire: 40 },
+    peoplePerCar: 2.5, peoplePerBus: 40, routeLanes: 2, laneCapacityPerHour: 1500, mobilisationMin: 10,
+    // Natural disaster exercises. The areas are examples chosen for demonstration, not surveyed hazard zones.
+    peoplePerKm2: 3500,
+    disasters: [
+      { id: 'flood', name: 'Flash flood after heavy rain', roadEffect: 'underpasses and low roads closed',
+        areas: [{ name: 'Downtown underpasses', at: [54.3640, 24.4860], radiusM: 1500 }, { name: 'Mussafah industrial area', at: [54.5000, 24.3550], radiusM: 2200 }, { name: 'Khalifa City low roads', at: [54.5770, 24.4200], radiusM: 1800 }],
+        actions: ['Close flooded underpasses and sign diversions', 'Send pumps and recovery vehicles to the closed sections', 'Warn drivers on message signs and public channels', 'Give signals more green on the diversion routes', 'Check hospitals and schools inside the area for access'] },
+      { id: 'surge', name: 'Coastal storm surge', roadEffect: 'seafront roads closed',
+        areas: [{ name: 'Corniche seafront', at: [54.3400, 24.4780], radiusM: 2200 }, { name: 'Mina Zayed port area', at: [54.3780, 24.5220], radiusM: 1800 }, { name: 'Saadiyat shore', at: [54.4330, 24.5450], radiusM: 2400 }],
+        actions: ['Close the seafront roads and car parks', 'Move people inland to the assembly points', 'Stop ferry and port access traffic', 'Hold response units outside the surge area', 'Reopen in stages after inspection'] },
+      { id: 'sand', name: 'Severe sandstorm', roadEffect: 'reduced speed limit, exposed roads',
+        areas: [{ name: 'Airport and Khalifa City corridor', at: [54.6200, 24.4300], radiusM: 6000 }, { name: 'Mussafah and Mohamed Bin Zayed City', at: [54.5200, 24.3500], radiusM: 5000 }],
+        actions: ['Lower the limit on exposed motorways', 'Show low-visibility warnings on message signs', 'Keep lorries in the right lane or hold them at weigh stations', 'Place patrols at the usual pile-up locations', 'Tell schools and employers to stagger departures'] },
+      { id: 'quake', name: 'Earthquake', roadEffect: 'bridges and tunnels closed until inspected',
+        areas: [{ name: 'City centre and islands', at: [54.3800, 24.4850], radiusM: 7000 }],
+        actions: ['Close bridges, flyovers and tunnels until inspected', 'Set signals to flashing where power is lost', 'Keep main corridors clear for emergency vehicles', 'Open the assembly points and route people to them', 'Survey critical sites in priority order: hospitals first'] },
+      { id: 'heat', name: 'Extreme heat', roadEffect: 'no closures, more breakdowns',
+        areas: [{ name: 'Whole city', at: [54.4600, 24.4500], radiusM: 16000 }],
+        actions: ['Add recovery patrols for breakdowns on motorways', 'Limit roadworks to night hours', 'Open cooled waiting areas at bus stations', 'Check on outdoor workers at work sites', 'Watch for tyre and engine fires on message-sign cameras'] }
+    ],
+    assemblyPoints: [
+      { name: 'Corniche open area (example)', at: [54.3400, 24.4750] },
+      { name: 'ADNEC car parks (example)', at: [54.4370, 24.4180] },
+      { name: 'Zayed Sports City car parks (example)', at: [54.4530, 24.4160] },
+      { name: 'Al Reem central park (example)', at: [54.4050, 24.4980] },
+      { name: 'Khalifa City park (example)', at: [54.5770, 24.4200] },
+      { name: 'Yas Island car parks (example)', at: [54.6031, 24.4672] },
+      { name: 'Mussafah open ground (example)', at: [54.5000, 24.3550] }
+    ]
+  },
+  parking: {
+    violationsPerDay: 900,
+    sites: [
+      { name: 'Downtown multi-storey', at: [54.3590, 24.4885], spaces: 1200, kind: 'business' },
+      { name: 'Corniche car park', at: [54.3410, 24.4765], spaces: 800, kind: 'leisure' },
+      { name: 'Al Maryah Island car park', at: [54.3905, 24.5030], spaces: 2400, kind: 'business' },
+      { name: 'Al Reem Island car park', at: [54.4060, 24.4990], spaces: 1500, kind: 'residential' },
+      { name: 'Emirates Palace visitors', at: [54.3180, 24.4625], spaces: 600, kind: 'leisure' },
+      { name: 'Grand Mosque visitors', at: [54.4760, 24.4138], spaces: 1800, kind: 'leisure' },
+      { name: 'ADNEC car park', at: [54.4380, 24.4190], spaces: 3000, kind: 'business' },
+      { name: 'Yas Island car park', at: [54.6040, 24.4680], spaces: 4000, kind: 'leisure' },
+      { name: 'Airport long stay', at: [54.6500, 24.4340], spaces: 3500, kind: 'mixed' },
+      { name: 'Hamdan Street on-street zone', at: [54.3640, 24.4900], spaces: 420, kind: 'business', street: true },
+      { name: 'Khalidiyah on-street zone', at: [54.3480, 24.4700], spaces: 380, kind: 'residential', street: true },
+      { name: 'Mussafah on-street zone', at: [54.5010, 24.3560], spaces: 650, kind: 'business', street: true }
+    ]
+  },
+  // Vehicle search uses generated plate reads at the synthetic cameras. Plates here are demo values.
+  vehicleSearch: {
+    watchList: [
+      { plate: 'DEMO-48213', reason: 'Reported stolen (example)' },
+      { plate: 'DEMO-10777', reason: 'Unpaid fines (example)' },
+      { plate: 'DEMO-66502', reason: 'Vehicle of interest (example)' },
+      { plate: 'DEMO-30914', reason: 'No valid registration (example)' }
+    ]
+  },
+  freight: {
+    weightLimitT: 2.5, banHours: [[6.5, 9], [15, 18]], nonComplianceShare: 0.06,
+    zone: { at: [54.3700, 24.4800], radiusM: 5500 },
+    hazmatVehicles: 5, hazmatFrom: [54.5000, 24.3550], hazmatTo: [54.3780, 24.5220],
+    weighStations: [
+      { name: 'Mussafah weigh station (example)', at: [54.5050, 24.3600], perHour: 180 },
+      { name: 'Mina Zayed port gate (example)', at: [54.3790, 24.5210], perHour: 140 },
+      { name: 'Airport road weigh station (example)', at: [54.6200, 24.4300], perHour: 110 }
+    ]
+  },
+  pedestrians: { schoolLimitKmh: 30, schoolWindows: [[6.75, 8, 'Arrival time'], [13, 15, 'Dismissal time']], crossings: 16, peakPerHour: 420 },
+  weather: { demo: 'auto' },                         // 'auto', 'clear', 'fog', 'sand' or 'rain'
+  assets: { openWorkOrders: 14, slaDays: { P1: 1, P2: 3, P3: 7 } },
+  reports: {
+    schedules: [
+      { name: 'Daily operations summary', every: 'day', at: '06:00', audience: 'control room' },
+      { name: 'Weekly traffic and safety report', every: 'week', weekday: 0, at: '07:00', audience: 'department heads' },
+      { name: 'Monthly city KPI scorecard', every: 'month', day: 1, at: '08:00', audience: 'leadership' }
+    ]
+  },
+
+  /* ---- Platform monitoring (synthetic example of a deployed platform) -------------------------- */
+  platform: {
+    pipelineMs: 900, queueBase: 1200, retentionDays: 30,
+    storage: { totalTb: 480, usedTb: 301, perDayTb: 1.9 },
+    feeds: [
+      { name: 'Traffic detectors', source: 'roadside units', perSec: 520, lagMs: 350, followsTraffic: true },
+      { name: 'Video analytics events', source: 'CCTV analytics servers', perSec: 180, lagMs: 800, followsTraffic: true },
+      { name: 'Plate reads', source: 'enforcement cameras', perSec: 240, lagMs: 500, followsTraffic: true },
+      { name: 'Signal controller status', source: 'traffic signal system', perSec: 80, lagMs: 300 },
+      { name: 'Bus positions', source: 'vehicle location system', perSec: 35, lagMs: 1200 },
+      { name: 'Taxi positions', source: 'dispatch system', perSec: 130, lagMs: 1500 },
+      { name: 'Environmental sensors', source: 'air and noise stations', perSec: 6, lagMs: 2500 },
+      { name: 'Weather service', source: 'external service', perSec: 0.4, lagMs: 4000, faultRate: 0.06 },
+      { name: 'Incident reports', source: 'control room system', perSec: 0.6, lagMs: 700 }
+    ],
+    nodes: [
+      { name: 'ingest-01', role: 'Message broker', cpu: 46, mem: 58, disk: 41, followsLoad: true },
+      { name: 'ingest-02', role: 'Message broker', cpu: 43, mem: 55, disk: 39, followsLoad: true },
+      { name: 'stream-01', role: 'Stream processing', cpu: 61, mem: 67, disk: 33, followsLoad: true },
+      { name: 'gpu-01', role: 'Video analytics', cpu: 52, mem: 71, disk: 48, gpu: 68, followsLoad: true },
+      { name: 'gpu-02', role: 'Video analytics', cpu: 49, mem: 69, disk: 47, gpu: 64, followsLoad: true },
+      { name: 'db-01', role: 'Database, primary', cpu: 38, mem: 74, disk: 63 },
+      { name: 'store-01', role: 'Object storage', cpu: 22, mem: 40, disk: 63 },
+      { name: 'app-01', role: 'Application and API', cpu: 34, mem: 52, disk: 28 }
+    ],
+    services: [
+      { name: 'Map and traffic API', ms: 85 }, { name: 'Simulation service', ms: 420 }, { name: 'Alert engine', ms: 60 },
+      { name: 'Video gateway', ms: 140 }, { name: 'Sign-in service', ms: 45 }, { name: 'Report service', ms: 310 }
+    ]
+  },
+
   /* ---- People on foot ------------------------------------------------------------------------- */
   // Synthetic walkers drawn at street zoom. People per km of street by road class
   // (motorway, trunk, primary, secondary, tertiary), before the time-of-day factor. Assumed, not counted.
@@ -269,8 +398,8 @@ sampleVideos: [
   auth: {
     enabled: true,
     roles: {
-      admin: { label: 'Administrator', can: ['whatif', 'export', 'audit', 'settings', 'video'] },
-      operator: { label: 'Operator', can: ['whatif', 'export', 'video'] },
+      admin: { label: 'Administrator', can: ['whatif', 'export', 'audit', 'settings', 'video', 'search'] },
+      operator: { label: 'Operator', can: ['whatif', 'export', 'video', 'search'] },
       viewer: { label: 'Viewer', can: ['video'] }
     }
   },
@@ -281,6 +410,10 @@ sampleVideos: [
     // POST { question, context } → { answer }. Lets a language model answer what the built-in
     // assistant rules do not cover. Keep the model API key on that service.
     assistantUrl: null,
+    // Vision-language model for the camera window. POST { question, image (JPEG data URL of the current
+    // frame, or null), camera, context } → { answer }. null = sample answers written from synthetic data.
+    // Keep the model API key on that service. Sending frames to a service sends video images to it.
+    vlmUrl: null,
     // POST of each audit entry as JSON. null = audit log kept in this browser only.
     auditUrl: null
   },

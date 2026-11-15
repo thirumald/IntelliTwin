@@ -35,6 +35,8 @@ All settings are in `config.js` at the repository root. Every value has a workin
 | | `pushSeconds` | 8 | Seconds before a notification closes by itself. 0 keeps it until it is closed with × |
 | | `pushPosition` | `'top-right'` | Corner of the map for notifications: `'top-right'` or `'top-left'` |
 | | `pushMaxVisible` | 3 | Most notifications on screen at once |
+| `incidents`, `signalControl`, `planned`, `emergency`, `parking`, `vehicleSearch`, `freight`, `pedestrians`, `weather`, `assets`, `reports` | see file | examples | Settings for the operations, mobility and support modules; see [operations-modules.md](operations-modules.md) |
+| `platform` | `feeds`, `nodes`, `services`, `storage` | examples | Synthetic platform monitoring; see [platform-monitoring.md](platform-monitoring.md) |
 | `taxis` | `count`, `speedKmh`, `hiredSharePeak/Day/Night`, `bookingShare`, `ranks` | 260, 32, 0.7/0.5/0.25, 0.1, 11 ranks | Synthetic taxi fleet and taxi ranks (name, position, bays) |
 | `shuttles` | `seats`, `speedKmh`, `zones` | 12, 24, 4 zones | Synthetic on-demand shuttle zones: name, centre, radius, vehicles, usual wait |
 | `vehicles` | `mix` | six types | Assumed shares of vehicle types for display and reporting |
