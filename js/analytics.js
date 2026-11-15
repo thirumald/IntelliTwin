@@ -458,8 +458,16 @@
         kpi('Critical sites monitored', z.total, 'sites', G.sitesMonitored, 'high', 'defence, embassies, hospitals, schools and others'),
         kpi('Sites on alert now', z.total ? 100 * z.alert / z.total : null, '%', G.sitesOnAlertPct, 'low', z.alert + ' on alert, ' + z.watch + ' on watch', function (v) { return v.toFixed(1) + '%'; }),
         kpi('Cameras online', cams ? 100 * (cams - offline) / cams : null, '%', G.camerasOnlinePct, 'high', cams + ' synthetic cameras', pct)] },
-      { goal: 'Sea and air connections', note: 'Synthetic ship and flight movements', kpis: (function () {
+      { goal: 'Sea and air connections', note: 'Synthetic ship movements; real flights from Flightradar24 when available', kpis: (function () {
         var se = T.sea ? T.sea.stats() : null, ai = T.air ? T.air.stats() : null;
+        if (ai && ai.live) {
+          return [
+            kpi('Aircraft to or from UAE airports', ai.inAir, '', null, 'high', ai.updated ? 'Flightradar24 snapshot at ' + ai.updated : 'no flight data yet'),
+            kpi('Arriving in the UAE', ai.arriving, '', null, 'high', 'in the same snapshot'),
+            kpi('Departing', ai.departing, '', null, 'high', 'in the same snapshot'),
+            kpi('Berths in use', se ? 100 * se.berthsUsed / se.berths : null, '%', G.berthUsePct, 'low', se ? se.berthsUsed + ' of ' + se.berths + ' berths' : '', pct),
+            kpi('Vessel movements today', se ? se.callsToday : null, '', null, 'high', se ? se.moving + ' moving now' : '')];
+        }
         return [
           kpi('Flights on time this hour', ai ? ai.onTimePct : null, '%', G.flightsOnTimePct, 'high', ai ? ai.movementsHour + ' movements this hour' : '', pct),
           kpi('Average flight delay', ai ? ai.avgDelayMin : null, 'min', G.flightDelayMin, 'low', 'all movements this hour'),

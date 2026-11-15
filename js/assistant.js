@@ -140,6 +140,7 @@
     }
     if (/\b(flight|flights|aircraft|plane|planes|airport|airline|airlines|air)\b/.test(q) && window.IntelliTwin.air) {
       a.setTab('bus'); var ai = window.IntelliTwin.air.stats();
+      if (ai.live) { return ai.inAir === null ? 'No flight data has been published yet. Real flights come from Flightradar24 a few times a day.' : ai.inAir + ' aircraft were flying to or from UAE airports at ' + ai.updated + ' UAE time: ' + ai.arriving + ' arriving and ' + ai.departing + ' departing. This is a real Flightradar24 snapshot, not a live position feed.'; }
       return ai.inAir + ' aircraft are in the air near the airport; ' + ai.movementsHour + ' movements this hour' + (ai.onTimePct === null ? '' : ', ' + Math.round(ai.onTimePct) + '% on time, average delay ' + Math.round(ai.avgDelayMin) + ' min') + '; ' + ai.movementsToday + ' movements so far today. These flight movements are synthetic.';
     }
     if (/slow|worst|congest|jam|bottleneck|busiest|queue/.test(q)) {

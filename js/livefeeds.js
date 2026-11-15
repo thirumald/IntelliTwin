@@ -11,8 +11,10 @@
   'use strict';
   var T = window.IntelliTwin, C = T.core, CFG = C.CFG, $ = C.$, num = C.num, K = T.kit, esc = K.esc;
   var L = CFG.live || {}; if (L.enabled === false || !L.baseUrl) { return; }
-  var fires = null, sats = null, ships = null, status = {}, satNow = [], loadedAt = 0, err = '';
-  var show = { fires: L.fires !== false, vessels: L.vessels !== false, sats: L.satellites !== false };
+  var fires = null, sats = null, ships = null, air = null, status = {}, satNow = [], loadedAt = 0, err = '';
+  var show = { fires: L.fires !== false, vessels: L.vessels !== false, sats: L.satellites !== false, air: L.flights !== false };
+  var UAE_AP = { AUH: 'Abu Dhabi', DXB: 'Dubai', DWC: 'Dubai World Central', SHJ: 'Sharjah', RKT: 'Ras Al Khaimah', FJR: 'Fujairah', AAN: 'Al Ain', AZI: 'Al Bateen' };
+  var PLANE = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"><path d="M12 2c.7 0 1.2.9 1.2 2v5.2l7.3 4.3v1.9l-7.3-2.2v4.4l2 1.5V21L12 20l-3.2 1v-1.9l2-1.5v-4.4l-7.3 2.2v-1.9l7.3-4.3V4c0-1.1.5-2 1.2-2z" fill="white"/></svg>');
   var bb = (C.meta() || {}).bbox || [54.2, 24.2, 54.8, 24.7], centre = [(bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2];
   var kx = 111.32 * Math.cos(centre[1] * Math.PI / 180), ky = 110.57;
   function km(a, b) { return Math.hypot((a[0] - b[0]) * kx, (a[1] - b[1]) * ky); }
@@ -34,13 +36,14 @@
   }
 
   // A short reason in plain words; the full message is in status.json on the live-data branch.
-  function why(e) { e = String(e || ''); return /is not set/.test(e) ? 'the API key is not set in GitHub' : /no vessel position|ConnectionClosed/.test(e) ? 'the AIS stream sent no vessel positions' : /answered:/.test(e) ? 'the service refused the request' : 'the source did not answer'; }
+  function why(e) { e = String(e || ''); return /answered 40[13]/.test(e) ? 'the service refused the key' : /answered 402|credit/i.test(e) ? 'the account has no credits left' : /is not set/.test(e) ? 'the API key is not set in GitHub' : /no vessel position|ConnectionClosed/.test(e) ? 'the AIS stream sent no vessel positions' : /answered:/.test(e) ? 'the service refused the request' : 'the source did not answer'; }
 
   /* ---------------------------------------------------------------- loading */
   function load() {
     var bust = '?t=' + Math.floor(Date.now() / 120000), get = function (f) { return fetch(L.baseUrl + f + bust, { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }); };
-    return Promise.all([get('status.json'), get('fires.json'), get('satellites.json'), get('vessels.json')]).then(function (r) {
-      loadedAt = Date.now(); err = r[0] || r[1] || r[2] || r[3] ? '' : 'unreachable';
+    return Promise.all([get('status.json'), get('fires.json'), get('satellites.json'), get('vessels.json'), get('flights.json')]).then(function (r) {
+      loadedAt = Date.now(); err = r[0] || r[1] || r[2] || r[3] || r[4] ? '' : 'unreachable';
+      if (r[4]) { air = r[4]; }
       status = r[0] || status;
       if (r[1]) { fires = r[1]; fires.list = (r[1].rows || []).map(function (x) { return { at: [x[0], x[1]], date: x[2], time: x[3], frp: x[4], conf: x[5], sat: x[6], dn: x[7], iso: x[2] + 'T' + x[3] + ':00Z' }; }); }
       if (r[2]) { sats = r[2]; sats.recs = []; if (window.satellite) { r[2].sats.forEach(function (s) { try { sats.recs.push({ s: s, rec: window.satellite.twoline2satrec(s.l1, s.l2) }); } catch (e) { /* bad elements */ } }); } }
@@ -79,6 +82,31 @@
   function shipCol(s) { return TCOL[shipType(s.type)] || [120, 200, 210]; }
   function showShip(s) {
     C.showPopup([s.lon, s.lat], s.name || 'MMSI ' + s.mmsi, [['Type', shipType(s.type)], ['MMSI', s.mmsi], ['Speed', (s.sog || 0).toFixed(1) + ' knots'], ['Course', Math.round(s.cog || 0) + '°'], ['Destination', s.dest || 'not reported'], ['Length', s.len ? s.len + ' m' : 'not reported'], ['Heard', s.t ? uae(s.t.replace(' ', 'T') + 'Z') + ' UAE time' : '–']], 'Real position from AIS (aisstream.io)');
+  }
+
+  /* ---------------------------------------------------------------- flights */
+  function arriving(f) { return !!UAE_AP[f.to]; }
+  function flightStats() {
+    if (!air) { return null; }
+    var fl = air.flights, up = fl.filter(function (f) { return f.alt > 100 || f.gs > 60; });
+    return { inAir: up.length, arriving: up.filter(arriving).length, departing: up.filter(function (f) { return UAE_AP[f.from] && !arriving(f); }).length, total: fl.length, updated: uae(air.updated), limit: air.limit };
+  }
+  function showFlight(f) {
+    C.showPopup([f.lon, f.lat], (f.flight || f.call || 'Flight') + (f.airline ? ' · ' + f.airline : ''), [['Route', (f.from || '?') + ' → ' + (f.to || '?')], ['Aircraft', (f.type || 'not reported') + (f.reg ? ' · ' + f.reg : '')], ['Height', num(f.alt) + ' ft'], ['Ground speed', num(f.gs) + ' knots'], ['Heading', Math.round(f.track) + '°'], ['Climbing or descending', f.vs > 200 ? 'Climbing' : f.vs < -200 ? 'Descending' : 'Level'], ['Position at', uae(air.updated) + ' UAE time']], 'Real position from Flightradar24 at the time shown; the aircraft has moved since');
+  }
+  function renderAir() {
+    $('lvAirSub').textContent = stateLine('flights', air);
+    if (!air) { $('lvAirList').innerHTML = ''; return; }
+    var st = flightStats(), fl = air.flights;
+    set('lvAirAll', st.inAir); set('lvAirArr', st.arriving); set('lvAirDep', st.departing); set('lvAirAt', st.updated);
+    $('lvAirNote').textContent = 'Positions as they were at ' + st.updated + ' UAE time (' + ago(air.updated) + '). Each refresh returns at most ' + st.limit + ' flights to or from UAE airports, to limit Flightradar24 credits.';
+    var by = {}; fl.forEach(function (f) { var a = UAE_AP[f.to] ? f.to : UAE_AP[f.from] ? f.from : ''; if (a) { by[a] = (by[a] || 0) + 1; } });
+    var mx = Math.max.apply(null, Object.keys(by).map(function (k) { return by[k]; }).concat([1]));
+    $('lvAirBars').innerHTML = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; }).map(function (k) { return C.barRow(esc(UAE_AP[k] + ' (' + k + ')'), 'arriving or departing', by[k], by[k] / mx); }).join('');
+    var ol = $('lvAirList'); ol.innerHTML = '';
+    fl.slice().sort(function (a, b) { return km([a.lon, a.lat], centre) - km([b.lon, b.lat], centre); }).slice(0, 10).forEach(function (f) {
+      ol.appendChild(C.listButton(arriving(f) ? 'free' : 'moderate', (f.flight || f.call || 'Flight') + ' · ' + (f.from || '?') + ' → ' + (f.to || '?'), (f.type || '') + (f.airline ? ' · ' + f.airline : '') + ' · ' + num(f.gs) + ' kn · ' + Math.round(km([f.lon, f.lat], centre)) + ' km away', num(f.alt) + '<small>ft</small>', function () { if (inRegion([f.lon, f.lat], 0.6)) { C.flyTo(f.lon, f.lat, 11); } showFlight(f); }));
+    });
   }
 
   /* ---------------------------------------------------------------- rendering */
@@ -122,8 +150,9 @@
   }
   function render() {
     if (K.tabOpen('emg')) { renderFires(); }
-    if (K.tabOpen('bus')) { renderShips(); renderSats(); }
-    var f = $('lyLvFireN'), v = $('lyLvShipN'), s = $('lyLvSatN');
+    if (K.tabOpen('bus')) { renderAir(); renderShips(); renderSats(); }
+    var f = $('lyLvFireN'), v = $('lyLvShipN'), s = $('lyLvSatN'), a = $('lyLvAirN');
+    if (a) { a.textContent = air ? '(' + air.flights.length + ' at ' + uae(air.updated) + ')' : '(not available yet)'; }
     if (f) { f.textContent = fires ? '(' + num(fires.list.length) + ' in 2 days)' : '(not available yet)'; }
     if (v) { v.textContent = ships ? '(' + num(ships.ships.length) + ' heard)' : '(not available yet)'; }
     if (s) { s.textContent = sats ? '(' + satNow.filter(function (x) { return x.el > 0; }).length + ' above the horizon)' : '(not available yet)'; }
@@ -144,6 +173,11 @@
       out.push(new deck.ScatterplotLayer({ id: 'lv-ships', data: ships.ships, pickable: true, radiusUnits: 'pixels', getRadius: function (s) { return s.len >= 150 ? 6 : 4.5; }, stroked: true, lineWidthUnits: 'pixels', getLineWidth: 1, getLineColor: [10, 20, 35],
         getPosition: function (s) { return [s.lon, s.lat]; }, getFillColor: shipCol, onClick: function (i) { if (i.object) { showShip(i.object); } } }));
     }
+    if (show.air && air && deck.IconLayer) {
+      out.push(new deck.IconLayer({ id: 'lv-flights', data: air.flights, pickable: true, sizeUnits: 'pixels', getSize: 26, getIcon: function () { return { url: PLANE, width: 48, height: 48, mask: true }; },
+        getPosition: function (f) { return [f.lon, f.lat]; }, getAngle: function (f) { return -f.track; }, getColor: function (f) { return arriving(f) ? [90, 220, 150] : [255, 200, 90]; }, onClick: function (i) { if (i.object) { showFlight(i.object); } } }));
+      if (deck.TextLayer) { out.push(new deck.TextLayer({ id: 'lv-flight-names', data: air.flights, getPosition: function (f) { return [f.lon, f.lat]; }, getText: function (f) { return f.flight || f.call || ''; }, getSize: 11, getColor: [235, 240, 250], getPixelOffset: [0, -18], fontFamily: 'system-ui, sans-serif' })); }
+    }
     if (show.sats && satNow.length) {
       var near = satNow.filter(function (s) { return inRegion(s.at, 6); });
       out.push(new deck.PathLayer({ id: 'lv-sat-track', data: near.map(track), getPath: function (p) { return p; }, widthUnits: 'pixels', getWidth: 1.5, getColor: [190, 150, 255, 150] }));
@@ -158,15 +192,17 @@
     var REAL = '<strong>Real data.</strong> ';
     card('emg', 'lvFire', 'Fire and heat detections', REAL + 'Heat seen by satellites in the last two days (NASA FIRMS, VIIRS). In the UAE most detections are gas flares and industrial sites, not wildfires. Shown at real time, not the twin’s clock.',
       '<div class="kpis">' + tile('Detections, UAE', 'lvFireAll') + tile('In this region', 'lvFireHere') + tile('Strongest', 'lvFireTop') + tile('Latest, UAE time', 'lvFireLast') + '</div><p class="muted" id="lvFireNote"></p><ol class="corridors" id="lvFireList"></ol>');
+    card('bus', 'lvAir', 'Live flights', REAL + 'Aircraft flying to or from UAE airports, from Flightradar24. This is a snapshot: positions are as they were at the time shown and are refreshed a few times a day, because each returned flight is billed. Synthetic flights are no longer shown.',
+      '<div class="kpis">' + tile('Aircraft in the air', 'lvAirAll') + tile('Arriving in the UAE', 'lvAirArr') + tile('Departing', 'lvAirDep') + tile('Snapshot, UAE time', 'lvAirAt') + '</div><p class="muted" id="lvAirNote"></p><div id="lvAirBars"></div><ol class="corridors" id="lvAirList"></ol>');
     card('bus', 'lvShip', 'Live vessels (AIS)', REAL + 'Vessel positions heard on AIS (aisstream.io), refreshed about every 30 minutes. They replace the synthetic ships on the map. Shown at real time, not the twin’s clock.',
       '<div class="kpis">' + tile('Vessels heard, UAE waters', 'lvShipAll') + tile('Near this region', 'lvShipHere') + tile('Under way', 'lvShipMove') + tile('Tankers and cargo', 'lvShipTank') + '</div><div id="lvShipBars"></div><ol class="corridors" id="lvShipList"></ol>');
     card('bus', 'lvSat', 'Satellites overhead', REAL + 'Orbits from N2YO; each position is computed in this browser for the present moment, so the satellites move as you watch. Elevation is measured from the centre of this region.',
       '<div class="kpis">' + tile('Satellites tracked', 'lvSatAll') + tile('Above the horizon now', 'lvSatUp') + tile('Higher than 30°', 'lvSatHigh') + tile('Space Station', 'lvSatIss') + '</div><ol class="corridors" id="lvSatList"></ol>');
-    [['lyLvFire', 'fires'], ['lyLvShip', 'vessels'], ['lyLvSat', 'sats']].forEach(function (p) { var el = $(p[0]); if (el) { el.checked = show[p[1]]; el.addEventListener('change', function () { show[p[1]] = el.checked; C.redraw(); }); } });
+    [['lyLvFire', 'fires'], ['lyLvShip', 'vessels'], ['lyLvSat', 'sats'], ['lyLvAir', 'air']].forEach(function (p) { var el = $(p[0]); if (el) { el.checked = show[p[1]]; el.addEventListener('change', function () { show[p[1]] = el.checked; C.redraw(); }); } });
     load();
     setInterval(load, Math.max(2, L.refreshMin || 10) * 60000);
     setInterval(function () { if (sats && (show.sats || K.tabOpen('bus'))) { tick(); if (K.tabOpen('bus')) { renderSats(); } if (show.sats) { C.redraw(); } } }, 2000);
   });
   C.onTab(render);
-  T.live = { fires: function () { return fires; }, vessels: function () { return ships; }, satellites: function () { return satNow; }, status: function () { return status; }, reload: load };
+  T.live = { flights: function () { return air; }, flightStats: flightStats, fires: function () { return fires; }, vessels: function () { return ships; }, satellites: function () { return satNow; }, status: function () { return status; }, reload: load };
 })();

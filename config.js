@@ -264,7 +264,7 @@ sampleVideos: [
     enabled: true,
     baseUrl: 'https://raw.githubusercontent.com/thirumald/IntelliTwin/live-data/',
     refreshMin: 10,              // how often the browser looks for newer files
-    fires: true, vessels: true, satellites: true,   // layers on at start
+    fires: true, vessels: true, satellites: true, flights: true,   // layers on at start
     replaceSyntheticShips: true  // hide the synthetic ships once real AIS vessels are loaded
   },
 
@@ -297,6 +297,7 @@ sampleVideos: [
     ]
   },
   air: {
+    synthetic: false,           // real flights come from Flightradar24 (see live); true brings the synthetic flights back
     airport: [54.6511, 24.4330], movementsPerHour: 16, inViewSec: 420, topAltM: 2600, trailSec: 150, delayedShare: 0.2, flightPrefix: 'FLT',
     cities: ['Riyadh', 'Doha', 'Cairo', 'Mumbai', 'London', 'Istanbul', 'Delhi', 'Muscat', 'Kuwait City', 'Singapore', 'Frankfurt', 'Karachi'],
     routes: [   // arrivals end at the airport; departures start there

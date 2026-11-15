@@ -554,3 +554,22 @@ body.map-light .svc-ok { color: #1c7a4b; } body.map-light .svc-part { color: #94
 .sc-bullet i { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--text); }
 .sc-kpi.good .sc-fill { background: #0ca30c; } .sc-kpi.warn .sc-fill { background: #fab219; } .sc-kpi.bad .sc-fill { background: #d03b3b; }
 .an-table tr.is-current td { font-weight: 600; background: rgba(57, 135, 229, .1); }
+
+/* ---------------------------------------------------------------- layer tree */
+.ly-tree { margin-top: 8px; }
+.ly-all { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.ly-all .check { margin: 0; }
+.ly-group { border-bottom: 1px solid var(--line-soft, var(--line)); }
+.ly-group > summary { display: flex; align-items: center; gap: 8px; padding: 8px 0; cursor: pointer; list-style: none; font-size: 13px; font-weight: 600; }
+.ly-group > summary::-webkit-details-marker { display: none; }
+.ly-group > summary::before { content: ""; width: 0; height: 0; border-left: 5px solid var(--muted); border-top: 4px solid transparent; border-bottom: 4px solid transparent; transition: transform .12s; flex: none; }
+.ly-group[open] > summary::before { transform: rotate(90deg); }
+.ly-group > summary input { margin: 0; flex: none; }
+.ly-name { flex: 1; }
+.ly-count { font-weight: 400; font-size: 12px; }
+.ly-items { padding: 0 0 8px 26px; border-left: 1px solid var(--line); margin-left: 10px; }
+.ly-items .check { margin: 4px 0; }
+/* Time bar: controls keep their full labels and move to a second row when the bar is too narrow. */
+.timeline { flex-wrap: wrap; row-gap: 6px; }
+.timeline .btn, .timeline .seg { flex: none; white-space: nowrap; }
+.timeline input[type=range] { min-width: 120px; }

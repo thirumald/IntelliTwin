@@ -56,7 +56,8 @@
   }
 
   /* ---------------------------------------------------------------- aircraft */
-  var routes = (AIR.routes || []).map(prep);
+  // Synthetic flights are off unless air.synthetic is true: real flights come from Flightradar24 (js/livefeeds.js).
+  var airSyn = AIR.synthetic === true, routes = airSyn ? (AIR.routes || []).map(prep) : [];
   function altOf(arrival, f) { var top = AIR.topAltM || 2600; return arrival ? top * (1 - f) : top * f; }
   function flights(t, windowS) {
     if (!routes.length) { return []; }
@@ -134,18 +135,27 @@
   // Summary figures used by the dashboard, the scorecard, reports and the assistant.
   function seaStats() { var vs = ships(state.t), b = berths(state.t); return { moving: vs.length, inbound: vs.filter(function (v) { return v.inbound; }).length, outbound: vs.filter(function (v) { return !v.inbound; }).length, berthsUsed: b.used, berths: b.total, callsToday: Math.floor(state.t / ((SEA.everyMin || 22) * 60)) }; }
   function airStats() {
+    if (!airSyn) { var lv = T.live && T.live.flightStats ? T.live.flightStats() : null; return { live: true, inAir: lv ? lv.inAir : null, movementsHour: null, onTimePct: null, avgDelayMin: null, movementsToday: null, arriving: lv ? lv.arriving : null, departing: lv ? lv.departing : null, updated: lv ? lv.updated : null }; }
     var t = state.t, fl = flights(t, 3600), hour = fl.filter(function (f) { return f.time >= t - 1800 && f.time < t + 1800; }), late = hour.filter(function (f) { return f.late; }).length;
     return { inAir: fl.filter(function (f) { return f.active; }).length, movementsHour: hour.length, onTimePct: hour.length ? 100 * (hour.length - late) / hour.length : null, avgDelayMin: hour.length ? hour.reduce(function (a, f) { return a + f.late; }, 0) / hour.length : null, movementsToday: Math.floor(t / (3600 / (AIR.movementsPerHour || 16))) };
   }
   function renderDash() {
     var a = airStats(), b = seaStats();
-    $('dSea').textContent = b.moving; $('dBerth').textContent = b.berthsUsed + ' of ' + b.berths; $('dAir').textContent = a.inAir;
+    $('dSea').textContent = b.moving; $('dBerth').textContent = b.berthsUsed + ' of ' + b.berths;
+    if (a.live) {
+      $('dAir').textContent = a.inAir === null ? '–' : a.inAir; $('dAirOn').textContent = a.arriving === null ? '–' : a.arriving;
+      $('dAirLabel').innerHTML = 'Aircraft to or from UAE airports <em>real</em>'; $('dAirOnLabel').innerHTML = 'Arriving in the UAE <em>real</em>';
+      $('dSeaAirNote').textContent = num(b.callsToday) + ' vessel movements so far today' + (a.updated ? ' · flights as of ' + a.updated : '');
+      return;
+    }
+    $('dAir').textContent = a.inAir;
     $('dAirOn').innerHTML = a.onTimePct === null ? '–' : Math.round(a.onTimePct) + '<small>%</small>';
     $('dSeaAirNote').textContent = num(a.movementsToday) + ' flights and ' + num(b.callsToday) + ' vessel movements so far today';
   }
 
   C.onReady(function () {
     renderDash(); C.onMinute(renderDash);
+    if (!airSyn) { show.air = false; $('airSynCard').style.display = 'none'; }
     $('showSea').addEventListener('change', function (e) { show.sea = e.target.checked; C.redraw(); });
     $('showAir').addEventListener('change', function (e) { show.air = e.target.checked; C.redraw(); });
     $('seaView').addEventListener('click', function () { if (T.getMap() && SEA.port) { T.getMap().easeTo({ center: SEA.view || SEA.port, zoom: 11.3, pitch: 45, duration: 900 }); } });

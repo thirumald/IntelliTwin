@@ -49,8 +49,13 @@
     }
     if (T.sea && T.air) {
       var se = T.sea.stats(), ai = T.air.stats();
-      A.bar('anOpsSeaAir', { labels: ['Aircraft in the air', 'Flights this hour', 'Vessels moving', 'Berths in use'], unit: '', series: [{ name: 'Now', color: COL[0], values: [ai.inAir, ai.movementsHour, se.moving, se.berthsUsed] }] });
-      tiles += A.tile('Flights on time', ai.onTimePct === null ? '–' : Math.round(ai.onTimePct) + '%', num(ai.movementsToday) + ' movements today, synthetic');
+      if (ai.live) {
+        A.bar('anOpsSeaAir', { labels: ['Aircraft in the air', 'Arriving', 'Departing', 'Vessels moving', 'Berths in use'], unit: '', series: [{ name: 'Now', color: COL[0], values: [ai.inAir || 0, ai.arriving || 0, ai.departing || 0, se.moving, se.berthsUsed] }] });
+        tiles += A.tile('Aircraft to or from UAE airports', ai.inAir === null ? '–' : ai.inAir, ai.updated ? 'real, Flightradar24 at ' + ai.updated : 'no flight data yet');
+      } else {
+        A.bar('anOpsSeaAir', { labels: ['Aircraft in the air', 'Flights this hour', 'Vessels moving', 'Berths in use'], unit: '', series: [{ name: 'Now', color: COL[0], values: [ai.inAir, ai.movementsHour, se.moving, se.berthsUsed] }] });
+        tiles += A.tile('Flights on time', ai.onTimePct === null ? '–' : Math.round(ai.onTimePct) + '%', num(ai.movementsToday) + ' movements today, synthetic');
+      }
     }
     $('anOpsTiles').innerHTML = tiles;
   }

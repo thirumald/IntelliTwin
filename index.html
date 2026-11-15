@@ -8,8 +8,8 @@
 <meta name="theme-color" content="#0b1220">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b1220'/%3E%3Cpath d='M6 22 L13 12 L19 18 L26 8' fill='none' stroke='%232dd4a7' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="css/styles.css?v=20261117c">
-<link rel="stylesheet" href="css/theme.css?v=20261117c">
+<link rel="stylesheet" href="css/styles.css?v=20261117d">
+<link rel="stylesheet" href="css/theme.css?v=20261117d">
 </head>
 <body>
 <header class="topbar">
@@ -169,6 +169,31 @@
 
     <!-- Dashboard -->
     <section class="card" data-tab="dash">
+      <div class="card-head"><h2 data-i18n="scenarioLayers">Scenario and layers</h2><span class="muted" id="scenSrc">Pre-simulated</span></div>
+      <label class="field"><span data-i18n="demandCase">Demand case</span><select id="scenario"></select></label>
+      <p class="insight" id="lyTtNote" hidden></p>
+      <label class="check"><input id="showCars" type="checkbox" checked><span><span data-i18n="vehicles">Vehicles</span> <span class="muted" id="carNote"></span></span></label>
+      <label class="check"><input id="showPeople" type="checkbox" checked><span>People on foot <span class="muted">(synthetic, street zoom)</span></span></label>
+      <label class="check"><input id="showAcc" type="checkbox" checked><span><span data-i18n="accidents">Accidents</span> <span class="muted">(illustrative)</span></span></label>
+      <label class="check"><input id="showSites" type="checkbox" checked><span data-i18n="lyEnf">Enforcement cameras</span></label>
+      <label class="check"><input id="showCams" type="checkbox" checked><span data-i18n="lyCam">CCTV cameras</span></label>
+      <label class="check"><input id="showDet" type="checkbox"><span data-i18n="lyDet">Detectors</span></label>
+      <label class="check"><input id="showVms" type="checkbox" checked><span data-i18n="lyVms">Message signs</span></label>
+      <label class="check" id="railRow" hidden><input id="showRail" type="checkbox" checked><span>Railway <span class="muted" id="railNote"></span></span></label>
+      <label class="check" id="cycleRow" hidden><input id="showCycle" type="checkbox" checked><span>Cycle tracks <span class="muted" id="cycleNote"></span></span></label>
+      <label class="check"><input id="showBases" type="checkbox" checked><span>Response units <span class="muted">(synthetic)</span></span></label>
+      <label class="check" id="sigRow" hidden><input id="showSig" type="checkbox" checked><span data-i18n="lySig">Traffic signals</span></label>
+      <label class="check" id="bldRow" hidden><input id="showBld" type="checkbox"><span>Buildings, 3D <span class="muted" id="bldNote"></span></span></label>
+      <label class="check"><input id="lyTtFlow" type="checkbox"><span>Live traffic, TomTom <span class="muted">(real; replaces the twin’s road colours)</span></span></label>
+      <label class="check"><input id="lyTtInc" type="checkbox" checked><span>Live incidents, TomTom <span class="muted" id="lyTtIncN"></span></span></label>
+      <label class="check"><input id="lyTtEv" type="checkbox"><span>EV charging stations, TomTom <span class="muted" id="lyTtEvN"></span></span></label>
+      <label class="check"><input id="lyTtFuel" type="checkbox"><span>Fuel stations, TomTom <span class="muted" id="lyTtFuelN"></span></span></label>
+      <label class="check"><input id="lyLvFire" type="checkbox" checked><span>Fire and heat detections, NASA FIRMS <span class="muted" id="lyLvFireN"></span></span></label>
+      <label class="check"><input id="lyLvShip" type="checkbox" checked><span>Live vessels, AIS <span class="muted" id="lyLvShipN"></span></span></label>
+      <label class="check"><input id="lyLvSat" type="checkbox" checked><span>Satellites overhead, N2YO <span class="muted" id="lyLvSatN"></span></span></label>
+      <label class="check"><input id="lyLvAir" type="checkbox" checked><span>Live flights, Flightradar24 <span class="muted" id="lyLvAirN"></span></span></label>
+    </section>
+    <section class="card" data-tab="dash">
       <div class="card-head"><h2 data-i18n="networkNow">Network now</h2><span class="muted" id="viewLabel"></span></div>
       <div class="kpis">
         <div class="kpi"><span class="k-label" data-i18n="avgSpeed">Average speed</span><span class="k-value" id="kSpeed">–</span><span class="k-delta" id="dSpeed"></span></div>
@@ -209,8 +234,8 @@
       <div class="kpis">
         <button class="kpi link" data-goto="bus"><span class="k-label">Vessels moving <em>synthetic</em></span><span class="k-value" id="dSea">–</span></button>
         <button class="kpi link" data-goto="bus"><span class="k-label">Berths in use <em>synthetic</em></span><span class="k-value" id="dBerth">–</span></button>
-        <button class="kpi link" data-goto="bus"><span class="k-label">Aircraft in the air nearby <em>synthetic</em></span><span class="k-value" id="dAir">–</span></button>
-        <button class="kpi link" data-goto="bus"><span class="k-label">Flights on time <em>synthetic</em></span><span class="k-value" id="dAirOn">–</span></button>
+        <button class="kpi link" data-goto="bus"><span class="k-label" id="dAirLabel">Aircraft in the air nearby <em>synthetic</em></span><span class="k-value" id="dAir">–</span></button>
+        <button class="kpi link" data-goto="bus"><span class="k-label" id="dAirOnLabel">Flights on time <em>synthetic</em></span><span class="k-value" id="dAirOn">–</span></button>
       </div>
     </section>
 
@@ -232,31 +257,6 @@
         <span><i class="ln scen"></i><span data-i18n="selected">Selected case</span></span>
         <span><i class="ln mark"></i><span data-i18n="shownTime">Shown time</span></span>
       </div>
-    </section>
-
-    <section class="card" data-tab="dash">
-      <div class="card-head"><h2 data-i18n="scenarioLayers">Scenario and layers</h2><span class="muted" id="scenSrc">Pre-simulated</span></div>
-      <label class="field"><span data-i18n="demandCase">Demand case</span><select id="scenario"></select></label>
-      <p class="insight" id="lyTtNote" hidden></p>
-      <label class="check"><input id="showCars" type="checkbox" checked><span><span data-i18n="vehicles">Vehicles</span> <span class="muted" id="carNote"></span></span></label>
-      <label class="check"><input id="showPeople" type="checkbox" checked><span>People on foot <span class="muted">(synthetic, street zoom)</span></span></label>
-      <label class="check"><input id="showAcc" type="checkbox" checked><span><span data-i18n="accidents">Accidents</span> <span class="muted">(illustrative)</span></span></label>
-      <label class="check"><input id="showSites" type="checkbox" checked><span data-i18n="lyEnf">Enforcement cameras</span></label>
-      <label class="check"><input id="showCams" type="checkbox" checked><span data-i18n="lyCam">CCTV cameras</span></label>
-      <label class="check"><input id="showDet" type="checkbox"><span data-i18n="lyDet">Detectors</span></label>
-      <label class="check"><input id="showVms" type="checkbox" checked><span data-i18n="lyVms">Message signs</span></label>
-      <label class="check" id="railRow" hidden><input id="showRail" type="checkbox" checked><span>Railway <span class="muted" id="railNote"></span></span></label>
-      <label class="check" id="cycleRow" hidden><input id="showCycle" type="checkbox" checked><span>Cycle tracks <span class="muted" id="cycleNote"></span></span></label>
-      <label class="check"><input id="showBases" type="checkbox" checked><span>Response units <span class="muted">(synthetic)</span></span></label>
-      <label class="check" id="sigRow" hidden><input id="showSig" type="checkbox" checked><span data-i18n="lySig">Traffic signals</span></label>
-      <label class="check" id="bldRow" hidden><input id="showBld" type="checkbox"><span>Buildings, 3D <span class="muted" id="bldNote"></span></span></label>
-      <label class="check"><input id="lyTtFlow" type="checkbox"><span>Live traffic, TomTom <span class="muted">(real; replaces the twin’s road colours)</span></span></label>
-      <label class="check"><input id="lyTtInc" type="checkbox" checked><span>Live incidents, TomTom <span class="muted" id="lyTtIncN"></span></span></label>
-      <label class="check"><input id="lyTtEv" type="checkbox"><span>EV charging stations, TomTom <span class="muted" id="lyTtEvN"></span></span></label>
-      <label class="check"><input id="lyTtFuel" type="checkbox"><span>Fuel stations, TomTom <span class="muted" id="lyTtFuelN"></span></span></label>
-      <label class="check"><input id="lyLvFire" type="checkbox" checked><span>Fire and heat detections, NASA FIRMS <span class="muted" id="lyLvFireN"></span></span></label>
-      <label class="check"><input id="lyLvShip" type="checkbox" checked><span>Live vessels, AIS <span class="muted" id="lyLvShipN"></span></span></label>
-      <label class="check"><input id="lyLvSat" type="checkbox" checked><span>Satellites overhead, N2YO <span class="muted" id="lyLvSatN"></span></span></label>
     </section>
 
     <!-- Congestion -->
@@ -460,7 +460,7 @@
       <div class="card-head sub-head"><h2>Vessels</h2><span class="muted">Tap to track</span></div>
       <ol class="corridors" id="seaList"></ol>
     </section>
-    <section class="card" data-tab="bus" hidden>
+    <section class="card" data-tab="bus" hidden id="airSynCard">
       <p class="notice"><strong>Synthetic flight movements.</strong> Example flights on approximate approach and departure paths. There is no aircraft-position feed in this app; flight numbers, times and positions are generated.</p>
       <div class="card-head"><h2>Flights now</h2><button type="button" class="btn small" id="airView">Show the airport</button></div>
       <div class="kpis">
@@ -799,7 +799,7 @@
         <figure class="an-card"><figcaption>Car park occupancy, % (synthetic)</figcaption><canvas id="anOpsPark" class="an-chart"></canvas></figure>
         <figure class="an-card"><figcaption>Device availability by type, % (synthetic)</figcaption><canvas id="anOpsAsset" class="an-chart"></canvas></figure>
         <figure class="an-card wide"><figcaption>Air quality index through the day (synthetic sensors)<span class="an-key" id="anOpsAqiKey"></span></figcaption><canvas id="anOpsAqi" class="an-chart"></canvas></figure>
-        <figure class="an-card wide"><figcaption>Sea and air now (synthetic)<span class="an-key" id="anOpsSeaAirKey"></span></figcaption><canvas id="anOpsSeaAir" class="an-chart"></canvas></figure>
+        <figure class="an-card wide"><figcaption>Sea and air now (ships synthetic; flights from Flightradar24)<span class="an-key" id="anOpsSeaAirKey"></span></figcaption><canvas id="anOpsSeaAir" class="an-chart"></canvas></figure>
       </div>
     </div>
     <div data-an-sec="reg" hidden>
@@ -907,37 +907,38 @@
 <!-- Printed summary -->
 <div id="report" class="report" aria-hidden="true"></div>
 
-<script src="config.js?v=20261117c"></script>
-<script src="js/regions.js?v=20261117c"></script>
+<script src="config.js?v=20261117d"></script>
+<script src="js/regions.js?v=20261117d"></script>
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/deck.gl.min.js"></script>
 <script src="vendor/satellite.min.js"></script>
-<script src="js/daymodel.js?v=20261117c"></script>
-<script src="js/events.js?v=20261117c"></script>
-<script src="js/vehicles3d.js?v=20261117c"></script>
-<script src="js/app.js?v=20261117c"></script>
-<script src="js/ops.js?v=20261117c"></script>
-<script src="js/devices.js?v=20261117c"></script>
-<script src="js/i18n.js?v=20261117c"></script>
-<script src="js/response.js?v=20261117c"></script>
-<script src="js/zones.js?v=20261117c"></script>
-<script src="js/environment.js?v=20261117c"></script>
-<script src="js/buses.js?v=20261117c"></script>
-<script src="js/transit.js?v=20261117c"></script>
-<script src="js/operations.js?v=20261117c"></script>
-<script src="js/mobility.js?v=20261117c"></script>
-<script src="js/support.js?v=20261117c"></script>
-<script src="js/seaair.js?v=20261117c"></script>
-<script src="js/energy.js?v=20261117c"></script>
-<script src="js/tomtom.js?v=20261117c"></script>
-<script src="js/citycases.js?v=20261117c"></script>
-<script src="js/livefeeds.js?v=20261117c"></script>
-<script src="js/diagnostics.js?v=20261117c"></script>
-<script src="js/platform.js?v=20261117c"></script>
-<script src="js/vlm.js?v=20261117c"></script>
-<script src="js/analytics.js?v=20261117c"></script>
-<script src="js/analytics-ops.js?v=20261117c"></script>
-<script src="js/assistant.js?v=20261117c"></script>
-<script src="js/shell.js?v=20261117c"></script>
+<script src="js/daymodel.js?v=20261117d"></script>
+<script src="js/events.js?v=20261117d"></script>
+<script src="js/vehicles3d.js?v=20261117d"></script>
+<script src="js/app.js?v=20261117d"></script>
+<script src="js/ops.js?v=20261117d"></script>
+<script src="js/devices.js?v=20261117d"></script>
+<script src="js/i18n.js?v=20261117d"></script>
+<script src="js/response.js?v=20261117d"></script>
+<script src="js/zones.js?v=20261117d"></script>
+<script src="js/environment.js?v=20261117d"></script>
+<script src="js/buses.js?v=20261117d"></script>
+<script src="js/transit.js?v=20261117d"></script>
+<script src="js/operations.js?v=20261117d"></script>
+<script src="js/mobility.js?v=20261117d"></script>
+<script src="js/support.js?v=20261117d"></script>
+<script src="js/seaair.js?v=20261117d"></script>
+<script src="js/energy.js?v=20261117d"></script>
+<script src="js/tomtom.js?v=20261117d"></script>
+<script src="js/citycases.js?v=20261117d"></script>
+<script src="js/livefeeds.js?v=20261117d"></script>
+<script src="js/layertree.js?v=20261117d"></script>
+<script src="js/diagnostics.js?v=20261117d"></script>
+<script src="js/platform.js?v=20261117d"></script>
+<script src="js/vlm.js?v=20261117d"></script>
+<script src="js/analytics.js?v=20261117d"></script>
+<script src="js/analytics-ops.js?v=20261117d"></script>
+<script src="js/assistant.js?v=20261117d"></script>
+<script src="js/shell.js?v=20261117d"></script>
 </body>
 </html>
