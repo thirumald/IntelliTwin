@@ -265,7 +265,8 @@ sampleVideos: [
     baseUrl: 'https://raw.githubusercontent.com/thirumald/IntelliTwin/live-data/',
     refreshMin: 10,              // how often the browser looks for newer files
     fires: true, vessels: true, satellites: true, flights: true,   // layers on at start
-    replaceSyntheticShips: true  // hide the synthetic ships once real AIS vessels are loaded
+    replaceSyntheticShips: true, // hide the synthetic ships once enough real AIS vessels are loaded
+    minVesselsToReplace: 15      // fewer real vessels than this: keep the synthetic ships as well
   },
 
   // Critical smart-city use cases added to the existing sections (js/citycases.js). All figures are synthetic or screening estimates.

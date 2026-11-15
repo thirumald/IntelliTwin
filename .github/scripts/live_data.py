@@ -161,17 +161,27 @@ def vessels():
     key = os.environ.get("AIS_API_KEY")
     if not key:
         raise RuntimeError("AIS_API_KEY is not set")
-    seconds = int(os.environ.get("AIS_SECONDS", "150"))
+    seconds = int(os.environ.get("AIS_SECONDS") or 300)
+    keep_hours = float(os.environ.get("AIS_KEEP_HOURS") or 6)
     ships, msgs, attempts, log = asyncio.run(ais_collect(key, seconds))
-    if not ships:
+    # Coverage near the UAE is thin, so vessels heard in earlier runs are kept for a few hours, each with the time it was last heard.
+    merged = {}
+    try:
+        with open(os.path.join(OUT, "vessels.json"), encoding="utf-8") as f:
+            for old in json.load(f).get("ships") or []:
+                merged[old["mmsi"]] = old
+    except (OSError, ValueError, KeyError):
+        pass
+    for sh in ships:
+        merged[sh["mmsi"]] = {**merged.get(sh["mmsi"], {}), **sh}
+    cutoff = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(time.time() - keep_hours * 3600))
+    kept = [sh for sh in merged.values() if (sh.get("t") or "") >= cutoff]
+    if not ships and not kept:
         k = key.strip()
         shape = f"key has {len(k)} characters" + ("" if all(c in "0123456789abcdefABCDEF" for c in k) and len(k) == 40 else ", not the usual 40 letters and digits (a-f, 0-9)")
-        # Listen to the whole world for a moment: if that works, the key is fine and nothing was heard near the UAE.
-        world, wmsgs, _, wlog = asyncio.run(ais_collect(key, 25, [[-90, -180], [90, 180]]))
-        raise RuntimeError(f"no vessel position was received in {seconds} seconds ({msgs} messages, {attempts} connections" + (f"; drops: {', '.join(log[-4:])}" if log else "") +
-                           f"). {shape}. World-wide test: {wmsgs} messages" + (f", drop: {wlog[-1]}" if wlog else "") + ".")
-    save("vessels.json", {"updated": NOW, "source": f"aisstream.io AIS, positions heard in {seconds} seconds", "bbox": BBOX, "ships": ships})
-    return f"{len(ships)} vessels from {msgs} messages" + (f", {len(log)} reconnects" if log else "")
+        raise RuntimeError(f"no vessel position was received in {seconds} seconds ({msgs} messages, {attempts} connections" + (f"; drops: {', '.join(log[-4:])}" if log else "") + f"). {shape}.")
+    save("vessels.json", {"updated": NOW, "source": f"aisstream.io AIS, vessels heard in the last {keep_hours:g} hours", "bbox": BBOX, "heard_now": len(ships), "keep_hours": keep_hours, "ships": kept})
+    return f"{len(kept)} vessels in the last {keep_hours:g} h ({len(ships)} heard now from {msgs} messages in {seconds} s)" + (f", {len(log)} reconnects" if log else "")
 
 
 UAE_AIRPORTS = ["AUH", "DXB", "DWC", "SHJ", "RKT", "FJR", "AAN", "AZI"]

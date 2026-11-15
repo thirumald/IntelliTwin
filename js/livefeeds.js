@@ -49,7 +49,7 @@
       if (r[2]) { sats = r[2]; sats.recs = []; if (window.satellite) { r[2].sats.forEach(function (s) { try { sats.recs.push({ s: s, rec: window.satellite.twoline2satrec(s.l1, s.l2) }); } catch (e) { /* bad elements */ } }); } }
       if (r[3]) { ships = r[3]; }
       // Real vessels replace the synthetic ships on the map.
-      if (ships && L.replaceSyntheticShips !== false && $('showSea') && $('showSea').checked && !load.hidSea) { load.hidSea = true; $('showSea').checked = false; $('showSea').dispatchEvent(new Event('change')); }
+      if (ships && ships.ships.length >= (L.minVesselsToReplace || 15) && L.replaceSyntheticShips !== false && $('showSea') && $('showSea').checked && !load.hidSea) { load.hidSea = true; $('showSea').checked = false; $('showSea').dispatchEvent(new Event('change')); }
       tick(); render(); C.redraw();
     });
   }
@@ -194,7 +194,7 @@
       '<div class="kpis">' + tile('Detections, UAE', 'lvFireAll') + tile('In this region', 'lvFireHere') + tile('Strongest', 'lvFireTop') + tile('Latest, UAE time', 'lvFireLast') + '</div><p class="muted" id="lvFireNote"></p><ol class="corridors" id="lvFireList"></ol>');
     card('bus', 'lvAir', 'Live flights', REAL + 'Aircraft flying to or from UAE airports, from Flightradar24. This is a snapshot: positions are as they were at the time shown and are refreshed a few times a day, because each returned flight is billed. Synthetic flights are no longer shown.',
       '<div class="kpis">' + tile('Aircraft in the air', 'lvAirAll') + tile('Arriving in the UAE', 'lvAirArr') + tile('Departing', 'lvAirDep') + tile('Snapshot, UAE time', 'lvAirAt') + '</div><p class="muted" id="lvAirNote"></p><div id="lvAirBars"></div><ol class="corridors" id="lvAirList"></ol>');
-    card('bus', 'lvShip', 'Live vessels (AIS)', REAL + 'Vessel positions heard on AIS (aisstream.io), refreshed about every 30 minutes. They replace the synthetic ships on the map. Shown at real time, not the twin’s clock.',
+    card('bus', 'lvShip', 'Live vessels (AIS)', REAL + 'Vessels heard on AIS (aisstream.io) in the last few hours, each at its last reported position. Coverage near the UAE depends on the receivers that feed aisstream.io and is thin, so this is not every ship. Shown at real time, not the twin’s clock.',
       '<div class="kpis">' + tile('Vessels heard, UAE waters', 'lvShipAll') + tile('Near this region', 'lvShipHere') + tile('Under way', 'lvShipMove') + tile('Tankers and cargo', 'lvShipTank') + '</div><div id="lvShipBars"></div><ol class="corridors" id="lvShipList"></ol>');
     card('bus', 'lvSat', 'Satellites overhead', REAL + 'Orbits from N2YO; each position is computed in this browser for the present moment, so the satellites move as you watch. Elevation is measured from the centre of this region.',
       '<div class="kpis">' + tile('Satellites tracked', 'lvSatAll') + tile('Above the horizon now', 'lvSatUp') + tile('Higher than 30°', 'lvSatHigh') + tile('Space Station', 'lvSatIss') + '</div><ol class="corridors" id="lvSatList"></ol>');
