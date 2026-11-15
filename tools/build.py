@@ -364,6 +364,76 @@ def export_roads(net, edges, out_file, way_names=None):
     return {k: round(v) for k, v in km_by_class.items()}
 
 
+ZONE_RULES = [  # (type, tag key, accepted values or None for any)
+    ("defence", "landuse", {"military"}), ("defence", "military", None),
+    ("embassy", "amenity", {"embassy"}), ("embassy", "office", {"diplomatic"}), ("embassy", "diplomatic", None),
+    ("school", "amenity", {"school", "kindergarten"}), ("university", "amenity", {"university", "college"}),
+    ("hospital", "amenity", {"hospital"}), ("police", "amenity", {"police"}), ("fire", "amenity", {"fire_station"}),
+    ("government", "office", {"government"}), ("government", "amenity", {"townhall", "courthouse"}),
+    ("airport", "aeroway", {"aerodrome"}),
+]
+
+
+def export_extra(osm_file, out_dir):
+    """Railways, cycle tracks and critical sites straight from OpenStreetMap (no simulation involved)."""
+    west, south, east, north = C.BBOX
+    nodes, rail, cycle, zones = {}, [], [], []
+
+    def zone_type(tags):
+        for ztype, key, values in ZONE_RULES:
+            if key in tags and (values is None or tags[key] in values):
+                return ztype
+        return None
+
+    def add_zone(tags, lon, lat):
+        ztype = zone_type(tags)
+        if ztype and west <= lon <= east and south <= lat <= north:
+            name = tags.get("name:en") or tags.get("int_name") or tags.get("name") or ""
+            zones.append([ztype, name, round(lon, 5), round(lat, 5)])
+
+    for ev, el in ET.iterparse(osm_file, events=("end",)):
+        if el.tag == "node":
+            lon, lat = float(el.get("lon")), float(el.get("lat"))
+            nodes[el.get("id")] = (lon, lat)
+            if len(el):
+                add_zone({t.get("k"): t.get("v") for t in el.findall("tag")}, lon, lat)
+            el.clear()
+        elif el.tag == "way":
+            tags = {t.get("k"): t.get("v") for t in el.findall("tag")}
+            pts = [nodes[nd.get("ref")] for nd in el.findall("nd") if nd.get("ref") in nodes]
+            if len(pts) >= 2:
+                line = [c for p in pts for c in (round(p[0], 5), round(p[1], 5))]
+                inside = any(west <= p[0] <= east and south <= p[1] <= north for p in pts)
+                if inside and tags.get("railway") in ("rail", "light_rail", "subway", "tram", "monorail") and tags.get("service") not in ("yard", "siding", "spur"):
+                    rail.append(line)
+                elif inside and tags.get("highway") == "cycleway":
+                    cycle.append(line)
+                else:
+                    add_zone(tags, sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts))
+            el.clear()
+
+    # One marker per site: drop repeats of the same type within about 150 m (a campus mapped as several objects).
+    kept = []
+    for z in sorted(zones, key=lambda z: (z[0], -len(z[1]))):
+        if not any(k[0] == z[0] and abs(k[2] - z[2]) < 0.0015 and abs(k[3] - z[3]) < 0.0015 for k in kept):
+            kept.append(z)
+
+    def km(lines):
+        total = 0.0
+        for ln in lines:
+            for i in range(0, len(ln) - 2, 2):
+                total += math.hypot((ln[i + 2] - ln[i]) * 101.4, (ln[i + 3] - ln[i + 1]) * 110.6)
+        return round(total)
+
+    for name, data in (("rail.json", rail), ("cycle.json", cycle), ("zones.json", kept)):
+        with open(os.path.join(out_dir, name), "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
+    counts = {}
+    for z in kept:
+        counts[z[0]] = counts.get(z[0], 0) + 1
+    return {"rail_km": km(rail), "cycle_km": km(cycle), "zones": counts}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--osm", required=True)
@@ -371,6 +441,7 @@ def main():
     ap.add_argument("--out", default="data")
     ap.add_argument("--osm-timestamp", default="")
     ap.add_argument("--scale", type=float, default=1.0, help="scale demand (for small test networks)")
+    ap.add_argument("--extra", default="", help="OSM file with railways, cycle tracks and critical sites")
     args = ap.parse_args()
     os.makedirs(args.build, exist_ok=True)
     os.makedirs(args.out, exist_ok=True)
@@ -383,6 +454,14 @@ def main():
     edge_index = {e.getID(): i for i, e in enumerate(edges)}
     shapes = {e.getID(): edge_shape(e) for e in edges}
     print(f"network: {len(edges)} edges, {len(net.getNodes())} junctions", flush=True)
+
+    extra = {"available": False}
+    if args.extra and os.path.exists(args.extra):
+        try:
+            extra = {"available": True, **export_extra(args.extra, args.out)}
+        except Exception as exc:  # optional layers; never fail the build for them
+            extra = {"available": False, "reason": f"{type(exc).__name__}: {exc}"[:200]}
+    print("extra layers:", extra, flush=True)
 
     km_by_class = export_roads(net, edges, os.path.join(args.out, "roads.json"), osm_names(args.osm))
     bld, buildings = None, {"available": False, "reason": "not attempted"}
@@ -439,7 +518,7 @@ def main():
         "network": {"edges": len(edges), "junctions": len(net.getNodes()), "signals": tls,
                     "km": round(sum(e.getLength() for e in edges) / 1000), "km_by_class": km_by_class},
         "demand": {"total_assumed": C.TOTAL_VEHICLE_TRIPS, **demand_stats},
-        "scenarios": scenarios, "buses": buses, "buildings": buildings,
+        "scenarios": scenarios, "buses": buses, "buildings": buildings, "extra": extra,
     }
     with open(os.path.join(args.out, "meta.json"), "w") as f:
         json.dump(meta, f, indent=1)

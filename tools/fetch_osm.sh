@@ -17,5 +17,12 @@ osmium fileinfo -g header.option.osmosis_replication_timestamp "$BUILD/gcc-state
 osmium extract --bbox "$BBOX" --strategy complete_ways "$BUILD/gcc-states.osm.pbf" -o "$BUILD/area.osm.pbf" --overwrite
 osmium tags-filter "$BUILD/area.osm.pbf" "w/highway=$CLASSES" -o "$BUILD/roads.osm.pbf" --overwrite
 osmium cat "$BUILD/roads.osm.pbf" -o "$BUILD/roads.osm" --overwrite
-ls -lh "$BUILD"/roads.osm
+# Railways, cycle tracks and critical sites (schools, hospitals, embassies, defence, government …).
+osmium tags-filter "$BUILD/area.osm.pbf" \
+  w/railway=rail,light_rail,subway,tram,monorail w/highway=cycleway \
+  nwr/amenity=school,kindergarten,university,college,hospital,embassy,police,fire_station,townhall,courthouse \
+  nwr/office=diplomatic,government nwr/diplomatic nwr/landuse=military nwr/military nwr/aeroway=aerodrome \
+  -o "$BUILD/extra.osm.pbf" --overwrite
+osmium cat "$BUILD/extra.osm.pbf" -o "$BUILD/extra.osm" --overwrite
+ls -lh "$BUILD"/roads.osm "$BUILD"/extra.osm
 echo "OSM data timestamp: $(cat "$BUILD/osm_timestamp.txt")"
