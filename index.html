@@ -8,8 +8,8 @@
 <meta name="theme-color" content="#0b1220">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b1220'/%3E%3Cpath d='M6 22 L13 12 L19 18 L26 8' fill='none' stroke='%232dd4a7' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="css/styles.css?v=20261116r">
-<link rel="stylesheet" href="css/theme.css?v=20261116r">
+<link rel="stylesheet" href="css/styles.css?v=20261116u">
+<link rel="stylesheet" href="css/theme.css?v=20261116u">
 </head>
 <body>
 <header class="topbar">
@@ -138,6 +138,7 @@
       <footer id="videoNote"></footer>
     </section>
 
+    <span class="g-credit" id="gCredit" hidden>Google Maps</span>
     <span class="tt-credit" id="ttCredit" hidden>Live data © TomTom</span>
     <div class="timeline" role="group" aria-label="Time controls">
       <button id="play" class="btn icon" aria-label="Pause">❚❚</button>
@@ -346,6 +347,14 @@
       <div class="card-head"><h2 data-i18n="audit">Audit log</h2><span class="muted">Kept in this browser</span></div>
       <div class="btn-col row"><button class="btn small" data-export="audit">Export CSV</button><button class="btn small" id="auditClear">Clear</button></div>
       <table class="facts audit" id="auditTable"></table>
+    </section>
+    <section class="card" data-tab="rep" hidden>
+      <div class="card-head"><h2>Base map</h2></div>
+      <p class="muted" id="gStatus"></p>
+      <label class="field"><span>Show</span><select id="gType"><option value="roadmap">Google Maps, road map</option><option value="satellite">Google Maps, satellite</option><option value="hybrid">Google Maps, satellite with roads</option><option value="osm">OpenStreetMap</option></select></label>
+      <label class="check"><input id="g3d" type="checkbox"><span>Google 3D buildings and terrain <span class="muted">(photorealistic, experimental)</span></span></label>
+      <div class="search-row"><input id="gKey" type="password" autocomplete="off" aria-label="Google Maps API key" placeholder="Paste the Google Maps API key"><button type="button" class="btn small" id="gKeySave">Save</button><button type="button" class="btn small" id="gKeyRemove" hidden>Remove</button></div>
+      <p class="muted">Google Maps needs a key with the Map Tiles API enabled. The key is kept in this browser only. The twin’s roads, traffic and sites stay on OpenStreetMap data; only the background picture changes.</p>
     </section>
     <section class="card" data-tab="rep" hidden>
       <div class="card-head"><h2>TomTom live data</h2></div>
@@ -844,32 +853,32 @@
 <!-- Printed summary -->
 <div id="report" class="report" aria-hidden="true"></div>
 
-<script src="config.js?v=20261116r"></script>
-<script src="js/regions.js?v=20261116r"></script>
+<script src="config.js?v=20261116u"></script>
+<script src="js/regions.js?v=20261116u"></script>
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/deck.gl.min.js"></script>
-<script src="js/daymodel.js?v=20261116r"></script>
-<script src="js/events.js?v=20261116r"></script>
-<script src="js/vehicles3d.js?v=20261116r"></script>
-<script src="js/app.js?v=20261116r"></script>
-<script src="js/ops.js?v=20261116r"></script>
-<script src="js/devices.js?v=20261116r"></script>
-<script src="js/i18n.js?v=20261116r"></script>
-<script src="js/response.js?v=20261116r"></script>
-<script src="js/zones.js?v=20261116r"></script>
-<script src="js/environment.js?v=20261116r"></script>
-<script src="js/buses.js?v=20261116r"></script>
-<script src="js/transit.js?v=20261116r"></script>
-<script src="js/operations.js?v=20261116r"></script>
-<script src="js/mobility.js?v=20261116r"></script>
-<script src="js/support.js?v=20261116r"></script>
-<script src="js/seaair.js?v=20261116r"></script>
-<script src="js/energy.js?v=20261116r"></script>
-<script src="js/tomtom.js?v=20261116r"></script>
-<script src="js/platform.js?v=20261116r"></script>
-<script src="js/vlm.js?v=20261116r"></script>
-<script src="js/analytics.js?v=20261116r"></script>
-<script src="js/assistant.js?v=20261116r"></script>
-<script src="js/shell.js?v=20261116r"></script>
+<script src="js/daymodel.js?v=20261116u"></script>
+<script src="js/events.js?v=20261116u"></script>
+<script src="js/vehicles3d.js?v=20261116u"></script>
+<script src="js/app.js?v=20261116u"></script>
+<script src="js/ops.js?v=20261116u"></script>
+<script src="js/devices.js?v=20261116u"></script>
+<script src="js/i18n.js?v=20261116u"></script>
+<script src="js/response.js?v=20261116u"></script>
+<script src="js/zones.js?v=20261116u"></script>
+<script src="js/environment.js?v=20261116u"></script>
+<script src="js/buses.js?v=20261116u"></script>
+<script src="js/transit.js?v=20261116u"></script>
+<script src="js/operations.js?v=20261116u"></script>
+<script src="js/mobility.js?v=20261116u"></script>
+<script src="js/support.js?v=20261116u"></script>
+<script src="js/seaair.js?v=20261116u"></script>
+<script src="js/energy.js?v=20261116u"></script>
+<script src="js/tomtom.js?v=20261116u"></script>
+<script src="js/platform.js?v=20261116u"></script>
+<script src="js/vlm.js?v=20261116u"></script>
+<script src="js/analytics.js?v=20261116u"></script>
+<script src="js/assistant.js?v=20261116u"></script>
+<script src="js/shell.js?v=20261116u"></script>
 </body>
 </html>

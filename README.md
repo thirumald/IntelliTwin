@@ -31,6 +31,7 @@ IntelliTwin is a static traffic digital twin demonstrator for Abu Dhabi city. A 
 - **UAE regions:** a region selector for Abu Dhabi (default), Dubai, Sharjah, Ajman, Umm Al Quwain, Ras Al Khaimah, Fujairah and Al Ain, each with real OpenStreetMap roads and sites, a site drop-down, and every module working on that region.
 - **Fuel and EV charging stations:** real locations from OpenStreetMap in Transit, with synthetic usage.
 - **TomTom live data (optional key):** live traffic on the map, live incidents, live speeds at sites, EV and fuel stations with charger availability, and live route times. The key stays in the browser.
+- **Google Maps base map (optional key):** road map, satellite or photorealistic 3D tiles as the background; the key stays in the browser. The twin's own roads and traffic remain on OpenStreetMap data.
 - **Operations modules (synthetic):** incident management with response times, signal control with green-wave corridors and emergency priority, planned events and roadworks, parking, evacuation planning, vehicle search, pedestrian and school safety, freight and lorry bans, weather and visibility, asset maintenance, scheduled reports and a before/after study.
 - **Platform monitoring (synthetic):** live data-ingestion and infrastructure figures: feeds, latency, queue, servers, services, storage.
 - **Vision-language model sample:** the camera window describes the scene and answers questions about it. Sample answers come from synthetic data unless a model service is connected (`api.vlmUrl`).

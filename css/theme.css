@@ -512,3 +512,8 @@ body.map-light .topbar .alert-btn.hot b { background: var(--severe); }
 .layout.panel-open .tt-credit { left: calc(var(--panel) + 22px); }
 .search-row input[type=password] { flex: 1; min-width: 0; height: 34px; padding: 0 10px; font: inherit; font-size: 13px; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius-s); }
 @media (max-width: 860px) { .tt-credit, .layout.panel-open .tt-credit { left: 8px; bottom: 150px; } }
+
+/* ---------------------------------------------------------------- Google Maps credit */
+.g-credit { position: absolute; right: 12px; bottom: 96px; z-index: 4; background: rgba(255, 255, 255, .85); color: #202124; border-radius: 4px; padding: 1px 8px; font-size: 11px; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-credit[hidden] { display: none; }
+@media (max-width: 860px) { .g-credit { right: 8px; bottom: 150px; max-width: 80%; } }

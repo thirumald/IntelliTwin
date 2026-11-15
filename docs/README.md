@@ -15,6 +15,7 @@ Technical and data-source documentation for the IntelliTwin traffic twin for Abu
 | [buses.md](buses.md) | Public transport: synthetic buses (stops, timetable, tracking), taxis and shuttles |
 | [operations-modules.md](operations-modules.md) | Incidents, signals, events and roadworks, parking, evacuation, vehicle search, pedestrians, freight, weather, assets, reports |
 | [regions.md](regions.md) | UAE regions: what changes per region, the two kinds of traffic, building and adding a region |
+| [google-maps.md](google-maps.md) | Google Maps as the base map, 3D tiles, setting the key |
 | [tomtom.md](tomtom.md) | TomTom live data: features, setting the key, why the key is not in the repository |
 | [vlm.md](vlm.md) | Vision-language model sample in the camera window, and how to connect a real model |
 | [platform-monitoring.md](platform-monitoring.md) | Platform monitoring: data ingestion and infrastructure (synthetic) |

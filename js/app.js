@@ -36,6 +36,11 @@
   var E = window.TwinEvents;
   var $ = function (id) { return document.getElementById(id); };
 
+  // A Google Maps key passed once in the address (?gmaps=KEY) is stored in this browser and removed from the address bar.
+  (function () {
+    var q = new URLSearchParams(location.search), k = q.get('gmaps');
+    if (k) { try { localStorage.setItem('itw-google-key', k.trim()); } catch (e) { /* storage unavailable */ } q.delete('gmaps'); var qs = q.toString(); history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '')); }
+  })();
   // Region (js/regions.js) and its major sites for quick navigation: [name, lon, lat, zoom]. Locations are approximate.
   var REGION = CFG.region || { id: 'abudhabi', name: 'Abu Dhabi', dataDir: 'data/', isDefault: true, sites: [] };
   var SITES = REGION.sites;
@@ -68,6 +73,8 @@
   var day = null, baseDay = null, ev = null, evCache = {}, calib = {}, fx = null;      // fx: what-if closure effect
   var startFocus = '', zoneHooks = [], peopleInView = 0, theme = 'dark', setTheme = function () {};
   var handsOn = false, wheelUntil = 0;
+  // Google photorealistic 3D tiles (optional, experimental): switched on from Reports, Base map.
+  var g3d = { on: false, key: '', credit: '' };
   var dirty = true, orbiting = false, layerProviders = [], minuteHooks = [], readyHooks = [];
   var carProgress = null, simDt = 0, prevT = 0, visibleEdges = [], visibleKey = '';
 
@@ -200,6 +207,44 @@
         };
       };
       var styleUrl = function (th) { return th === 'light' ? CFG.map.styleUrlLight : CFG.map.styleUrl; };
+      /* Google Maps base map (optional): Google's Map Tiles API drawn as the background. The roads, traffic and
+         sites of the twin stay on OpenStreetMap data; only the picture underneath changes. The key is kept in this
+         browser (Reports, Base map) unless one is set in config.js. */
+      var G = CFG.map.google || {}, gSessions = {}, gNow = null;
+      var gStyles = { dark: [{ elementType: 'geometry', stylers: [{ color: '#0f1726' }] }, { elementType: 'labels.text.stroke', stylers: [{ color: '#0f1726' }] }, { elementType: 'labels.text.fill', stylers: [{ color: '#8fa0bd' }] },
+        { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#22314d' }] }, { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2c4068' }] }, { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#060b14' }] },
+        { featureType: 'poi', stylers: [{ visibility: 'off' }] }, { featureType: 'transit', stylers: [{ visibility: 'off' }] }], light: [{ featureType: 'poi', stylers: [{ visibility: 'off' }] }, { featureType: 'transit', stylers: [{ visibility: 'off' }] }] };
+      var gKey = function () { var k = ''; try { k = localStorage.getItem('itw-google-key') || ''; } catch (e) { /* storage unavailable */ } return k || G.key || ''; };
+      var gType = function () { var v = ''; try { v = localStorage.getItem('itw-basemap') || ''; } catch (e) { /* storage unavailable */ } return v || G.type || 'roadmap'; };   // roadmap, satellite, hybrid or osm
+      var gSession = function (th, type) {
+        var id = th + '|' + type, now = Date.now() / 1000;
+        if (gSessions[id] && gSessions[id].expiry > now + 600) { return Promise.resolve(gSessions[id]); }
+        var body = { mapType: type === 'roadmap' ? 'roadmap' : 'satellite', language: 'en-US', region: 'AE', scale: 'scaleFactor2x', highDpi: true };
+        if (type === 'roadmap') { body.styles = gStyles[th]; } else if (type === 'hybrid') { body.layerTypes = ['layerRoadmap']; }
+        return fetch('https://tile.googleapis.com/v1/createSession?key=' + encodeURIComponent(gKey()), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+          .then(function (r) { if (!r.ok) { throw new Error('Google Maps refused the key or the Map Tiles API is not enabled for it (' + r.status + ').'); } return r.json(); })
+          .then(function (j) { gSessions[id] = { token: j.session, expiry: Number(j.expiry) || now + 3600 }; return gSessions[id]; });
+      };
+      var gStyle = function (sess, th) {
+        return { version: 8, sources: { base: { type: 'raster', tileSize: 256, maxzoom: 22, attribution: 'Google Maps', tiles: ['https://tile.googleapis.com/v1/2dtiles/{z}/{x}/{y}?session=' + encodeURIComponent(sess.token) + '&key=' + encodeURIComponent(gKey())] } },
+          layers: [{ id: 'bg', type: 'background', paint: { 'background-color': th === 'light' ? '#e8eaed' : '#0a101c' } }, { id: 'base', type: 'raster', source: 'base' }] };
+      };
+      // Google requires its copyright line for the area in view.
+      var gCreditTimer = null, gCredit = function () {
+        if (!gNow || !map) { $('gCredit').hidden = !g3d.on; return; }
+        $('gCredit').hidden = false;
+        clearTimeout(gCreditTimer); gCreditTimer = setTimeout(function () {
+          if (!gNow) { return; }
+          var bb = map.getBounds(), q = 'session=' + encodeURIComponent(gNow.token) + '&key=' + encodeURIComponent(gKey()) + '&zoom=' + Math.round(map.getZoom()) + '&north=' + bb.getNorth() + '&south=' + bb.getSouth() + '&east=' + bb.getEast() + '&west=' + bb.getWest();
+          fetch('https://tile.googleapis.com/tile/v1/viewport?' + q).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.copyright) { $('gCredit').textContent = 'Google Maps \u00B7 ' + j.copyright; } }).catch(function () { /* keep the plain credit */ });
+        }, 900);
+      };
+      var baseStatus = function (msg) {
+        var on = !!gKey(), type = gType();
+        $('gStatus').textContent = msg || (!on ? 'No Google Maps key is set. The base map is OpenStreetMap.' : type === 'osm' ? 'A Google Maps key is set, and OpenStreetMap is chosen as the base map.' : 'Base map: Google Maps (' + type + ').');
+        $('gKey').placeholder = on ? 'Key saved (hidden)' : 'Paste the Google Maps API key'; $('gKeyRemove').hidden = !on; $('gType').value = on ? type : 'osm';
+        Array.prototype.forEach.call($('gType').options, function (o) { o.disabled = !on && o.value !== 'osm'; });
+      };
       // After a vector style loads: tint the light theme pale green and extrude the buildings.
       var dress = function () {
         var st = map.getStyle(); if (!st || !st.sources) { return; }
@@ -231,6 +276,21 @@
         var seq = ++loadSeq, url = styleUrl(theme), done = false;
         vectorBase = false;
         var fallback = function () { if (!done && seq === loadSeq) { done = true; map.setStyle(rasterStyle(theme)); } };
+        gNow = null; gCredit();
+        if (gKey() && gType() !== 'osm') {
+          // Google Maps as the base map; if the session cannot be opened, the OpenStreetMap base map is used instead.
+          gSession(theme, gType()).then(function (sess) {
+            if (seq !== loadSeq) { return; }
+            done = true; gNow = sess; map.setStyle(gStyle(sess, theme)); gCredit(); baseStatus(); dirty = true; roadLayer = null;
+          }).catch(function (err) {
+            if (seq !== loadSeq) { return; }
+            baseStatus(String(err && err.message) + ' Showing OpenStreetMap instead.'); osmBase();
+          });
+          dirty = true; roadLayer = null;
+          return;
+        }
+        osmBase();
+        function osmBase() {
         if (!url) { fallback(); return; }
         map.setStyle(url);
         var onStyle = function () {
@@ -241,6 +301,7 @@
         map.on('style.load', onStyle);
         setTimeout(fallback, 8000);
         dirty = true; roadLayer = null;
+        }
       };
       theme = CFG.map.theme === 'light' ? 'light' : 'dark';
       map = new maplibregl.Map({
@@ -248,19 +309,45 @@
         bounds: [[b[0], b[1]], [b[2], b[3]]], fitBoundsOptions: { padding: 10 },
         minZoom: 8, maxZoom: 19, maxPitch: 70, attributionControl: false
       });
-      // Selections go in closer: any move to a place (centre + zoom of 13.5 or more) gets the configured zoom boost.
+      // Selections are centred in the part of the map that is not covered by the panel, and go in closer.
+      // Any move to a place (centre + zoom of 13.5 or more) gets the padding of the visible area, the configured zoom
+      // boost, and a small zoom reduction when the panel narrows the view, so the selection stays whole while the camera orbits.
       (function () {
         var st = CFG.start || {}, boost = st.selectionZoomBoost || 0, cap = st.selectionMaxZoom || 17.5;
-        if (!boost) { return; }
         ['easeTo', 'flyTo'].forEach(function (fn) {
           var orig = map[fn].bind(map);
           map[fn] = function (o, ev) {
-            if (o && o.center && typeof o.zoom === 'number' && o.zoom >= 13.5 && !o.boosted) { o = Object.assign({}, o, { zoom: Math.min(cap, o.zoom + boost) }); }
+            if (o && o.center && typeof o.zoom === 'number' && !o.padding) {
+              var pad = viewPadding(), el = map.getContainer(), w = el.clientWidth || 1, h = el.clientHeight || 1;
+              var shrink = Math.min((w - pad.left - pad.right) / w, (h - pad.top - pad.bottom) / h);
+              var z = o.zoom >= 13.5 && !o.boosted ? Math.min(cap, o.zoom + boost) : o.zoom;
+              if (st.autoZoomForPanel !== false && o.zoom >= 13.5 && shrink < 0.95) { z += Math.log2(Math.max(0.4, shrink)); }
+              o = Object.assign({}, o, { zoom: z, padding: pad });
+            }
             return orig(o, ev);
           };
         });
       })();
       map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
+      map.once('load', function () { setTimeout(applyPadding, 200); });
+      map.on('moveend', function () { if (gNow) { gCredit(); } });
+      baseStatus();
+      $('gKeySave').addEventListener('click', function () { var k = $('gKey').value.trim(); if (!k) { return; } try { localStorage.setItem('itw-google-key', k); if (gType() === 'osm') { localStorage.setItem('itw-basemap', 'roadmap'); } } catch (e) { /* storage unavailable */ } $('gKey').value = ''; gSessions = {}; baseStatus(); setTheme(theme); });
+      $('gKeyRemove').addEventListener('click', function () { try { localStorage.removeItem('itw-google-key'); localStorage.removeItem('itw-basemap'); } catch (e) { /* storage unavailable */ } gSessions = {}; baseStatus(); setTheme(theme); });
+      // Google 3D tiles switch
+      var set3d = function (on, save) {
+        g3d.on = !!on && !!gKey(); g3d.key = gKey(); $('g3d').checked = g3d.on; $('g3d').disabled = !gKey();
+        if (save) { try { localStorage.setItem('itw-g3d', g3d.on ? '1' : '0'); } catch (e) { /* storage unavailable */ } }
+        if (g3d.on && map.getPitch() < 30) { map.easeTo({ pitch: 55, duration: 600 }); $('tilt').setAttribute('aria-pressed', 'true'); }
+        if (!g3d.on) { g3d.credit = ''; } gCredit(); layerStamp++; dirty = true;
+      };
+      var want3d = !!G.tiles3d; try { var sv = localStorage.getItem('itw-g3d'); if (sv !== null) { want3d = sv === '1'; } } catch (e) { /* storage unavailable */ }
+      set3d(want3d, false);
+      $('g3d').addEventListener('change', function (e) { set3d(e.target.checked, true); });
+      $('gKeySave').addEventListener('click', function () { setTimeout(function () { set3d($('g3d').checked, false); }, 0); });
+      $('gKeyRemove').addEventListener('click', function () { setTimeout(function () { set3d(false, true); }, 0); });
+      $('gType').addEventListener('change', function () { try { localStorage.setItem('itw-basemap', $('gType').value); } catch (e) { /* storage unavailable */ } baseStatus(); setTheme(theme); });
+      window.addEventListener('resize', function () { padKey = ''; applyPadding(); });
       map.on('error', function () { /* tile or style errors are handled by the fallback timer */ });
       setTheme(theme);
       map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-left');
@@ -358,6 +445,23 @@
         id: 'buildings', data: buildings, extruded: true, wireframe: false,
         getPolygon: function (b) { return b.ring; }, getElevation: function (b) { return b.h; },
         getFillColor: [72, 92, 128, 210], material: { ambient: 0.5, diffuse: 0.6, shininess: 8 }, visible: zoom >= 11.5
+      }));
+    }
+    // Google photorealistic 3D tiles: buildings and terrain as a textured 3D mesh under the twin's layers.
+    if (g3d.on && g3d.key && deck.Tile3DLayer) {
+      var gOff = ((CFG.map.google || {}).heightOffsetM === undefined ? 28 : (CFG.map.google || {}).heightOffsetM);
+      layers.push(new deck.Tile3DLayer({
+        id: 'google-3d', data: 'https://tile.googleapis.com/v1/3dtiles/root.json', loadOptions: { fetch: { headers: { 'X-GOOG-API-KEY': g3d.key } } },
+        // The mesh is in heights above the ellipsoid; the twin draws at zero. Lift the mesh so the two meet.
+        onTileLoad: function (tile) { try { if (tile.content && tile.content.cartographicOrigin) { tile.content.cartographicOrigin[2] += gOff; } } catch (e) { /* leave the tile where it is */ } },
+        onTilesetLoad: function (ts) {
+          ts.options.onTraversalComplete = function (sel) {
+            var seen = {}; sel.forEach(function (t) { var c = t.content && t.content.gltf && t.content.gltf.asset && t.content.gltf.asset.copyright; if (c) { String(c).split(';').forEach(function (x) { seen[x.trim()] = 1; }); } });
+            var txt = Object.keys(seen).filter(Boolean).slice(0, 4).join('; '); if (txt && txt !== g3d.credit) { g3d.credit = txt; $('gCredit').hidden = false; $('gCredit').textContent = 'Google \u00B7 ' + txt; }
+            return sel;
+          };
+        },
+        onTilesetError: function () { $('gStatus').textContent = 'Google 3D tiles could not be loaded: check that the Map Tiles API is enabled for the key and that 3D coverage exists here.'; }
       }));
     }
     // With the TomTom live traffic layer on, the twin's own road colours step aside so the live colours show.
@@ -644,10 +748,26 @@
     tabHooks.forEach(function (fn) { safe(fn, id); });
   }
   var tabHooks = [];
+  // The part of the map covered by the docked panel (beside the map on wide screens, a bottom sheet on phones)
+  // and by the bars over the map, as map padding. The map's centre, and so the orbit, then sits in the visible area.
+  function viewPadding() {
+    var lay = document.querySelector('.layout'), open = lay.classList.contains('panel-open'), panel = document.querySelector('.panel'), phone = window.innerWidth <= 860;
+    var pw = open && panel ? panel.offsetWidth : 0, ph = open && panel ? panel.offsetHeight : 0;
+    return { left: open && !phone ? pw + 16 : 0, right: 0, top: 48, bottom: open && phone ? Math.min(ph, lay.clientHeight * 0.6) : 76 };
+  }
+  var padKey = '';
+  function applyPadding() {
+    if (!map) { return; }
+    var p = viewPadding(), k = [p.left, p.right, p.top, p.bottom].join(',');
+    if (k === padKey) { return; }
+    padKey = k;
+    try { map.jumpTo({ padding: p }); } catch (e) { /* map not ready */ }
+  }
   function setPanel(open) {
     document.querySelector('.layout').classList.toggle('panel-open', open); $('panelOpen').hidden = open;
     if (open) { drawChart(); }
     syncFull();
+    setTimeout(applyPadding, 30);
   }
   function syncFull() {
     var allHidden = !document.querySelector('.layout').classList.contains('panel-open') && $('legend').classList.contains('min') && $('sites').classList.contains('min');
@@ -899,7 +1019,7 @@
       });
       var pick = worst ? worst.site : SITES[0];
       goSite(pick);
-      map.jumpTo({ center: [pick[1], pick[2]], zoom: Math.min(st.selectionMaxZoom || 17.5, pick[3] + (st.selectionZoomBoost || 0)), pitch: 55 });      // no fly-in on first load
+      map.jumpTo({ center: [pick[1], pick[2]], zoom: Math.min(st.selectionMaxZoom || 17.5, pick[3] + (st.selectionZoomBoost || 0)), pitch: 55, padding: viewPadding() });      // no fly-in on first load
       startFocus = pick[0];
     }
     if (st.focus === 'most-congested' && map) {

@@ -18,6 +18,13 @@ window.INTELLITWIN_CONFIG = {
     styleUrlLight: 'https://tiles.openfreemap.org/styles/positron',
     lightTint: '#cfe0d2',
     theme: 'dark',              // 'dark' or 'light' at start; the Light map / Dark map button switches
+    // Google Maps as the base map (Map Tiles API). Leave key as null: users add the key in the app (Reports, Base map)
+    // and it stays in their browser. This file is public; a key written here can be read and used by anyone, and Google
+    // keys are billable, so first restrict the key to this site's address in the Google Cloud console.
+    // type: 'roadmap', 'satellite', 'hybrid', or 'osm' to keep OpenStreetMap even when a key is set.
+    // tiles3d: switch on Google's photorealistic 3D tiles (experimental). heightOffsetM lifts that 3D mesh to meet the
+    // twin's layers, which are drawn at zero height; adjust it if roads float above or sink into the 3D ground.
+    google: { key: null, type: 'roadmap', tiles3d: false, heightOffsetM: 28 },
     buildings3d: true
   },
 
@@ -97,7 +104,8 @@ window.INTELLITWIN_CONFIG = {
     focus: 'most-congested-site', // select the major site (map chip) with the slowest traffic; 'most-congested' = slowest road; 'all' = whole area
     orbit: true,                // circle the camera; it stays on until the Orbit button is unclicked
     selectionZoomBoost: 2,      // zoom levels added when a site, road or item is selected (0 = off)
-    selectionMaxZoom: 17.5      // closest zoom a selection goes to
+    selectionMaxZoom: 17.5,     // closest zoom a selection goes to
+    autoZoomForPanel: true      // zoom out a little when the panel narrows the map, so a selection stays whole while orbiting
   },
 
   /* ---- Time ---------------------------------------------------------------------------------- */
