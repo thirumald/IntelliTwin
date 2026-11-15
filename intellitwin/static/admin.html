@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin · IntelliTwin by Presight</title>
+<style>
+:root{--bg:#0a1424;--panel:#0f1d33;--raised:#162842;--rule:#223754;--ink:#e8eef6;--muted:#9aaabd;--acc:#2dd4a7;--warn:#fab219;--err:#ff8a82}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
+header{display:flex;align-items:center;gap:14px;padding:12px 22px;border-bottom:1px solid var(--rule);background:var(--panel)}header img{height:26px}header b i{font-style:normal;color:var(--acc)}header .sp{flex:1}
+a{color:var(--acc)}main{max-width:1100px;margin:0 auto;padding:18px 22px 60px}
+section{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+h2{margin:0 0 10px;font-size:1rem}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:7px 8px;border-top:1px solid var(--rule);vertical-align:middle}th{color:var(--muted);font-weight:500;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;border-top:0}
+button,select,input{font:inherit;color:var(--ink);background:var(--raised);border:1px solid var(--rule);border-radius:7px;padding:6px 10px}button{cursor:pointer}button.p{background:var(--acc);color:#04201a;border-color:transparent;font-weight:600}button.d{border-color:#6d2420;color:var(--err)}button:disabled{opacity:.5}
+.pill{display:inline-block;padding:1px 8px;border-radius:10px;border:1px solid var(--rule);font-size:.75rem}.ok{color:var(--acc);border-color:#1d5a4a}.warn{color:var(--warn);border-color:#6b4d0a}.bad{color:var(--err);border-color:#6d2420}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.muted{color:var(--muted)}.kv{display:grid;grid-template-columns:200px 1fr;gap:4px 12px}.msg{margin-top:8px;min-height:1.2em;color:var(--err)}
+dialog{background:var(--panel);color:var(--ink);border:1px solid var(--rule);border-radius:12px;padding:18px;width:min(420px,92vw)}dialog::backdrop{background:#0009}dialog label{display:block;margin:10px 0 4px;color:var(--muted);font-size:.8rem}dialog input,dialog select{width:100%}
+</style></head><body>
+<header><img src="/assets/presight-logo.png" alt="Presight"><b>Intelli<i>Twin</i> · Admin</b><span class="sp"></span><a href="/">Back to the map</a></header>
+<main>
+<section><h2>Live traffic (TomTom)</h2><div class="kv" id="tt"></div>
+  <div class="row" style="margin-top:12px"><label>Live window <select id="mins"><option>30</option><option selected>90</option><option>180</option><option>480</option></select> minutes</label>
+  <button class="p" id="start">Start live demo</button><button id="stop">Stop</button></div><div class="msg" id="ttmsg"></div>
+  <p class="muted">While the window is on, the map polls TomTom through this server (shared cache, daily cap). When it ends or is stopped, the map falls back to the simulation.</p></section>
+<section><h2>Users</h2><div class="row" style="margin-bottom:8px"><button class="p" id="add">+ Add user</button></div><table id="users"></table><div class="msg" id="umsg"></div></section>
+<section><h2>Audit log</h2><div class="row" style="margin-bottom:8px"><input id="q" placeholder="Filter by user, action or target"></div><table id="audit"></table></section>
+</main>
+<dialog id="dlg"><form method="dialog" id="df"><h2 id="dt"></h2>
+  <label>Username</label><input id="du" autocomplete="off"><label>Full name</label><input id="dn" autocomplete="off">
+  <label>Role</label><select id="dr"><option>admin</option><option>operator</option><option selected>viewer</option></select>
+  <label id="dpl">Temporary password (min 10 characters)</label><input id="dp" autocomplete="off">
+  <div class="msg" id="de"></div><div class="row" style="justify-content:flex-end;margin-top:12px"><button value="cancel" type="button" id="dc">Cancel</button><button class="p" id="ds" type="button">Save</button></div></form></dialog>
+<script>
+const $=id=>document.getElementById(id);
+const el=(t,a,...k)=>{const e=document.createElement(t);for(const[x,v]of Object.entries(a||{}))x==="class"?e.className=v:x.startsWith("on")?e.addEventListener(x.slice(2),v):e.setAttribute(x,v);k.flat().forEach(c=>e.append(c&&c.nodeType?c:document.createTextNode(c==null?"":c)));return e};
+const api=async(m,u,b)=>{const r=await fetch(u,{method:m,headers:{"Content-Type":"application/json"},body:b===undefined?undefined:JSON.stringify(b)});const d=await r.json().catch(()=>({}));if(r.status===401)location.replace("/login.html");if(!r.ok)throw new Error(d.detail||r.statusText);return d};
+const when=t=>t?new Date(t*1000).toLocaleString([],{dateStyle:"medium",timeStyle:"short"}):"never";
+let me=null,editing=null;
+async function tt(){const s=await api("GET","/api/tomtom/status");const kv=$("tt");kv.replaceChildren();
+  const row=(k,v)=>kv.append(el("b",{class:"muted"},k),el("span",{},v));
+  const st=s.live==="on"?el("span",{class:"pill ok"},"On"+(s.live_until?" until "+new Date(s.live_until*1000).toLocaleTimeString():"")):s.live==="off"?el("span",{class:"pill warn"},"Off"):el("span",{class:"pill bad"},"No key configured");
+  row("Status",st);row("Requests today",`${s.requests_today.nontile} of ${s.caps.nontile} data calls · ${s.requests_today.tile} of ${s.caps.tile} map tiles`);
+  row("Served from cache today",s.cache_hits_today);row("Last error",s.last_error||"none");
+  $("start").disabled=!s.configured;$("stop").disabled=!s.configured}
+async function users(){const d=await api("GET","/api/admin/users");const t=$("users");t.replaceChildren(el("tr",{},...["User","Name","Role","Status","Last sign-in",""].map(x=>el("th",{},x))));
+  d.users.forEach(u=>t.append(el("tr",{},el("td",{},el("b",{},u.username),u.id===me.id?" (you)":""),el("td",{},u.name),el("td",{},el("span",{class:"pill"},u.role)),
+   el("td",{},u.disabled?el("span",{class:"pill bad"},"Disabled"):u.must_change?el("span",{class:"pill warn"},"Must change password"):el("span",{class:"pill ok"},"Active")),el("td",{class:"muted"},when(u.last_login)),
+   el("td",{style:"text-align:right;white-space:nowrap"},el("button",{onclick:()=>form(u)},"Edit")," ",...(u.id===me.id?[]:[el("button",{onclick:async()=>{try{await api("PATCH","/api/admin/users/"+u.id,{disabled:!u.disabled});users()}catch(e){$("umsg").textContent=e.message}}},u.disabled?"Enable":"Disable")," ",
+    el("button",{class:"d",onclick:async()=>{if(confirm("Delete "+u.username+"?"))try{await api("DELETE","/api/admin/users/"+u.id);users()}catch(e){$("umsg").textContent=e.message}}},"Delete")])))))}
+function form(u){editing=u;$("dt").textContent=u?"Edit "+u.username:"Add user";$("du").value=u?u.username:"";$("du").disabled=!!u;$("dn").value=u?u.name:"";$("dr").value=u?u.role:"viewer";$("dp").value="";
+  $("dpl").textContent=u?"Reset password (leave blank to keep)":"Temporary password (min 10 characters)";$("de").textContent="";$("dlg").showModal()}
+$("add").onclick=()=>form(null);$("dc").onclick=()=>$("dlg").close();
+$("ds").onclick=async()=>{try{if(editing){const p={name:$("dn").value,role:$("dr").value};if($("dp").value)p.password=$("dp").value;await api("PATCH","/api/admin/users/"+editing.id,p)}
+  else await api("POST","/api/admin/users",{username:$("du").value,name:$("dn").value,role:$("dr").value,password:$("dp").value});$("dlg").close();users()}catch(e){$("de").textContent=e.message}};
+async function audit(){const d=await api("GET","/api/admin/audit?limit=200"+($("q").value?"&q="+encodeURIComponent($("q").value):""));const t=$("audit");
+  t.replaceChildren(el("tr",{},...["Time","User","Action","Target","Detail","IP"].map(x=>el("th",{},x))));d.items.forEach(a=>t.append(el("tr",{},el("td",{class:"muted"},when(a.ts)),el("td",{},a.actor||"-"),el("td",{},el("span",{class:"pill "+(/failed|locked|deleted/.test(a.action)?"bad":"")},a.action)),el("td",{},a.target||""),el("td",{class:"muted"},a.detail||""),el("td",{class:"muted"},a.ip||""))))}
+$("q").oninput=()=>{clearTimeout($("q")._t);$("q")._t=setTimeout(audit,250)};
+$("start").onclick=async()=>{try{await api("POST","/api/admin/tomtom",{action:"start",minutes:+$("mins").value});$("ttmsg").textContent="";tt();audit()}catch(e){$("ttmsg").textContent=e.message}};
+$("stop").onclick=async()=>{try{await api("POST","/api/admin/tomtom",{action:"stop"});tt();audit()}catch(e){$("ttmsg").textContent=e.message}};
+api("GET","/api/auth/me").then(m=>{me=m.user;tt();users();audit();setInterval(tt,15000)}).catch(e=>document.body.append(e.message));
+</script></body></html>

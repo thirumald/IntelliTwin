@@ -5,12 +5,12 @@ import json
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import Body, FastAPI, HTTPException, Query, Request, Response
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
-from . import __version__, analytics as an, auth as authmod
+from . import __version__, analytics as an, auth as authmod, gateway
 from .city import list_cities
 from .engine import Engine, start_background
 from .evidence import render_frame, render_plate
@@ -42,12 +42,34 @@ def _ip(request: Request) -> str:
     return request.client.host if request.client else "-"
 
 
+def _is_api(path: str) -> bool:
+    return path.startswith(("/api/", "/tt/"))
+
+
+def _wants_html(request: Request) -> bool:
+    return request.method == "GET" and ("text/html" in request.headers.get("accept", "") or request.url.path in ("/", "/index.html", "/admin.html"))
+
+
 @app.middleware("http")
 async def guard(request: Request, call_next):
     path, method = request.url.path, request.method
     request.state.user = None
     request.state.token = request.cookies.get(authmod.COOKIE)
-    if not path.startswith("/api/"):
+    if not _is_api(path):
+        if not authmod.enabled() or path in gateway.PUBLIC_PATHS:
+            return await call_next(request)
+        # pages and static files: the login page and logo are public, everything else needs a session
+        user = auth.user_for(request.state.token) if auth else None
+        request.state.user = user
+        if user is None:
+            if _wants_html(request):
+                nxt = quote(path + (("?" + request.url.query) if request.url.query else ""), safe="/")
+                return RedirectResponse("/login.html?next=" + nxt, status_code=302)
+            return JSONResponse({"detail": "Not signed in"}, status_code=401)
+        if user["must_change"]:
+            return RedirectResponse("/login.html?change=1", status_code=302) if _wants_html(request) else JSONResponse({"detail": "Password change required"}, status_code=403)
+        if path == "/admin.html" and user["role"] != "admin":
+            return RedirectResponse("/", status_code=302)
         return await call_next(request)
     if not authmod.enabled():
         request.state.user = {"id": 0, "username": "demo", "name": "Demo (no login)", "role": "admin", "disabled": False, "must_change": False}
@@ -345,4 +367,4 @@ def health():
     return {"ok": True, "version": __version__}
 
 
-app.mount("/", StaticFiles(directory=str(WEB), html=True), name="web")
+app.include_router(gateway.router)  # must be last: it holds the catch-all that serves the front end

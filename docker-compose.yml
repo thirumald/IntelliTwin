@@ -1,0 +1,22 @@
+# Run:  cp .env.example .env  (edit it)  &&  docker compose up -d --build
+# Same file on an AWS VM and on an on-prem server. HTTPS: set SITE_ADDRESS=your.domain in .env (Caddy gets a certificate).
+services:
+  app:
+    build: .
+    env_file: .env
+    volumes:
+      - appdata:/app/data
+    restart: unless-stopped
+  caddy:
+    image: caddy:2
+    ports: ["80:80", "443:443"]
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [app]
+    restart: unless-stopped
+volumes:
+  appdata:
+  caddy_data:

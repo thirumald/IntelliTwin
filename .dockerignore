@@ -1,0 +1,10 @@
+.git
+.venv
+frontend
+data
+.env
+__pycache__
+.pytest_cache
+docs/img
+docs/deck
+*.pptx

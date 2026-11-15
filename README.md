@@ -10,7 +10,18 @@ enforcement dashboards, a congestion forecast (preview), white-label branding an
 > [docs/00-demo-build-plan.md](docs/00-demo-build-plan.md) for scope and
 > [docs/01-demo-runbook.md](docs/01-demo-runbook.md) for the 10-minute demo script.
 
-## Run
+## What this branch is
+
+`platform-app` is the real, deployable track. It serves the contributor's front end unchanged (pinned in `frontend.lock`,
+fetched by `tools/fetch_frontend.sh`) behind our own login, with a server-side TomTom proxy, an admin page, and the
+simulator and workflow back end. See `docs/tomtom-key.md` and `docs/deploy-aws-one-box.md`.
+
+```bash
+cp .env.example .env     # add TOMTOM_KEY (optional) and an admin password
+./run.sh                 # http://localhost:8090  (fetches the front end on first run)
+```
+
+## Run (previous notes)
 
 Teammates: see the step-by-step guide in [docs/02-run-locally.md](docs/02-run-locally.md).
 
