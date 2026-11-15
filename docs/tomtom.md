@@ -53,3 +53,10 @@ Vehicles, forecasts and what-if results always come from the twin's simulation; 
 
 Before the live flow is switched on the app checks that TomTom accepts the key. If it does not, the twin's
 simulated traffic stays on and a notification gives the reason (refused key, request limit, not reachable).
+
+## Connection check
+
+Reports, **Connection check** calls Google Maps and TomTom from the browser the same way the application does and
+lists each call as working or failed, with the provider's reason and what to change. The two lights in the status
+bar show the result at a glance. **Copy result** copies the list (no key included) for a support message.
+A key saved in the browser earlier that the provider refuses is dropped automatically in favour of the configured key.

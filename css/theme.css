@@ -522,3 +522,15 @@ body.map-light .topbar .alert-btn.hot b { background: var(--severe); }
 #viewMode { flex: none; }
 #viewMode button { white-space: nowrap; }
 @media (max-width: 860px) { #viewMode button { padding: 0 7px; } }
+
+/* ---------------------------------------------------------------- connection check */
+.svc { flex: none; height: 20px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--muted); font: inherit; font-size: 11px; white-space: nowrap; cursor: pointer; }
+.svc::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; background: currentColor; }
+.svc-ok { color: #3fb97a; } .svc-part { color: #e0a43a; } .svc-fail { color: #ef6a6a; }
+body.map-light .svc-ok { color: #1c7a4b; } body.map-light .svc-part { color: #94610a; } body.map-light .svc-fail { color: #b3261e; }
+.svc-h { margin: 10px 0 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.svc-row { display: grid; gap: 2px; padding: 6px 8px; margin-bottom: 4px; border-left: 3px solid #3fb97a; background: rgba(127, 127, 127, 0.08); border-radius: 4px; font-size: 12.5px; overflow-wrap: anywhere; }
+.svc-row.is-fail { border-left-color: #ef6a6a; }
+.svc-row span { color: var(--muted); } .svc-row em { font-style: normal; }
+.svc-text { width: 100%; margin-top: 6px; font: 11px/1.4 ui-monospace, monospace; background: transparent; color: inherit; border: 1px solid var(--line); border-radius: 4px; }
+@media (max-width: 860px) { .statusbar .status-right { display: none; } }

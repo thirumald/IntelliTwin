@@ -256,6 +256,9 @@ sampleVideos: [
   // The key is published here by the owner's decision: this file is public, so the key can be read by anyone.
   // Keep it restricted to this site's address in the TomTom developer dashboard, with a daily limit.
   // Set key to null to go back to a per-browser key (Reports, TomTom live data).
+  // Connection check for Google Maps and TomTom (Reports, Connection check; also the two status-bar lights).
+  diagnostics: { checkOnStart: true },
+
   tomtom: { key: 'Pvsf76Td6268Z6caVrXErIOkh6fq526I', flowStyle: 'relative0', flowThickness: 6, flowOnStart: true, incidentRefreshSec: 120, searchRadiusM: 15000, maxSites: 20 },
 
   /* ---- Ships and aircraft (synthetic) ----------------------------------------------------------- */

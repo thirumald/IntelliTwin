@@ -234,7 +234,17 @@
         if (gSessions[id] && gSessions[id].expiry > now + 600) { return Promise.resolve(gSessions[id]); }
         var body = { mapType: type === 'roadmap' ? 'roadmap' : 'satellite', language: 'en-US', region: 'AE', scale: 'scaleFactor2x', highDpi: true };
         if (type === 'roadmap') { body.styles = gStyles[th]; } else if (type === 'hybrid') { body.layerTypes = ['layerRoadmap']; }
-        return fetch('https://tile.googleapis.com/v1/createSession?key=' + encodeURIComponent(gKey()), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        var post = function (b) { return fetch('https://tile.googleapis.com/v1/createSession?key=' + encodeURIComponent(gKey()), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); };
+        return post(body)
+          // If Google rejects the styled, high-resolution request, ask again for the plain map of the same type.
+          .then(function (r) { if (r.status !== 400) { return r; } var plain = { mapType: body.mapType, language: body.language, region: body.region }; if (body.layerTypes) { plain.layerTypes = body.layerTypes; } return post(plain); })
+          // A key saved in this browser earlier takes the place of the configured one; if it is refused, drop it and use the configured key.
+          .then(function (r) {
+            var saved = ''; try { saved = localStorage.getItem('itw-google-key') || ''; } catch (e) { /* storage unavailable */ }
+            if (r.ok || !saved || !G.key || saved === G.key) { return r; }
+            try { localStorage.removeItem('itw-google-key'); } catch (e) { /* storage unavailable */ }
+            return post(body);
+          })
           .then(function (r) {
             if (r.ok) { return r.json(); }
             // Pass on Google's own reason (API not enabled, referrer not allowed, billing …) so the fix is clear.

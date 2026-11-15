@@ -20,9 +20,18 @@
   })();
   function key() { var k = ''; try { k = localStorage.getItem(STORE) || ''; } catch (e) { /* storage unavailable */ } return k || TT.key || ''; }
   function has() { return !!key(); }
+  function dropSavedKey() {
+    var saved = ''; try { saved = localStorage.getItem(STORE) || ''; } catch (e) { /* storage unavailable */ }
+    if (!saved || !TT.key || saved === TT.key) { return false; }
+    try { localStorage.removeItem(STORE); } catch (e) { return false; }
+    return true;
+  }
   function get(path, params) {
     var q = Object.keys(params || {}).map(function (k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
-    return fetch(BASE + path + '?key=' + encodeURIComponent(key()) + (q ? '&' + q : '')).then(function (r) {
+    var used = key();
+    return fetch(BASE + path + '?key=' + encodeURIComponent(used) + (q ? '&' + q : '')).then(function (r) {
+      // A key saved in this browser earlier takes the place of the configured one; if it is refused, drop it and use the configured key.
+      if (r.status === 403 && (dropSavedKey() || used !== key())) { return get(path, params); }
       if (!r.ok) { lastError = r.status === 403 ? 'The key was refused (403). Check the key and the products enabled for it.' : r.status === 429 ? 'The daily request limit of the key is used up (429).' : 'TomTom returned an error (' + r.status + ').'; throw new Error(lastError); }
       lastError = ''; return r.json();
     });
@@ -61,8 +70,10 @@
   // Turn the live flow on only when TomTom accepts the key, so a refused key never leaves the map without road colours.
   function tryFlow() {
     if (!has()) { return; }
+    var used = key();
     var c = T.getMap().getCenter(), z = 10, n = Math.pow(2, z), x = Math.floor((c.lng + 180) / 360 * n), s = Math.sin(c.lat * Math.PI / 180), y = Math.floor((0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * n);
-    fetch(BASE + '/traffic/map/4/tile/flow/' + (TT.flowStyle || 'relative0') + '/' + z + '/' + x + '/' + y + '.png?key=' + encodeURIComponent(key())).then(function (r) {
+    fetch(BASE + '/traffic/map/4/tile/flow/' + (TT.flowStyle || 'relative0') + '/' + z + '/' + x + '/' + y + '.png?key=' + encodeURIComponent(used)).then(function (r) {
+      if (r.status === 403 && (dropSavedKey() || used !== key())) { tryFlow(); return; }
       if (!r.ok) { throw new Error(r.status === 403 ? 'TomTom refused the key (403). Check the key, its allowed sites and that Traffic is enabled for it.' : r.status === 429 ? 'The TomTom key has used up its request limit (429).' : 'TomTom returned an error (' + r.status + ').'); }
       lastError = ''; flowLayer(true);
     }).catch(function (e) {
