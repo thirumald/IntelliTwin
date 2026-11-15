@@ -41,7 +41,9 @@ window.INTELLITWIN_CONFIG = {
     rate: 30,                   // playback speed, Live included: 1 (Live then stays locked to the clock), 30, 120 or 600
     fullView: true,             // open with the panel, legend and site shortcuts minimised
     focus: 'most-congested-site', // select the major site (map chip) with the slowest traffic; 'most-congested' = slowest road; 'all' = whole area
-    orbit: true                 // circle the camera around the opening view
+    orbit: true,                // circle the camera; it stays on until the Orbit button is unclicked
+    selectionZoomBoost: 3,      // zoom levels added when a site, road or item is selected (0 = off)
+    selectionMaxZoom: 17.5      // closest zoom a selection goes to
   },
 
   /* ---- Time ---------------------------------------------------------------------------------- */

@@ -72,6 +72,7 @@
   var state = { t: 8 * 3600, playing: true, rate: 1, scenario: 'base', mode: 'live', date: '', cars: true, buses: true, bld: false, acc: true, sites: true, people: true };
   var day = null, baseDay = null, ev = null, evCache = {}, calib = {}, fx = null;      // fx: what-if closure effect
   var startFocus = '', zoneHooks = [], peopleInView = 0, theme = 'dark', setTheme = function () {};
+  var handsOn = false, wheelUntil = 0;
   var dirty = true, orbiting = false, layerProviders = [], minuteHooks = [], readyHooks = [];
   var carProgress = null, simDt = 0, prevT = 0, visibleEdges = [], visibleKey = '';
 
@@ -252,6 +253,18 @@
         bounds: [[b[0], b[1]], [b[2], b[3]]], fitBoundsOptions: { padding: 10 },
         minZoom: 8, maxZoom: 19, maxPitch: 70, attributionControl: false
       });
+      // Selections go in closer: any move to a place (centre + zoom of 13.5 or more) gets the configured zoom boost.
+      (function () {
+        var st = CFG.start || {}, boost = st.selectionZoomBoost || 0, cap = st.selectionMaxZoom || 17.5;
+        if (!boost) { return; }
+        ['easeTo', 'flyTo'].forEach(function (fn) {
+          var orig = map[fn].bind(map);
+          map[fn] = function (o, ev) {
+            if (o && o.center && typeof o.zoom === 'number' && o.zoom >= 13.5 && !o.boosted) { o = Object.assign({}, o, { zoom: Math.min(cap, o.zoom + boost) }); }
+            return orig(o, ev);
+          };
+        });
+      })();
       map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
       map.on('error', function () { /* tile or style errors are handled by the fallback timer */ });
       setTheme(theme);
@@ -303,13 +316,14 @@
   }
   function flyToPoint(lon, lat, zoom) {
     if (!map) { return; }
-    setOrbit(false);
-    map.flyTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), zoom || 14), duration: 1000 });
+    map.flyTo({ center: [lon, lat], zoom: zoom || 14, duration: 1000 });
   }
   function locate(g) {
     if (!map) { return; }
-    setOrbit(false);
-    map.fitBounds(g.bounds, { padding: { top: 90, bottom: 120, left: 40, right: 40 }, maxZoom: 14, duration: 800 });
+    // Fit the road, then go in by the selection zoom boost (centre of the road stays in view).
+    var cam = map.cameraForBounds(g.bounds, { padding: { top: 90, bottom: 120, left: 40, right: 40 }, maxZoom: 14 }), st = CFG.start || {};
+    if (!cam) { return; }
+    map.easeTo({ center: cam.center, zoom: Math.min(st.selectionMaxZoom || 17.5, cam.zoom + (st.selectionZoomBoost || 0)), duration: 800, boosted: true });
   }
   function setOrbit(on) {
     orbiting = on && !!map;
@@ -640,7 +654,6 @@
   }
   function goSite(st) {
     if (!map) { return; }
-    setOrbit(false);
     Array.prototype.forEach.call($('sites').querySelectorAll('.chip'), function (c) { c.classList.toggle('on', c.textContent === st[0]); });
     $('goto').value = '';
     if (popup) { popup.remove(); }
@@ -673,7 +686,11 @@
     });
     $('orbit').addEventListener('click', function () { setOrbit(!orbiting); });
     if (map) {
-      ['mousedown', 'touchstart', 'wheel'].forEach(function (evn) { map.getCanvasContainer().addEventListener(evn, function () { if (orbiting) { setOrbit(false); } }, { passive: true }); });
+      // Orbit stays on until the Orbit button is unclicked. It only pauses while the map is being dragged or zoomed by hand.
+      var cc = map.getCanvasContainer();
+      ['mousedown', 'touchstart'].forEach(function (evn) { cc.addEventListener(evn, function () { handsOn = true; }, { passive: true }); });
+      ['mouseup', 'touchend', 'touchcancel', 'mouseleave'].forEach(function (evn) { window.addEventListener(evn, function () { handsOn = false; }, { passive: true }); });
+      cc.addEventListener('wheel', function () { wheelUntil = performance.now() + 1200; }, { passive: true });
     }
 
     // Live / historical. Hours are listed 00–23 so the clock is always 24-hour.
@@ -689,7 +706,6 @@
     majorRoads.forEach(function (g, i) { var o = document.createElement('option'); o.value = 'r' + i; o.textContent = g.name; $('gotoRoads').appendChild(o); });
     $('goto').addEventListener('change', function () {
       var v = $('goto').value; if (!v || !map) { return; }
-      setOrbit(false);
       Array.prototype.forEach.call($('sites').querySelectorAll('.chip'), function (c) { c.classList.remove('on'); });
       if (popup) { popup.remove(); }
       if (v === 'all') { map.fitBounds([[meta.bbox[0], meta.bbox[1]], [meta.bbox[2], meta.bbox[3]]], { padding: 10, pitch: 0, bearing: 0, duration: 900 }); $('tilt').setAttribute('aria-pressed', 'false'); }
@@ -747,7 +763,7 @@
     }
     var step = state.t - prevT; prevT = state.t;
     if (step > 0 && step < 120) { simDt += step; }
-    if (orbiting && map && !map.isEasing()) { map.setBearing(map.getBearing() + 6 * dt); }
+    if (orbiting && map && !map.isEasing() && !handsOn && now > wheelUntil) { map.setBearing(map.getBearing() + 6 * dt); }
     var key = binOf(state.t) + '|' + slotOf(state.t), label = clock(state.t);
     if (key !== lastKey || dirty) { lastKey = key; dirty = false; lastLabel = label; $('time').value = Math.round(state.t); renderPanels(); }
     else if (label !== lastLabel) { lastLabel = label; $('time').value = Math.round(state.t); drawChart(); renderEvents(); minuteHooks.forEach(function (fn) { safe(fn); }); }
@@ -870,7 +886,7 @@
       });
       var pick = worst ? worst.site : SITES[0];
       goSite(pick);
-      map.jumpTo({ center: [pick[1], pick[2]], zoom: pick[3], pitch: 55 });      // no fly-in on first load
+      map.jumpTo({ center: [pick[1], pick[2]], zoom: Math.min(st.selectionMaxZoom || 17.5, pick[3] + (st.selectionZoomBoost || 0)), pitch: 55 });      // no fly-in on first load
       startFocus = pick[0];
     }
     if (st.focus === 'most-congested' && map) {
@@ -878,7 +894,7 @@
         roadStats(binOf(state.t), 0).sort(function (a, b) { return b.vehicles - a.vehicles; })[0];
       if (busy) {
         var gb = busy.g.bounds;
-        map.jumpTo({ center: [(gb[0][0] + gb[1][0]) / 2, (gb[0][1] + gb[1][1]) / 2], zoom: 14.6, pitch: 58 });
+        map.jumpTo({ center: [(gb[0][0] + gb[1][0]) / 2, (gb[0][1] + gb[1][1]) / 2], zoom: Math.min(st.selectionMaxZoom || 17.5, 14.6 + (st.selectionZoomBoost || 0)), pitch: 58 });
         $('tilt').setAttribute('aria-pressed', 'true');
         startFocus = busy.name;
       }
