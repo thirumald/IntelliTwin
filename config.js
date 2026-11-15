@@ -28,6 +28,14 @@ window.INTELLITWIN_CONFIG = {
   // menu: 'minimised' (icons only, with a button to expand) or 'expanded'.
   ui: { style: 'government', menu: 'minimised' },
 
+  // Check options: which map layers are switched on when the app opens. Each can still be changed on screen.
+  layers: {
+    vehicles: true, people: true, accidents: true, enforcementSites: true, buildings3d: false,
+    cameras: true, detectors: false, messageSigns: true, signals: true, responseBases: true,
+    railway: true, cycleTracks: true, criticalZones: true, environmentSensors: true,
+    buses: true, taxis: true, shuttles: true, ships: true, aircraft: true
+  },
+
   start: {
     mode: 'live',               // 'live' = start at the Abu Dhabi clock and play at the rate below; 'replay' = today from now, as Historical
     rate: 30,                   // playback speed, Live included: 1 (Live then stays locked to the clock), 30, 120 or 600
@@ -310,7 +318,9 @@ sampleVideos: [
       { name: 'Taxi positions', source: 'dispatch system', perSec: 130, lagMs: 1500 },
       { name: 'Environmental sensors', source: 'air and noise stations', perSec: 6, lagMs: 2500 },
       { name: 'Weather service', source: 'external service', perSec: 0.4, lagMs: 4000, faultRate: 0.06 },
-      { name: 'Incident reports', source: 'control room system', perSec: 0.6, lagMs: 700 }
+      { name: 'Incident reports', source: 'control room system', perSec: 0.6, lagMs: 700 },
+      { name: 'Vessel positions', source: 'ship tracking receivers', perSec: 12, lagMs: 3000 },
+      { name: 'Aircraft positions', source: 'flight tracking receivers', perSec: 45, lagMs: 1500 }
     ],
     nodes: [
       { name: 'ingest-01', role: 'Message broker', cpu: 46, mem: 58, disk: 41, followsLoad: true },
@@ -409,6 +419,7 @@ sampleVideos: [
       finesPerDay: 12000, finesWorstHour: 1000, topViolationSharePct: 50, topSitesSharePct: 25,
       sitesMonitored: 500, sitesOnAlertPct: 2, camerasOnlinePct: 97,
       co2TonnesPerDay: 7000, aqi: 100, noiseDb: 70,
+      flightsOnTimePct: 80, flightDelayMin: 15, berthUsePct: 85,
       futureSpeedKmh: 40, futureCriticalRoads: 40, cycleKm: 300, delayCostAedMillion: 1200
     },
     population: { emirate: 4135985, abuDhabiRegion: 2823340, alAinRegion: 986910, alDhafraRegion: 325735, growthPerYear: 0.075, year: 2024 }

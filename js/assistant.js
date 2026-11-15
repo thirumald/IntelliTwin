@@ -134,6 +134,14 @@
       return out.join(' ') + (ef ? num(ef.fines) + ' fines today, worth AED ' + num(ef.value) + ' at the assumed values. Largest type: ' + ef.topType + '. ' : '') +
         'These are illustrative: generated from simulated flow at assumed sites, with placeholder fine values.';
     }
+    if (/\b(ship|ships|vessel|vessels|port|berth|berths|sea|marine)\b/.test(q) && window.IntelliTwin.sea) {
+      a.setTab('bus'); var se = window.IntelliTwin.sea.stats();
+      return se.moving + ' vessels are moving near Mina Zayed (' + se.inbound + ' inbound, ' + se.outbound + ' outbound); ' + se.berthsUsed + ' of ' + se.berths + ' berths are in use, with ' + se.callsToday + ' vessel movements so far today. These ship movements are synthetic.';
+    }
+    if (/\b(flight|flights|aircraft|plane|planes|airport|airline|airlines|air)\b/.test(q) && window.IntelliTwin.air) {
+      a.setTab('bus'); var ai = window.IntelliTwin.air.stats();
+      return ai.inAir + ' aircraft are in the air near the airport; ' + ai.movementsHour + ' movements this hour' + (ai.onTimePct === null ? '' : ', ' + Math.round(ai.onTimePct) + '% on time, average delay ' + Math.round(ai.avgDelayMin) + ' min') + '; ' + ai.movementsToday + ' movements so far today. These flight movements are synthetic.';
+    }
     if (/slow|worst|congest|jam|bottleneck|busiest|queue/.test(q)) {
       a.setTab('cong');
       var sl = a.slowest();

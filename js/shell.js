@@ -56,6 +56,17 @@
       if (latest && latest !== cur && location.search.indexOf('r=' + latest) < 0) { location.replace(location.pathname + '?r=' + latest); }
     }).catch(function () { /* offline: keep the page as it is */ });
   })();
+  // Check options: apply the layer defaults from config.js (layers) to the on-screen check boxes.
+  var LAYER_BOX = { vehicles: 'showCars', people: 'showPeople', accidents: 'showAcc', enforcementSites: 'showSites', buildings3d: 'showBld', cameras: 'showCams', detectors: 'showDet', messageSigns: 'showVms',
+    signals: 'showSig', responseBases: 'showBases', railway: 'showRail', cycleTracks: 'showCycle', criticalZones: 'showZones', environmentSensors: 'showEnv', buses: 'showSynBuses', taxis: 'showTaxis', shuttles: 'showShuttles', ships: 'showSea', aircraft: 'showAir' };
+  function applyLayers() {
+    var L = (window.INTELLITWIN_CONFIG || {}).layers || {};
+    Object.keys(L).forEach(function (k) {
+      var box = document.getElementById(LAYER_BOX[k]); if (!box || box.checked === !!L[k]) { return; }
+      box.checked = !!L[k]; box.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  }
+  if (window.IntelliTwin && window.IntelliTwin.core && window.IntelliTwin.core.onReady) { window.IntelliTwin.core.onReady(applyLayers); }
   new MutationObserver(sync).observe(tabs, { subtree: true, attributes: true, attributeFilter: ['class'], characterData: true, childList: true });
   new MutationObserver(sync).observe(layout, { attributes: true, attributeFilter: ['class'] });
   sync();

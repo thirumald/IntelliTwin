@@ -479,3 +479,22 @@ body:not(.map-light) .two-col input { color-scheme: dark; }
 .facts td { overflow-wrap: anywhere; vertical-align: top; }
 .facts td:first-child { width: 46%; }
 .facts td:last-child { text-align: right; }
+
+/* ---------------------------------------------------------------- top and status bars in the light themes
+ * A lighter, mid-tone bar per scheme. It stays dark enough for the white logo lettering to read.
+ */
+body.map-light .topbar {
+  --surface: #1f6f5c; --surface-2: #2a8572; --surface-3: #359a85; --line: #4aa893; --text: #ffffff; --text-2: #e3f3ee; --muted: #cfe6df;
+  --accent: #ffffff; --accent-ink: #14503f; color: var(--text);
+}
+body.ui-gov.map-light { --bar: #2f5288; --bar-2: #3c62a0; --bar-3: #4a73b5; --bar-line: #6386c2; --trim: #e0bd6a; --strap: #ffe5a3; }
+body.ui-gov.scheme-military.map-light { --bar: #5c6a38; --bar-2: #6b7a45; --bar-3: #7b8b53; --bar-line: #8e9d68; --trim: #e3d28f; --strap: #f3e7b3; }
+body.ui-gov.scheme-police.map-light { --bar: #2a5cc0; --bar-2: #3a6cd0; --bar-3: #4b7cdc; --bar-line: #6b95e6; --trim: #ffffff; --strap: #ffffff; }
+body.ui-gov.map-light .topbar { --text: #ffffff; --text-2: #eef2f8; --muted: #dbe3f0; --accent: var(--trim); --accent-ink: #1b1403; }
+body.ui-gov.map-light .statusbar { color: #eef2f8; }
+body.ui-gov.map-light .statusbar .mode-note { color: #eef2f8; }
+body.map-light:not(.ui-gov) .statusbar { background: #1f6f5c; color: #e3f3ee; border-top: 0; }
+body.map-light:not(.ui-gov) .statusbar .mode-note { color: #e3f3ee; }
+body.map-light:not(.ui-gov) .statusbar .strap { color: #ffffff; }
+body.map-light .topbar .alert-btn b { background: rgba(255, 255, 255, .22); color: #fff; }
+body.map-light .topbar .alert-btn.hot b { background: var(--severe); }

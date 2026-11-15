@@ -129,13 +129,27 @@
     return out;
   });
 
+  // Summary figures used by the dashboard, the scorecard, reports and the assistant.
+  function seaStats() { var vs = ships(state.t), b = berths(state.t); return { moving: vs.length, inbound: vs.filter(function (v) { return v.inbound; }).length, outbound: vs.filter(function (v) { return !v.inbound; }).length, berthsUsed: b.used, berths: b.total, callsToday: Math.floor(state.t / ((SEA.everyMin || 22) * 60)) }; }
+  function airStats() {
+    var t = state.t, fl = flights(t, 3600), hour = fl.filter(function (f) { return f.time >= t - 1800 && f.time < t + 1800; }), late = hour.filter(function (f) { return f.late; }).length;
+    return { inAir: fl.filter(function (f) { return f.active; }).length, movementsHour: hour.length, onTimePct: hour.length ? 100 * (hour.length - late) / hour.length : null, avgDelayMin: hour.length ? hour.reduce(function (a, f) { return a + f.late; }, 0) / hour.length : null, movementsToday: Math.floor(t / (3600 / (AIR.movementsPerHour || 16))) };
+  }
+  function renderDash() {
+    var a = airStats(), b = seaStats();
+    $('dSea').textContent = b.moving; $('dBerth').textContent = b.berthsUsed + ' of ' + b.berths; $('dAir').textContent = a.inAir;
+    $('dAirOn').innerHTML = a.onTimePct === null ? '–' : Math.round(a.onTimePct) + '<small>%</small>';
+    $('dSeaAirNote').textContent = num(a.movementsToday) + ' flights and ' + num(b.callsToday) + ' vessel movements so far today';
+  }
+
   C.onReady(function () {
+    renderDash(); C.onMinute(renderDash);
     $('showSea').addEventListener('change', function (e) { show.sea = e.target.checked; C.redraw(); });
     $('showAir').addEventListener('change', function (e) { show.air = e.target.checked; C.redraw(); });
     $('seaView').addEventListener('click', function () { if (T.getMap() && SEA.port) { T.getMap().easeTo({ center: SEA.view || SEA.port, zoom: 11.3, pitch: 45, duration: 900 }); } });
     $('airView').addEventListener('click', function () { if (T.getMap() && AIR.airport) { T.getMap().easeTo({ center: AIR.airport, zoom: 10.8, pitch: 55, duration: 900 }); } });
     C.onTab(render); C.onMinute(render);
   });
-  T.sea = { ships: function () { return ships(state.t); }, berths: function () { return berths(state.t); } };
-  T.air = { flights: function (w) { return flights(state.t, w); } };
+  T.sea = { stats: seaStats, ships: function () { return ships(state.t); }, berths: function () { return berths(state.t); } };
+  T.air = { stats: airStats, flights: function (w) { return flights(state.t, w); } };
 })();

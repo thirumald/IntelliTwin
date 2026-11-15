@@ -10,7 +10,7 @@ Analytics opens inside the same page, over the map area. The top bar, the side m
 
 ## City scorecard
 
-The first tab. It groups KPIs under six goals and compares each with an example target.
+The first tab. It groups KPIs under seven goals and compares each with an example target.
 
 | Goal | KPIs |
 | --- | --- |
@@ -18,6 +18,7 @@ The first tab. It groups KPIs under six goals and compares each with an example 
 | Fewer accidents | Accidents a day, serious accidents, accidents in the worst hour, critical alerts open |
 | Fewer violations | Fines a day, fines in the worst hour, largest violation type, share at the five busiest sites |
 | Safe and secure city | Critical sites monitored, sites on alert, cameras online |
+| Sea and air connections | Flights on time, average flight delay, flight movements, berths in use, vessel movements (all synthetic) |
 | Clean and liveable | Road traffic CO₂ a day, air quality index, roadside noise |
 | City development | Peak speed and critical roads at the horizon with and without measures, cycle track, delay cost a year, residents (context) |
 

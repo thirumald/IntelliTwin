@@ -47,6 +47,8 @@ The app uses an example network instead of the public Integrated Transport Centr
 | Board | The next arrivals and departures with scheduled time, expected time and status |
 | Tracking | Tap a ship or an aircraft in the air to follow it |
 
+Ship and flight figures also appear on the Dashboard (Sea and air now), in the City scorecard (Sea and air connections), in generated reports, in Platform monitoring (two feeds) and in Twin Advisor answers.
+
 **Vessel names, flight numbers, times and positions are invented.** The sea lanes and flight paths in `config.js` (`sea.lanes`, `air.routes`) are approximate lines for demonstration; they are not charted channels or published flight procedures, and they should be checked against the base map and corrected before a client demonstration. For real positions, replace the generators with a vessel feed (AIS) and a flight feed (ADS-B) from a licensed provider.
 
 ## Using real services
