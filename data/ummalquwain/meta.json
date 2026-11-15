@@ -1,10 +1,10 @@
 {
- "built": "2026-11-15 07:36 UTC",
+ "built": "2026-11-15 07:56 UTC",
  "osm_timestamp": "2026-11-13T21:22:20Z",
  "sumo": "Eclipse SUMO sumo 1.28.0",
  "region": "ummalquwain",
  "region_name": "Umm Al Quwain",
- "traffic": "synthetic",
+ "traffic": "simulated",
  "bbox": [
   55.5,
   25.46,
@@ -33,271 +33,280 @@
  },
  "demand": {
   "total_assumed": 22000,
-  "total_vehicle_km": 2572710,
-  "trip_ends": "not simulated: synthetic traffic pattern"
+  "internal": 22973,
+  "external": 3138,
+  "through": 289,
+  "generated": 26400,
+  "boundary_points": 19,
+  "trip_ends": "road length \u00d7 lanes",
+  "buildings_snapped_share": null
  },
  "scenarios": [
   {
    "id": "base",
    "label": "Typical weekday",
    "demand": 1.0,
-   "trips": 22000,
+   "trips": 22108,
    "shown_trips": 0,
    "stats": {
-    "completed": 0
+    "completed": 21032,
+    "km": 14.5,
+    "min": 12.0,
+    "kmh": 72.5,
+    "min_lost": 1.6
    },
    "bins": [
     {
-     "speed": 97.3,
-     "vehicles": 4807,
-     "extra": 0.9,
-     "delay_h": 41
+     "speed": 75.6,
+     "vehicles": 178,
+     "extra": 9.9,
+     "delay_h": 16
     },
     {
-     "speed": 96.9,
-     "vehicles": 5416,
-     "extra": 1.4,
-     "delay_h": 73
-    },
-    {
-     "speed": 96.2,
-     "vehicles": 6042,
-     "extra": 2.1,
-     "delay_h": 122
-    },
-    {
-     "speed": 95.3,
-     "vehicles": 6692,
-     "extra": 3.0,
-     "delay_h": 194
-    },
-    {
-     "speed": 94.2,
-     "vehicles": 7373,
-     "extra": 4.2,
-     "delay_h": 297
-    },
-    {
-     "speed": 92.9,
-     "vehicles": 8093,
-     "extra": 5.7,
-     "delay_h": 439
-    },
-    {
-     "speed": 91.2,
-     "vehicles": 8863,
-     "extra": 7.7,
-     "delay_h": 632
-    },
-    {
-     "speed": 90.2,
-     "vehicles": 9271,
-     "extra": 8.8,
-     "delay_h": 751
-    },
-    {
-     "speed": 89.2,
-     "vehicles": 9696,
-     "extra": 10.1,
-     "delay_h": 887
-    },
-    {
-     "speed": 88.1,
-     "vehicles": 10140,
-     "extra": 11.5,
-     "delay_h": 1043
-    },
-    {
-     "speed": 87.5,
-     "vehicles": 10370,
-     "extra": 12.2,
-     "delay_h": 1128
-    },
-    {
-     "speed": 86.9,
-     "vehicles": 10606,
-     "extra": 13.0,
-     "delay_h": 1219
-    },
-    {
-     "speed": 86.3,
-     "vehicles": 10847,
-     "extra": 13.8,
-     "delay_h": 1316
-    },
-    {
-     "speed": 86.3,
-     "vehicles": 10847,
-     "extra": 13.8,
-     "delay_h": 1316
-    },
-    {
-     "speed": 86.3,
-     "vehicles": 10847,
-     "extra": 13.8,
-     "delay_h": 1316
-    },
-    {
-     "speed": 86.3,
-     "vehicles": 10847,
-     "extra": 13.8,
-     "delay_h": 1316
-    },
-    {
-     "speed": 86.9,
-     "vehicles": 10606,
-     "extra": 13.0,
-     "delay_h": 1219
-    },
-    {
-     "speed": 87.5,
-     "vehicles": 10370,
-     "extra": 12.2,
-     "delay_h": 1128
-    },
-    {
-     "speed": 88.1,
-     "vehicles": 10140,
-     "extra": 11.5,
-     "delay_h": 1043
-    },
-    {
-     "speed": 88.7,
-     "vehicles": 9916,
-     "extra": 10.8,
-     "delay_h": 963
-    },
-    {
-     "speed": 89.2,
-     "vehicles": 9696,
-     "extra": 10.1,
-     "delay_h": 887
-    },
-    {
-     "speed": 89.7,
-     "vehicles": 9481,
+     "speed": 78.2,
+     "vehicles": 440,
      "extra": 9.4,
-     "delay_h": 817
+     "delay_h": 38
     },
     {
-     "speed": 90.5,
-     "vehicles": 9147,
-     "extra": 8.5,
-     "delay_h": 714
+     "speed": 76.3,
+     "vehicles": 595,
+     "extra": 10.0,
+     "delay_h": 54
     },
     {
-     "speed": 91.3,
-     "vehicles": 8823,
-     "extra": 7.6,
-     "delay_h": 621
+     "speed": 79.2,
+     "vehicles": 711,
+     "extra": 8.9,
+     "delay_h": 58
     },
     {
-     "speed": 92.0,
-     "vehicles": 8510,
-     "extra": 6.8,
-     "delay_h": 538
+     "speed": 76.5,
+     "vehicles": 900,
+     "extra": 12.2,
+     "delay_h": 98
     },
     {
-     "speed": 92.5,
-     "vehicles": 8243,
-     "extra": 6.1,
-     "delay_h": 474
+     "speed": 75.9,
+     "vehicles": 931,
+     "extra": 12.0,
+     "delay_h": 100
     },
     {
-     "speed": 93.1,
-     "vehicles": 7982,
-     "extra": 5.5,
-     "delay_h": 415
-    },
-    {
-     "speed": 93.6,
-     "vehicles": 7727,
-     "extra": 4.9,
-     "delay_h": 363
-    },
-    {
-     "speed": 94.0,
-     "vehicles": 7478,
-     "extra": 4.4,
-     "delay_h": 315
-    },
-    {
-     "speed": 94.5,
-     "vehicles": 7234,
-     "extra": 3.9,
-     "delay_h": 273
-    },
-    {
-     "speed": 94.9,
-     "vehicles": 6994,
-     "extra": 3.5,
-     "delay_h": 236
-    },
-    {
-     "speed": 95.2,
-     "vehicles": 6792,
-     "extra": 3.1,
-     "delay_h": 207
-    },
-    {
-     "speed": 95.5,
-     "vehicles": 6593,
-     "extra": 2.8,
-     "delay_h": 181
-    },
-    {
-     "speed": 95.8,
-     "vehicles": 6396,
-     "extra": 2.5,
-     "delay_h": 158
-    },
-    {
-     "speed": 96.0,
-     "vehicles": 6202,
-     "extra": 2.3,
-     "delay_h": 137
-    },
-    {
-     "speed": 96.2,
-     "vehicles": 6011,
-     "extra": 2.0,
+     "speed": 74.8,
+     "vehicles": 1015,
+     "extra": 13.3,
      "delay_h": 119
     },
     {
-     "speed": 96.5,
-     "vehicles": 5821,
-     "extra": 1.8,
-     "delay_h": 102
+     "speed": 70.2,
+     "vehicles": 1177,
+     "extra": 22.1,
+     "delay_h": 213
     },
     {
-     "speed": 96.7,
-     "vehicles": 5633,
-     "extra": 1.6,
-     "delay_h": 88
+     "speed": 70.6,
+     "vehicles": 1284,
+     "extra": 21.5,
+     "delay_h": 227
     },
     {
-     "speed": 96.8,
-     "vehicles": 5447,
-     "extra": 1.4,
-     "delay_h": 75
+     "speed": 74.7,
+     "vehicles": 1321,
+     "extra": 13.3,
+     "delay_h": 155
     },
     {
-     "speed": 97.0,
-     "vehicles": 5262,
-     "extra": 1.2,
-     "delay_h": 64
+     "speed": 74.4,
+     "vehicles": 1328,
+     "extra": 16.4,
+     "delay_h": 187
     },
     {
-     "speed": 97.0,
-     "vehicles": 5262,
-     "extra": 1.2,
-     "delay_h": 64
+     "speed": 74.0,
+     "vehicles": 1330,
+     "extra": 15.1,
+     "delay_h": 174
     },
     {
-     "speed": 97.0,
-     "vehicles": 5262,
-     "extra": 1.2,
-     "delay_h": 64
+     "speed": 75.3,
+     "vehicles": 1346,
+     "extra": 14.3,
+     "delay_h": 168
+    },
+    {
+     "speed": 74.1,
+     "vehicles": 1537,
+     "extra": 16.0,
+     "delay_h": 212
+    },
+    {
+     "speed": 74.0,
+     "vehicles": 1608,
+     "extra": 15.3,
+     "delay_h": 213
+    },
+    {
+     "speed": 70.5,
+     "vehicles": 1590,
+     "extra": 18.9,
+     "delay_h": 252
+    },
+    {
+     "speed": 70.4,
+     "vehicles": 1651,
+     "extra": 21.2,
+     "delay_h": 289
+    },
+    {
+     "speed": 69.9,
+     "vehicles": 1626,
+     "extra": 21.3,
+     "delay_h": 286
+    },
+    {
+     "speed": 70.1,
+     "vehicles": 1573,
+     "extra": 20.9,
+     "delay_h": 272
+    },
+    {
+     "speed": 71.3,
+     "vehicles": 1562,
+     "extra": 19.5,
+     "delay_h": 254
+    },
+    {
+     "speed": 72.4,
+     "vehicles": 1478,
+     "extra": 17.3,
+     "delay_h": 218
+    },
+    {
+     "speed": 71.5,
+     "vehicles": 1498,
+     "extra": 19.7,
+     "delay_h": 246
+    },
+    {
+     "speed": 69.9,
+     "vehicles": 1511,
+     "extra": 21.0,
+     "delay_h": 262
+    },
+    {
+     "speed": 69.3,
+     "vehicles": 1503,
+     "extra": 21.2,
+     "delay_h": 263
+    },
+    {
+     "speed": 71.6,
+     "vehicles": 1392,
+     "extra": 17.5,
+     "delay_h": 208
+    },
+    {
+     "speed": 73.4,
+     "vehicles": 1322,
+     "extra": 16.8,
+     "delay_h": 190
+    },
+    {
+     "speed": 70.9,
+     "vehicles": 1384,
+     "extra": 18.8,
+     "delay_h": 219
+    },
+    {
+     "speed": 72.6,
+     "vehicles": 1316,
+     "extra": 17.7,
+     "delay_h": 198
+    },
+    {
+     "speed": 70.3,
+     "vehicles": 1306,
+     "extra": 20.9,
+     "delay_h": 226
+    },
+    {
+     "speed": 69.7,
+     "vehicles": 1245,
+     "extra": 19.7,
+     "delay_h": 205
+    },
+    {
+     "speed": 69.6,
+     "vehicles": 1239,
+     "extra": 19.2,
+     "delay_h": 200
+    },
+    {
+     "speed": 70.7,
+     "vehicles": 1218,
+     "extra": 19.3,
+     "delay_h": 197
+    },
+    {
+     "speed": 70.4,
+     "vehicles": 1152,
+     "extra": 21.3,
+     "delay_h": 203
+    },
+    {
+     "speed": 68.0,
+     "vehicles": 1178,
+     "extra": 23.5,
+     "delay_h": 224
+    },
+    {
+     "speed": 70.0,
+     "vehicles": 1154,
+     "extra": 20.4,
+     "delay_h": 196
+    },
+    {
+     "speed": 72.0,
+     "vehicles": 1112,
+     "extra": 17.2,
+     "delay_h": 163
+    },
+    {
+     "speed": 74.8,
+     "vehicles": 1101,
+     "extra": 16.0,
+     "delay_h": 152
+    },
+    {
+     "speed": 76.6,
+     "vehicles": 984,
+     "extra": 12.7,
+     "delay_h": 111
+    },
+    {
+     "speed": 74.2,
+     "vehicles": 917,
+     "extra": 14.9,
+     "delay_h": 119
+    },
+    {
+     "speed": 73.1,
+     "vehicles": 891,
+     "extra": 17.6,
+     "delay_h": 133
+    },
+    {
+     "speed": 71.3,
+     "vehicles": 811,
+     "extra": 19.2,
+     "delay_h": 131
+    },
+    {
+     "speed": 69.9,
+     "vehicles": 783,
+     "extra": 17.8,
+     "delay_h": 118
     }
    ]
   },
@@ -305,263 +314,267 @@
    "id": "high",
    "label": "Demand +20%",
    "demand": 1.2,
-   "trips": 26400,
+   "trips": 26399,
    "shown_trips": 0,
    "stats": {
-    "completed": 0
+    "completed": 25192,
+    "km": 14.5,
+    "min": 12.5,
+    "kmh": 69.5,
+    "min_lost": 2.1
    },
    "bins": [
     {
-     "speed": 96.5,
-     "vehicles": 5821,
-     "extra": 1.8,
-     "delay_h": 102
+     "speed": 74.8,
+     "vehicles": 221,
+     "extra": 13.1,
+     "delay_h": 26
     },
     {
-     "speed": 95.5,
-     "vehicles": 6593,
-     "extra": 2.8,
-     "delay_h": 181
+     "speed": 77.0,
+     "vehicles": 543,
+     "extra": 10.1,
+     "delay_h": 50
     },
     {
-     "speed": 94.2,
-     "vehicles": 7408,
-     "extra": 4.3,
-     "delay_h": 303
+     "speed": 75.9,
+     "vehicles": 724,
+     "extra": 10.1,
+     "delay_h": 67
     },
     {
-     "speed": 92.5,
-     "vehicles": 8280,
-     "extra": 6.2,
-     "delay_h": 482
-    },
-    {
-     "speed": 90.3,
-     "vehicles": 9230,
-     "extra": 8.7,
-     "delay_h": 739
-    },
-    {
-     "speed": 87.7,
-     "vehicles": 10278,
-     "extra": 11.9,
-     "delay_h": 1093
-    },
-    {
-     "speed": 84.7,
-     "vehicles": 11451,
-     "extra": 15.9,
-     "delay_h": 1573
-    },
-    {
-     "speed": 83.0,
-     "vehicles": 12093,
-     "extra": 18.3,
-     "delay_h": 1869
-    },
-    {
-     "speed": 81.2,
-     "vehicles": 12779,
-     "extra": 20.9,
-     "delay_h": 2208
-    },
-    {
-     "speed": 79.3,
-     "vehicles": 13512,
-     "extra": 23.8,
-     "delay_h": 2595
-    },
-    {
-     "speed": 78.4,
-     "vehicles": 13898,
-     "extra": 25.3,
-     "delay_h": 2807
-    },
-    {
-     "speed": 77.4,
-     "vehicles": 14297,
-     "extra": 26.9,
-     "delay_h": 3034
-    },
-    {
-     "speed": 76.3,
-     "vehicles": 14711,
-     "extra": 28.6,
-     "delay_h": 3274
-    },
-    {
-     "speed": 76.3,
-     "vehicles": 14711,
-     "extra": 28.6,
-     "delay_h": 3274
-    },
-    {
-     "speed": 76.3,
-     "vehicles": 14711,
-     "extra": 28.6,
-     "delay_h": 3274
-    },
-    {
-     "speed": 76.3,
-     "vehicles": 14711,
-     "extra": 28.6,
-     "delay_h": 3274
-    },
-    {
-     "speed": 77.4,
-     "vehicles": 14297,
-     "extra": 26.9,
-     "delay_h": 3034
-    },
-    {
-     "speed": 78.4,
-     "vehicles": 13898,
-     "extra": 25.3,
-     "delay_h": 2807
-    },
-    {
-     "speed": 79.3,
-     "vehicles": 13512,
-     "extra": 23.8,
-     "delay_h": 2595
-    },
-    {
-     "speed": 80.3,
-     "vehicles": 13139,
-     "extra": 22.3,
-     "delay_h": 2395
-    },
-    {
-     "speed": 81.2,
-     "vehicles": 12779,
-     "extra": 20.9,
-     "delay_h": 2208
-    },
-    {
-     "speed": 82.1,
-     "vehicles": 12430,
-     "extra": 19.6,
-     "delay_h": 2033
-    },
-    {
-     "speed": 83.5,
-     "vehicles": 11896,
-     "extra": 17.5,
-     "delay_h": 1776
-    },
-    {
-     "speed": 84.9,
-     "vehicles": 11388,
-     "extra": 15.7,
-     "delay_h": 1546
-    },
-    {
-     "speed": 86.1,
-     "vehicles": 10905,
-     "extra": 14.0,
-     "delay_h": 1340
-    },
-    {
-     "speed": 87.2,
-     "vehicles": 10501,
-     "extra": 12.6,
-     "delay_h": 1178
-    },
-    {
-     "speed": 88.2,
-     "vehicles": 10113,
-     "extra": 11.4,
-     "delay_h": 1033
-    },
-    {
-     "speed": 89.1,
-     "vehicles": 9740,
+     "speed": 76.1,
+     "vehicles": 876,
      "extra": 10.2,
-     "delay_h": 902
+     "delay_h": 81
     },
     {
-     "speed": 90.0,
-     "vehicles": 9380,
-     "extra": 9.1,
-     "delay_h": 785
+     "speed": 74.2,
+     "vehicles": 1116,
+     "extra": 14.5,
+     "delay_h": 141
     },
     {
-     "speed": 90.8,
-     "vehicles": 9033,
-     "extra": 8.1,
-     "delay_h": 680
+     "speed": 74.2,
+     "vehicles": 1183,
+     "extra": 14.7,
+     "delay_h": 152
     },
     {
-     "speed": 91.6,
-     "vehicles": 8697,
-     "extra": 7.2,
-     "delay_h": 587
+     "speed": 74.8,
+     "vehicles": 1263,
+     "extra": 13.7,
+     "delay_h": 152
     },
     {
-     "speed": 92.2,
-     "vehicles": 8417,
-     "extra": 6.5,
-     "delay_h": 515
+     "speed": 71.0,
+     "vehicles": 1435,
+     "extra": 21.1,
+     "delay_h": 250
     },
     {
-     "speed": 92.7,
-     "vehicles": 8145,
-     "extra": 5.9,
-     "delay_h": 451
+     "speed": 70.5,
+     "vehicles": 1575,
+     "extra": 22.8,
+     "delay_h": 292
     },
     {
-     "speed": 93.3,
-     "vehicles": 7879,
-     "extra": 5.3,
-     "delay_h": 393
+     "speed": 72.7,
+     "vehicles": 1675,
+     "extra": 17.6,
+     "delay_h": 251
     },
     {
-     "speed": 93.8,
-     "vehicles": 7620,
-     "extra": 4.7,
-     "delay_h": 342
+     "speed": 70.7,
+     "vehicles": 1739,
+     "extra": 20.4,
+     "delay_h": 295
     },
     {
-     "speed": 94.2,
-     "vehicles": 7366,
-     "extra": 4.2,
-     "delay_h": 296
+     "speed": 73.1,
+     "vehicles": 1712,
+     "extra": 16.4,
+     "delay_h": 241
     },
     {
-     "speed": 94.7,
-     "vehicles": 7117,
-     "extra": 3.7,
+     "speed": 71.7,
+     "vehicles": 1694,
+     "extra": 18.9,
+     "delay_h": 269
+    },
+    {
+     "speed": 70.7,
+     "vehicles": 1866,
+     "extra": 21.4,
+     "delay_h": 329
+    },
+    {
+     "speed": 68.7,
+     "vehicles": 1945,
+     "extra": 22.6,
+     "delay_h": 359
+    },
+    {
+     "speed": 66.1,
+     "vehicles": 1976,
+     "extra": 27.0,
+     "delay_h": 420
+    },
+    {
+     "speed": 67.9,
+     "vehicles": 2095,
+     "extra": 24.0,
+     "delay_h": 405
+    },
+    {
+     "speed": 67.8,
+     "vehicles": 2120,
+     "extra": 23.4,
+     "delay_h": 402
+    },
+    {
+     "speed": 67.9,
+     "vehicles": 2035,
+     "extra": 24.7,
+     "delay_h": 403
+    },
+    {
+     "speed": 68.1,
+     "vehicles": 1983,
+     "extra": 24.6,
+     "delay_h": 391
+    },
+    {
+     "speed": 67.4,
+     "vehicles": 1918,
+     "extra": 26.5,
+     "delay_h": 402
+    },
+    {
+     "speed": 68.4,
+     "vehicles": 1893,
+     "extra": 25.2,
+     "delay_h": 381
+    },
+    {
+     "speed": 66.9,
+     "vehicles": 1837,
+     "extra": 25.6,
+     "delay_h": 375
+    },
+    {
+     "speed": 67.4,
+     "vehicles": 1798,
+     "extra": 25.2,
+     "delay_h": 362
+    },
+    {
+     "speed": 67.7,
+     "vehicles": 1747,
+     "extra": 24.2,
+     "delay_h": 340
+    },
+    {
+     "speed": 68.4,
+     "vehicles": 1629,
+     "extra": 22.7,
+     "delay_h": 302
+    },
+    {
+     "speed": 67.6,
+     "vehicles": 1709,
+     "extra": 24.6,
+     "delay_h": 337
+    },
+    {
+     "speed": 67.7,
+     "vehicles": 1647,
+     "extra": 24.9,
+     "delay_h": 329
+    },
+    {
+     "speed": 66.4,
+     "vehicles": 1612,
+     "extra": 27.2,
+     "delay_h": 345
+    },
+    {
+     "speed": 66.1,
+     "vehicles": 1549,
+     "extra": 25.1,
+     "delay_h": 310
+    },
+    {
+     "speed": 66.9,
+     "vehicles": 1530,
+     "extra": 23.3,
+     "delay_h": 290
+    },
+    {
+     "speed": 67.2,
+     "vehicles": 1446,
+     "extra": 24.6,
+     "delay_h": 286
+    },
+    {
+     "speed": 66.4,
+     "vehicles": 1408,
+     "extra": 25.4,
+     "delay_h": 285
+    },
+    {
+     "speed": 67.0,
+     "vehicles": 1446,
+     "extra": 25.9,
+     "delay_h": 298
+    },
+    {
+     "speed": 68.8,
+     "vehicles": 1417,
+     "extra": 24.4,
+     "delay_h": 278
+    },
+    {
+     "speed": 69.7,
+     "vehicles": 1376,
+     "extra": 22.8,
      "delay_h": 255
     },
     {
-     "speed": 95.1,
-     "vehicles": 6873,
-     "extra": 3.3,
-     "delay_h": 218
+     "speed": 69.5,
+     "vehicles": 1309,
+     "extra": 22.8,
+     "delay_h": 243
     },
     {
-     "speed": 95.4,
-     "vehicles": 6633,
-     "extra": 2.9,
-     "delay_h": 186
+     "speed": 71.3,
+     "vehicles": 1206,
+     "extra": 19.2,
+     "delay_h": 194
     },
     {
-     "speed": 95.8,
-     "vehicles": 6396,
-     "extra": 2.5,
-     "delay_h": 158
+     "speed": 69.9,
+     "vehicles": 1185,
+     "extra": 20.6,
+     "delay_h": 203
     },
     {
-     "speed": 95.8,
-     "vehicles": 6396,
-     "extra": 2.5,
-     "delay_h": 158
+     "speed": 71.1,
+     "vehicles": 1134,
+     "extra": 20.3,
+     "delay_h": 192
     },
     {
-     "speed": 95.8,
-     "vehicles": 6396,
-     "extra": 2.5,
-     "delay_h": 158
+     "speed": 69.8,
+     "vehicles": 1027,
+     "extra": 21.9,
+     "delay_h": 184
+    },
+    {
+     "speed": 68.2,
+     "vehicles": 1005,
+     "extra": 21.8,
+     "delay_h": 180
     }
    ]
   },
@@ -569,263 +582,267 @@
    "id": "low",
    "label": "Demand \u221220% (staggered hours)",
    "demand": 0.8,
-   "trips": 17600,
+   "trips": 17705,
    "shown_trips": 0,
    "stats": {
-    "completed": 0
+    "completed": 16956,
+    "km": 14.5,
+    "min": 11.7,
+    "kmh": 74.2,
+    "min_lost": 1.4
    },
    "bins": [
     {
-     "speed": 97.8,
-     "vehicles": 3826,
-     "extra": 0.4,
-     "delay_h": 13
+     "speed": 75.7,
+     "vehicles": 149,
+     "extra": 10.6,
+     "delay_h": 14
     },
     {
-     "speed": 97.6,
-     "vehicles": 4298,
-     "extra": 0.6,
-     "delay_h": 24
+     "speed": 78.0,
+     "vehicles": 363,
+     "extra": 9.1,
+     "delay_h": 30
     },
     {
-     "speed": 97.4,
-     "vehicles": 4776,
-     "extra": 0.8,
-     "delay_h": 40
+     "speed": 75.2,
+     "vehicles": 491,
+     "extra": 10.9,
+     "delay_h": 48
     },
     {
-     "speed": 97.0,
-     "vehicles": 5262,
-     "extra": 1.2,
-     "delay_h": 64
-    },
-    {
-     "speed": 96.5,
-     "vehicles": 5758,
-     "extra": 1.7,
-     "delay_h": 97
-    },
-    {
-     "speed": 95.9,
-     "vehicles": 6267,
-     "extra": 2.4,
-     "delay_h": 144
-    },
-    {
-     "speed": 95.2,
-     "vehicles": 6792,
-     "extra": 3.1,
-     "delay_h": 207
-    },
-    {
-     "speed": 94.8,
-     "vehicles": 7062,
-     "extra": 3.6,
-     "delay_h": 246
-    },
-    {
-     "speed": 94.3,
-     "vehicles": 7338,
-     "extra": 4.1,
-     "delay_h": 291
-    },
-    {
-     "speed": 93.8,
-     "vehicles": 7620,
-     "extra": 4.7,
-     "delay_h": 342
-    },
-    {
-     "speed": 93.5,
-     "vehicles": 7763,
-     "extra": 5.0,
-     "delay_h": 370
-    },
-    {
-     "speed": 93.2,
-     "vehicles": 7909,
-     "extra": 5.3,
-     "delay_h": 399
-    },
-    {
-     "speed": 92.9,
-     "vehicles": 8056,
-     "extra": 5.7,
-     "delay_h": 431
-    },
-    {
-     "speed": 92.9,
-     "vehicles": 8056,
-     "extra": 5.7,
-     "delay_h": 431
-    },
-    {
-     "speed": 92.9,
-     "vehicles": 8056,
-     "extra": 5.7,
-     "delay_h": 431
-    },
-    {
-     "speed": 92.9,
-     "vehicles": 8056,
-     "extra": 5.7,
-     "delay_h": 431
-    },
-    {
-     "speed": 93.2,
-     "vehicles": 7909,
-     "extra": 5.3,
-     "delay_h": 399
-    },
-    {
-     "speed": 93.5,
-     "vehicles": 7763,
-     "extra": 5.0,
-     "delay_h": 370
-    },
-    {
-     "speed": 93.8,
-     "vehicles": 7620,
-     "extra": 4.7,
-     "delay_h": 342
-    },
-    {
-     "speed": 94.0,
-     "vehicles": 7478,
-     "extra": 4.4,
-     "delay_h": 315
-    },
-    {
-     "speed": 94.3,
-     "vehicles": 7338,
-     "extra": 4.1,
-     "delay_h": 291
-    },
-    {
-     "speed": 94.5,
-     "vehicles": 7199,
-     "extra": 3.9,
-     "delay_h": 268
-    },
-    {
-     "speed": 94.9,
-     "vehicles": 6981,
-     "extra": 3.5,
-     "delay_h": 234
-    },
-    {
-     "speed": 95.2,
-     "vehicles": 6765,
-     "extra": 3.1,
-     "delay_h": 204
-    },
-    {
-     "speed": 95.5,
-     "vehicles": 6553,
-     "extra": 2.8,
-     "delay_h": 176
-    },
-    {
-     "speed": 95.8,
-     "vehicles": 6370,
-     "extra": 2.5,
-     "delay_h": 155
-    },
-    {
-     "speed": 96.0,
-     "vehicles": 6190,
-     "extra": 2.2,
-     "delay_h": 136
-    },
-    {
-     "speed": 96.2,
-     "vehicles": 6011,
-     "extra": 2.0,
-     "delay_h": 119
-    },
-    {
-     "speed": 96.4,
-     "vehicles": 5833,
-     "extra": 1.8,
-     "delay_h": 103
-    },
-    {
-     "speed": 96.6,
-     "vehicles": 5658,
-     "extra": 1.6,
-     "delay_h": 90
-    },
-    {
-     "speed": 96.8,
-     "vehicles": 5484,
-     "extra": 1.4,
-     "delay_h": 77
-    },
-    {
-     "speed": 96.9,
-     "vehicles": 5336,
-     "extra": 1.3,
-     "delay_h": 68
-    },
-    {
-     "speed": 97.1,
-     "vehicles": 5189,
-     "extra": 1.2,
-     "delay_h": 59
-    },
-    {
-     "speed": 97.2,
-     "vehicles": 5043,
-     "extra": 1.0,
-     "delay_h": 52
-    },
-    {
-     "speed": 97.3,
-     "vehicles": 4897,
-     "extra": 0.9,
+     "speed": 79.5,
+     "vehicles": 568,
+     "extra": 8.6,
      "delay_h": 45
     },
     {
-     "speed": 97.4,
-     "vehicles": 4752,
-     "extra": 0.8,
-     "delay_h": 39
+     "speed": 77.0,
+     "vehicles": 712,
+     "extra": 10.5,
+     "delay_h": 68
     },
     {
-     "speed": 97.5,
-     "vehicles": 4608,
-     "extra": 0.7,
-     "delay_h": 34
+     "speed": 76.9,
+     "vehicles": 762,
+     "extra": 11.1,
+     "delay_h": 76
     },
     {
-     "speed": 97.6,
-     "vehicles": 4465,
-     "extra": 0.6,
-     "delay_h": 29
+     "speed": 76.7,
+     "vehicles": 831,
+     "extra": 12.6,
+     "delay_h": 93
     },
     {
-     "speed": 97.6,
-     "vehicles": 4322,
-     "extra": 0.6,
-     "delay_h": 25
+     "speed": 70.3,
+     "vehicles": 961,
+     "extra": 22.0,
+     "delay_h": 173
     },
     {
-     "speed": 97.7,
-     "vehicles": 4180,
-     "extra": 0.5,
-     "delay_h": 21
+     "speed": 70.5,
+     "vehicles": 1056,
+     "extra": 22.5,
+     "delay_h": 194
     },
     {
-     "speed": 97.7,
-     "vehicles": 4180,
-     "extra": 0.5,
-     "delay_h": 21
+     "speed": 73.0,
+     "vehicles": 1037,
+     "extra": 14.9,
+     "delay_h": 134
     },
     {
-     "speed": 97.7,
-     "vehicles": 4180,
-     "extra": 0.5,
-     "delay_h": 21
+     "speed": 72.3,
+     "vehicles": 1023,
+     "extra": 18.7,
+     "delay_h": 161
+    },
+    {
+     "speed": 74.8,
+     "vehicles": 1031,
+     "extra": 14.3,
+     "delay_h": 129
+    },
+    {
+     "speed": 75.4,
+     "vehicles": 1049,
+     "extra": 13.3,
+     "delay_h": 123
+    },
+    {
+     "speed": 73.9,
+     "vehicles": 1206,
+     "extra": 16.1,
+     "delay_h": 168
+    },
+    {
+     "speed": 74.7,
+     "vehicles": 1295,
+     "extra": 14.6,
+     "delay_h": 165
+    },
+    {
+     "speed": 73.6,
+     "vehicles": 1288,
+     "extra": 15.9,
+     "delay_h": 177
+    },
+    {
+     "speed": 73.7,
+     "vehicles": 1304,
+     "extra": 15.8,
+     "delay_h": 178
+    },
+    {
+     "speed": 71.5,
+     "vehicles": 1292,
+     "extra": 18.3,
+     "delay_h": 200
+    },
+    {
+     "speed": 72.0,
+     "vehicles": 1238,
+     "extra": 18.3,
+     "delay_h": 192
+    },
+    {
+     "speed": 72.9,
+     "vehicles": 1242,
+     "extra": 17.5,
+     "delay_h": 185
+    },
+    {
+     "speed": 73.8,
+     "vehicles": 1196,
+     "extra": 16.7,
+     "delay_h": 171
+    },
+    {
+     "speed": 73.4,
+     "vehicles": 1174,
+     "extra": 17.7,
+     "delay_h": 176
+    },
+    {
+     "speed": 72.7,
+     "vehicles": 1134,
+     "extra": 17.3,
+     "delay_h": 167
+    },
+    {
+     "speed": 73.0,
+     "vehicles": 1126,
+     "extra": 15.1,
+     "delay_h": 148
+    },
+    {
+     "speed": 71.8,
+     "vehicles": 1048,
+     "extra": 15.6,
+     "delay_h": 141
+    },
+    {
+     "speed": 73.7,
+     "vehicles": 991,
+     "extra": 15.7,
+     "delay_h": 134
+    },
+    {
+     "speed": 72.1,
+     "vehicles": 1101,
+     "extra": 17.1,
+     "delay_h": 161
+    },
+    {
+     "speed": 72.1,
+     "vehicles": 1020,
+     "extra": 17.3,
+     "delay_h": 150
+    },
+    {
+     "speed": 73.5,
+     "vehicles": 1013,
+     "extra": 16.1,
+     "delay_h": 140
+    },
+    {
+     "speed": 72.1,
+     "vehicles": 949,
+     "extra": 16.6,
+     "delay_h": 135
+    },
+    {
+     "speed": 73.0,
+     "vehicles": 949,
+     "extra": 14.7,
+     "delay_h": 121
+    },
+    {
+     "speed": 73.5,
+     "vehicles": 936,
+     "extra": 16.1,
+     "delay_h": 130
+    },
+    {
+     "speed": 71.8,
+     "vehicles": 885,
+     "extra": 17.4,
+     "delay_h": 131
+    },
+    {
+     "speed": 70.9,
+     "vehicles": 930,
+     "extra": 19.2,
+     "delay_h": 150
+    },
+    {
+     "speed": 75.4,
+     "vehicles": 908,
+     "extra": 14.0,
+     "delay_h": 111
+    },
+    {
+     "speed": 75.2,
+     "vehicles": 873,
+     "extra": 14.1,
+     "delay_h": 108
+    },
+    {
+     "speed": 76.2,
+     "vehicles": 837,
+     "extra": 13.0,
+     "delay_h": 96
+    },
+    {
+     "speed": 77.9,
+     "vehicles": 742,
+     "extra": 10.9,
+     "delay_h": 73
+    },
+    {
+     "speed": 76.1,
+     "vehicles": 690,
+     "extra": 12.3,
+     "delay_h": 76
+    },
+    {
+     "speed": 75.1,
+     "vehicles": 681,
+     "extra": 14.2,
+     "delay_h": 85
+    },
+    {
+     "speed": 73.2,
+     "vehicles": 604,
+     "extra": 16.3,
+     "delay_h": 85
+    },
+    {
+     "speed": 71.6,
+     "vehicles": 605,
+     "extra": 15.9,
+     "delay_h": 83
     }
    ]
   }
