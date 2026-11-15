@@ -49,8 +49,8 @@ PASS/FAIL search (fuel stations) ...    (optional)
 
 ## 4. Check it through the app
 
-1. Sign in, open **Admin** (user menu, top right) and look at **Live traffic (TomTom)**: it should say *On* and show request
-   counts.
-2. On the map open **Dashboard** and tick **Show live traffic on the map**; roads should turn TomTom colours.
-3. Live incidents appear in the Incidents section and as markers.
-4. Back in **Admin**, requests today and "served from cache" should have moved.
+1. Sign in, open **Admin** (user menu, top right) and look at **Live traffic (TomTom)**: it should say *On* and show request counts.
+2. TomTom **map tiles are off** by default (`TOMTOM_TILES=off`): the twin's own simulated traffic and cars stay the road colours.
+   Only data points are used: live incidents, flow speeds at the sites, routing and fuel/EV station search.
+3. Live incidents appear in the Incidents section and as markers. In **Admin**, requests today should move.
+4. No key set means no TomTom calls at all; the app runs fully on the simulation, which is also what an on-prem install does.

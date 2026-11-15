@@ -109,3 +109,13 @@ def test_no_key(c, monkeypatch):
     monkeypatch.delenv("TOMTOM_KEY")
     assert c.get("/tt/traffic/services/5/incidentDetails?bbox=2,2,2,2").status_code == 503
     assert "key:null" in c.get("/config.js").text.replace(" ", "")
+
+
+def test_tiles_are_blocked_by_default(c, monkeypatch):
+    admin(c)
+    before = len(c.calls)
+    r = c.get("/tt/traffic/map/4/tile/flow/relative0/10/1/1.png")
+    assert r.status_code == 404 and len(c.calls) == before
+    assert "INTELLITWIN_NO_TT_TILES=true" in c.get("/config.js").text
+    monkeypatch.setenv("TOMTOM_TILES", "on")
+    assert c.get("/tt/traffic/map/4/tile/flow/relative0/10/1/1.png").status_code == 200

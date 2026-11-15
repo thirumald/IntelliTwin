@@ -36,6 +36,12 @@ PUBLIC_PATHS = {"/login.html", "/assets/presight-logo.png", "/favicon.ico"}
 router = APIRouter()
 
 
+def tiles_allowed() -> bool:
+    """Map tiles from TomTom are off by default: the twin's own simulated traffic is the product, and a secured on-prem
+    deployment cannot fetch tiles. Set TOMTOM_TILES=on to allow them. Data-point calls (incidents, speeds, routing, search) are separate."""
+    return os.environ.get("TOMTOM_TILES", "off").strip().lower() == "on"
+
+
 # ---------------------------------------------------------------- TomTom proxy
 def _ttl(path: str) -> int:
     if path.startswith("traffic/map/"):
@@ -126,6 +132,8 @@ class TomTomProxy:
     async def get(self, path: str, query: list[tuple[str, str]]) -> Response:
         if not path.startswith(ALLOWED_PREFIXES) or ".." in path:
             raise HTTPException(404, "Not a proxied TomTom path")
+        if path.startswith("traffic/map/") and not tiles_allowed():
+            return JSONResponse({"detail": "TomTom map tiles are disabled on this server (TOMTOM_TILES=off)"}, status_code=404)
         state = self.live()
         if state == "no_key":
             return JSONResponse({"detail": "No TomTom key is configured on the server"}, status_code=503)
@@ -199,7 +207,8 @@ def patched_config() -> str:
         "  c.auth=Object.assign({},c.auth,{enabled:false});            /* the server login replaces the demo sign-in */\n"
         "  c.map=c.map||{};c.map.google=Object.assign({},c.map.google,{key:null});   /* never use keys published in the file */\n"
         f"  c.tomtom=Object.assign({{}},c.tomtom,{{key:{json.dumps('server' if server_key else None)},base:'/tt'}});\n"
-        "  window.INTELLITWIN_SERVER=true;})();\n")
+        f"  c.layers=Object.assign({{}},c.layers,{{tomtomTraffic:{'true' if tiles_allowed() else 'false'}}});c.tomtom.flowOnStart={'true' if tiles_allowed() else 'false'};\n"
+        f"  window.INTELLITWIN_SERVER=true;window.INTELLITWIN_NO_TT_TILES={'false' if tiles_allowed() else 'true'};}})();\n")
     return _read("config.js") + override
 
 
@@ -208,6 +217,11 @@ def patched_tomtom_js() -> str:
     new, n = re.subn(r"BASE\s*=\s*'https://api\.tomtom\.com'", "BASE = (TT.base || 'https://api.tomtom.com')", src, count=1)
     if n != 1:
         print("WARNING: js/tomtom.js changed upstream; could not patch the API base URL, TomTom will call the browser key path.", flush=True)
+    if not tiles_allowed():  # no tile requests: no key probe, no "live traffic now" option, no road recolouring
+        new, m = re.subn(r"function tryFlow\(\) \{", "function tryFlow() { return;", new, count=1)
+        new, m2 = re.subn(r"if \(sel && has\(\)\) \{", "if (sel && has() && false) {", new, count=1)
+        if m != 1 or m2 != 1:
+            print("WARNING: js/tomtom.js changed upstream; could not disable TomTom tiles in the patch.", flush=True)
     return new
 
 

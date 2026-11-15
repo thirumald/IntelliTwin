@@ -29,3 +29,15 @@
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', function () { build(m.user); }); } else { build(m.user); }
   }).catch(function () { /* not signed in: the server redirects to the login page */ });
 })();
+
+/* No TomTom tiles: hide the two controls that only exist to draw them. */
+(function () {
+  if (!window.INTELLITWIN_NO_TT_TILES) { return; }
+  function hide() {
+    ['showTomTom', 'lyTtFlow'].forEach(function (id) {
+      var el = document.getElementById(id), row = el && el.closest('label');
+      if (row) { row.hidden = true; }
+    });
+  }
+  hide(); document.addEventListener('DOMContentLoaded', hide); setTimeout(hide, 1500);
+})();
