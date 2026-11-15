@@ -1,3 +1,18 @@
+# Base map
+
+> **Current base map.** IntelliTwin now uses a MapLibre vector map with 3D buildings, built the way the MapLibre
+> example [Display buildings in 3D](https://maplibre.org/maplibre-gl-js/docs/examples/display-buildings-in-3d/) does it:
+> the building layer of the vector tiles is extruded to its height, coloured by height, grown in as the map zooms in and
+> placed under the labels. Tiles and styles come from OpenFreeMap (OpenStreetMap data). Settings: `map.styleUrl`,
+> `map.styleUrlLight`, `map.buildings3d`, `map.buildingsMinZoom`, `map.buildingColors` in `config.js`.
+>
+> Google Maps and the raster OpenStreetMap tiles are no longer used. If the vector map cannot be loaded the twin's
+> layers are drawn on a plain background and buildings come from the footprint file.
+>
+> The 2D / 3D / City view switch stays: City view is a closer, steeper look at the same 3D buildings.
+>
+> The rest of this page describes the optional Google Maps connection, which is off (`map.google.enabled: false`).
+
 # Google Maps base map
 
 IntelliTwin can draw Google Maps as its background instead of the OpenStreetMap base map.

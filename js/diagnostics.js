@@ -9,7 +9,7 @@
   var T = window.IntelliTwin, C = T.core, CFG = C.CFG, $ = C.$;
   var G = (CFG.map || {}).google || {}, TT = CFG.tomtom || {};
   function saved(name) { try { return localStorage.getItem(name) || ''; } catch (e) { return ''; } }
-  function gKey() { return saved('itw-google-key') || G.key || ''; }
+  function gKey() { return G.enabled ? saved('itw-google-key') || G.key || '' : ''; }
   function tKey() { return saved('itw-tomtom-key') || TT.key || ''; }
   function src(name, cfg) { return saved(name) && saved(name) !== cfg ? 'key saved in this browser' : cfg ? 'key from the site configuration' : 'no key'; }
 
@@ -51,7 +51,7 @@
     var z = 12, n = Math.pow(2, z), x = Math.floor((c.lng + 180) / 360 * n), s = Math.sin(c.lat * Math.PI / 180), y = Math.floor((0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * n);
     var tk = encodeURIComponent(tKey()), gk = encodeURIComponent(gKey());
     var add = function (group, name, r, hint) { results.push({ group: group, name: name, ok: r.ok, status: r.status, msg: r.msg || '', hint: r.ok ? '' : hint(r.status, r.msg) }); render(); };
-    var google = !gKey() ? Promise.resolve(add('Google Maps', 'API key', { ok: false, status: -1, msg: 'No Google Maps key is set.' }, function () { return 'Set map.google.key in config.js or paste a key under Reports, Base map.'; })) :
+    var google = !G.enabled ? Promise.resolve() : !gKey() ? Promise.resolve(add('Google Maps', 'API key', { ok: false, status: -1, msg: 'No Google Maps key is set.' }, function () { return 'Set map.google.key in config.js or paste a key under Reports, Base map.'; })) :
       call('https://tile.googleapis.com/v1/createSession?key=' + gk, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mapType: 'roadmap', language: 'en-US', region: 'AE' }) }).then(function (r) {
         add('Google Maps', 'Map session (Map Tiles API)', r, hintGoogle);
         if (!r.ok) { return null; }
@@ -79,11 +79,12 @@
   var WORD = { ok: 'connected', part: 'partly working', fail: 'not working', wait: 'checking…', none: 'not checked' };
   function report() {
     var lines = ['IntelliTwin connection check · ' + location.origin + location.pathname + ' · ' + new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC',
-      'Google Maps: ' + src('itw-google-key', G.key), 'TomTom: ' + src('itw-tomtom-key', TT.key)];
+      'Google Maps: ' + (G.enabled ? src('itw-google-key', G.key) : 'not used; the base map is the MapLibre vector map'), 'TomTom: ' + src('itw-tomtom-key', TT.key)];
     results.slice().sort(function (a, b) { return a.group < b.group ? -1 : a.group > b.group ? 1 : 0; }).forEach(function (r) { lines.push((r.ok ? 'OK   ' : 'FAIL ') + r.group + ' · ' + r.name + (r.ok ? '' : ' · ' + (r.status > 0 ? r.status + ' ' : '') + r.msg)); });
     return lines.join('\n');
   }
   function render() {
+    $('svcG').hidden = !G.enabled;
     ['Google Maps', 'TomTom'].forEach(function (g) {
       var st = groupState(g), el = $(g === 'TomTom' ? 'svcTt' : 'svcG');
       el.className = 'svc svc-' + st; el.textContent = g + ': ' + WORD[st]; el.title = g + ' is ' + WORD[st] + '. Open the connection check.';

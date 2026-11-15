@@ -86,7 +86,7 @@
   // Google photorealistic 3D tiles (optional, experimental): switched on from Reports, Base map.
   var g3d = { on: false, key: '', credit: '' };
   // Map view: '2d' (flat, from above), '3d' (tilted, with 3D vehicles and building blocks) or 'city' (Google photorealistic 3D).
-  var viewMode = '3d', setView = function () {};
+  var viewMode = '3d', setView = function () {}, vectorFailed = false;
   function viewPitch() { return viewMode === '2d' ? 0 : viewMode === 'city' ? 62 : 55; }
   var dirty = true, orbiting = false, layerProviders = [], minuteHooks = [], readyHooks = [];
   var carProgress = null, simDt = 0, prevT = 0, visibleEdges = [], visibleKey = '';
@@ -207,17 +207,15 @@
     try {
       // Base map in a dark or a light theme (both configurable). Each theme has a vector style and a raster
       // fallback for when the vector style cannot be loaded.
+      // Placeholder while the vector map loads, and the fallback if it cannot be loaded: a plain background,
+      // or raster tiles when map.rasterTiles lists a tile server.
       var rasterStyle = function (th) {
-        var light = th === 'light';
-        return {
-          version: 8,
-          sources: { base: { type: 'raster', tileSize: 256, maxzoom: 19, tiles: CFG.map.rasterTiles, attribution: CFG.map.rasterAttribution } },
-          layers: [
-            { id: 'bg', type: 'background', paint: { 'background-color': light ? '#e3f1e4' : '#0a101c' } },
-            { id: 'base', type: 'raster', source: 'base', paint: light ? { 'raster-opacity': 0.85, 'raster-saturation': -0.25 } :
-              { 'raster-opacity': 0.9, 'raster-brightness-max': 0.42, 'raster-saturation': -0.55, 'raster-contrast': 0.1 } }
-          ]
-        };
+        var light = th === 'light', tiles = CFG.map.rasterTiles || [], st = { version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': light ? '#e3f1e4' : '#0a101c' } }] };
+        if (tiles.length) {
+          st.sources.base = { type: 'raster', tileSize: 256, maxzoom: 19, tiles: tiles, attribution: CFG.map.rasterAttribution };
+          st.layers.push({ id: 'base', type: 'raster', source: 'base', paint: light ? { 'raster-opacity': 0.85, 'raster-saturation': -0.25 } : { 'raster-opacity': 0.9, 'raster-brightness-max': 0.42, 'raster-saturation': -0.55, 'raster-contrast': 0.1 } });
+        }
+        return st;
       };
       var styleUrl = function (th) { return th === 'light' ? CFG.map.styleUrlLight : CFG.map.styleUrl; };
       /* Google Maps base map (optional): Google's Map Tiles API drawn as the background. The roads, traffic and
@@ -227,8 +225,9 @@
       var gStyles = { dark: [{ elementType: 'geometry', stylers: [{ color: '#0f1726' }] }, { elementType: 'labels.text.stroke', stylers: [{ color: '#0f1726' }] }, { elementType: 'labels.text.fill', stylers: [{ color: '#8fa0bd' }] },
         { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#22314d' }] }, { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2c4068' }] }, { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#060b14' }] },
         { featureType: 'poi', stylers: [{ visibility: 'off' }] }, { featureType: 'transit', stylers: [{ visibility: 'off' }] }], light: [{ featureType: 'poi', stylers: [{ visibility: 'off' }] }, { featureType: 'transit', stylers: [{ visibility: 'off' }] }] };
-      var gKey = function () { var k = ''; try { k = localStorage.getItem('itw-google-key') || ''; } catch (e) { /* storage unavailable */ } return k || G.key || ''; };
-      var gType = function () { var v = ''; try { v = localStorage.getItem('itw-basemap') || ''; } catch (e) { /* storage unavailable */ } return v || G.type || 'roadmap'; };   // roadmap, satellite, hybrid or osm
+      // Google Maps is used only when map.google.enabled is true; the base map is otherwise the MapLibre vector map with 3D buildings.
+      var gKey = function () { if (!G.enabled) { return ''; } var k = ''; try { k = localStorage.getItem('itw-google-key') || ''; } catch (e) { /* storage unavailable */ } return k || G.key || ''; };
+      var gType = function () { var v = ''; try { v = localStorage.getItem('itw-basemap2') || ''; } catch (e) { /* storage unavailable */ } return v || G.type || 'roadmap'; };   // roadmap, satellite, hybrid or osm
       var gSession = function (th, type) {
         var id = th + '|' + type, now = Date.now() / 1000;
         if (gSessions[id] && gSessions[id].expiry > now + 600) { return Promise.resolve(gSessions[id]); }
@@ -268,7 +267,8 @@
       };
       var baseStatus = function (msg) {
         var on = !!gKey(), type = gType();
-        $('gStatus').textContent = msg || (!on ? 'No Google Maps key is set. The base map is OpenStreetMap.' : type === 'osm' ? 'A Google Maps key is set, and OpenStreetMap is chosen as the base map.' : 'Base map: Google Maps (' + type + ').');
+        ['gType', 'g3d', 'gKey', 'gHelp'].forEach(function (id) { var el = $(id), box = el && (el.closest('label') || el.closest('.search-row') || el); if (box) { box.hidden = !G.enabled; } });
+        $('gStatus').textContent = msg || (!on || type === 'osm' ? 'Base map: MapLibre vector map with 3D buildings (OpenFreeMap, OpenStreetMap data).' : 'Base map: Google Maps (' + type + ').');
         var mine = ''; try { mine = localStorage.getItem('itw-google-key') || ''; } catch (e) { /* storage unavailable */ }
         $('gKey').placeholder = mine ? 'Key saved in this browser (hidden)' : on ? 'A key is set in the site configuration' : 'Paste the Google Maps API key'; $('gKeyRemove').hidden = !mine; $('gType').value = on ? type : 'osm';
         Array.prototype.forEach.call($('gType').options, function (o) { o.disabled = !on && o.value !== 'osm'; });
@@ -280,19 +280,26 @@
         if (!src) { return; }
         vectorBase = true;
         if (light) { (st.layers || []).forEach(function (ly) { if (ly.type === 'background') { try { map.setPaintProperty(ly.id, 'background-color', CFG.map.lightTint || '#e3f1e4'); } catch (e1) { /* keep the style's own colour */ } } }); }
+        // 3D buildings as in the MapLibre "Display buildings in 3D" example: the building layer of the vector tiles is
+        // extruded to its height, coloured by height, grown in as the map zooms in, and placed under the labels.
         if (CFG.map.buildings3d && !map.getLayer('itw-buildings')) {
           try {
+            var z0 = CFG.map.buildingsMinZoom || 14, pal = (CFG.map.buildingColors || {})[light ? 'light' : 'dark'] || (light ? ['#d3d3d3', '#4169e1', '#add8e6'] : ['#33415c', '#3f6fd8', '#8fc3e6']);
+            var labelId; (st.layers || []).some(function (ly) { if (ly.type === 'symbol' && ly.layout && ly.layout['text-field']) { labelId = ly.id; return true; } return false; });
+            var hgt = ['coalesce', ['get', 'render_height'], 6];
             map.addLayer({
-              id: 'itw-buildings', type: 'fill-extrusion', source: src, 'source-layer': 'building', minzoom: 13,
+              id: 'itw-buildings', type: 'fill-extrusion', source: src, 'source-layer': 'building', minzoom: z0,
+              filter: ['!=', ['get', 'hide_3d'], true],
               paint: {
-                'fill-extrusion-color': light ? ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 6], 0, '#dfe7dd', 60, '#c3d3c6', 200, '#a9c0b0'] :
-                  ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 6], 0, '#2b3850', 60, '#42557a', 200, '#5f77a6'],
-                'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 6],
-                'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
-                'fill-extrusion-opacity': 0.92, 'fill-extrusion-vertical-gradient': true
+                'fill-extrusion-color': ['interpolate', ['linear'], hgt, 0, pal[0], 200, pal[1], 400, pal[2]],
+                'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], z0, 0, z0 + 1, hgt],
+                'fill-extrusion-base': ['interpolate', ['linear'], ['zoom'], z0, 0, z0 + 1, ['coalesce', ['get', 'render_min_height'], 0]],
+                'fill-extrusion-opacity': light ? 0.9 : 0.92, 'fill-extrusion-vertical-gradient': true
               }
-            });
-          } catch (err) { /* the style has no building layer: keep the flat map */ }
+            }, labelId);
+            if (!$('showBld').checked) { map.setLayoutProperty('itw-buildings', 'visibility', 'none'); }
+            $('bldRow').hidden = false; $('bldNote').textContent = '(from the map tiles, coloured by height)';
+          } catch (err) { if (window.console) { console.warn('IntelliTwin 3D buildings: ' + err.message); } }
         }
       };
       var loadSeq = 0;
@@ -303,7 +310,12 @@
         $('themeBtn').textContent = theme === 'light' ? 'Dark map' : 'Light map';
         var seq = ++loadSeq, url = styleUrl(theme), done = false;
         vectorBase = false;
-        var fallback = function () { if (!done && seq === loadSeq) { done = true; map.setStyle(rasterStyle(theme)); } };
+        var fallback = function () {
+          if (done || seq !== loadSeq) { return; }
+          done = true; vectorFailed = true; map.setStyle(rasterStyle(theme));
+          baseStatus('The vector map could not be loaded. Showing a plain background; buildings come from the footprint file.'); notice('Base map', 'The MapLibre vector map (OpenFreeMap) could not be loaded from this network. The twin’s own layers are shown on a plain background.');
+          if ($('showBld').checked) { $('showBld').dispatchEvent(new Event('change')); }
+        };
         gNow = null; gCredit();
         if (gKey() && gType() !== 'osm') {
           // Google Maps as the base map; if the session cannot be opened, the OpenStreetMap base map is used instead.
@@ -321,13 +333,13 @@
         osmBase();
         function osmBase() {
         if (!url) { fallback(); return; }
-        map.setStyle(url);
+        map.setStyle(url, { diff: false });                       // a full load, so the style's load event always fires
         var onStyle = function () {
-          if (seq !== loadSeq || done) { map.off('style.load', onStyle); return; }
+          if (seq !== loadSeq || done) { map.off('style.load', onStyle); map.off('styledata', onStyle); return; }
           var st = map.getStyle(), hasVector = st && Object.keys(st.sources || {}).some(function (k) { return st.sources[k].type === 'vector'; });
-          if (hasVector) { done = true; map.off('style.load', onStyle); dress(); }       // ignore the raster placeholder's own load event
+          if (hasVector) { done = true; map.off('style.load', onStyle); map.off('styledata', onStyle); vectorFailed = false; dress(); baseStatus(); }       // ignore the placeholder's own load event
         };
-        map.on('style.load', onStyle);
+        map.on('style.load', onStyle); map.on('styledata', onStyle);
         setTimeout(fallback, 8000);
         dirty = true; roadLayer = null;
         }
@@ -336,7 +348,7 @@
       map = new maplibregl.Map({
         container: 'map', style: rasterStyle(theme),
         bounds: [[b[0], b[1]], [b[2], b[3]]], fitBoundsOptions: { padding: 10 },
-        minZoom: 8, maxZoom: 19, maxPitch: 70, attributionControl: false
+        minZoom: 8, maxZoom: 19, maxPitch: 70, attributionControl: false, antialias: true   // smooth edges on the 3D buildings
       });
       // Selections are centred in the part of the map that is not covered by the panel, and go in closer.
       // Any move to a place (centre + zoom of 13.5 or more) gets the padding of the visible area, the configured zoom
@@ -361,8 +373,8 @@
       map.once('load', function () { setTimeout(applyPadding, 200); });
       map.on('moveend', function () { if (gNow) { gCredit(); } });
       baseStatus();
-      $('gKeySave').addEventListener('click', function () { var k = $('gKey').value.trim(); if (!k) { return; } try { localStorage.setItem('itw-google-key', k); if (gType() === 'osm') { localStorage.setItem('itw-basemap', 'roadmap'); } } catch (e) { /* storage unavailable */ } $('gKey').value = ''; gSessions = {}; baseStatus(); setTheme(theme); });
-      $('gKeyRemove').addEventListener('click', function () { try { localStorage.removeItem('itw-google-key'); localStorage.removeItem('itw-basemap'); } catch (e) { /* storage unavailable */ } gSessions = {}; baseStatus(); setTheme(theme); });
+      $('gKeySave').addEventListener('click', function () { var k = $('gKey').value.trim(); if (!k) { return; } try { localStorage.setItem('itw-google-key', k); if (gType() === 'osm') { localStorage.setItem('itw-basemap2', 'roadmap'); } } catch (e) { /* storage unavailable */ } $('gKey').value = ''; gSessions = {}; baseStatus(); setTheme(theme); });
+      $('gKeyRemove').addEventListener('click', function () { try { localStorage.removeItem('itw-google-key'); localStorage.removeItem('itw-basemap2'); } catch (e) { /* storage unavailable */ } gSessions = {}; baseStatus(); setTheme(theme); });
       // Google 3D tiles switch
       var set3d = function (on, save) {
         g3d.on = !!on && !!gKey(); g3d.key = gKey(); $('g3d').checked = g3d.on; $('g3d').disabled = !gKey();
@@ -377,11 +389,10 @@
       $('gKeyRemove').addEventListener('click', function () { setTimeout(function () { set3d(false, true); }, 0); });
       // Map view switch: 2D, 3D, City view.
       setView = function (mode, save) {
-        if (mode === 'city' && !gKey()) { mode = '3d'; baseStatus('City view needs a Google Maps key. Showing the 3D view.'); }
         viewMode = mode === '2d' || mode === 'city' ? mode : '3d';
         Array.prototype.forEach.call($('viewMode').children, function (b) { var on = b.getAttribute('data-view') === viewMode; b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false'); });
         if (save) { try { localStorage.setItem('itw-view', viewMode); } catch (e) { /* storage unavailable */ } }
-        set3d(viewMode === 'city', false);
+        set3d(viewMode === 'city' && !!gKey(), false);   // Google's 3D tiles only when Google Maps is enabled; otherwise City view is a closer, steeper look at the 3D buildings
         $('tilt').setAttribute('aria-pressed', viewMode === '2d' ? 'false' : 'true');
         map.easeTo(viewMode === '2d' ? { pitch: 0, duration: 700 } : { pitch: viewPitch(), duration: 700 });
         dirty = true;
@@ -390,7 +401,7 @@
       $('g3d').addEventListener('change', function (e) { setView(e.target.checked ? 'city' : '3d', true); });
       var wantView = (CFG.start || {}).view || '3d'; try { wantView = localStorage.getItem('itw-view') || wantView; } catch (e) { /* storage unavailable */ }
       if (wantView !== '3d') { map.once('load', function () { setView(wantView, false); }); setTimeout(function () { if (viewMode !== wantView) { setView(wantView, false); } }, 2500); }
-      $('gType').addEventListener('change', function () { try { localStorage.setItem('itw-basemap', $('gType').value); } catch (e) { /* storage unavailable */ } baseStatus(); setTheme(theme); });
+      $('gType').addEventListener('change', function () { try { localStorage.setItem('itw-basemap2', $('gType').value); } catch (e) { /* storage unavailable */ } baseStatus(); setTheme(theme); });
       window.addEventListener('resize', function () { padKey = ''; applyPadding(); });
       map.on('error', function () { /* tile or style errors are handled by the fallback timer */ });
       setTheme(theme);
@@ -484,7 +495,7 @@
       });
     }
     var layers = [], minute = Math.floor(state.t / 60);
-    if (state.bld && buildings && !g3d.on) {
+    if (state.bld && buildings && !g3d.on && !(map && map.getLayer('itw-buildings'))) {
       layers.push(new deck.PolygonLayer({
         id: 'buildings', data: buildings, extruded: true, wireframe: false,
         getPolygon: function (b) { return b.ring; }, getElevation: function (b) { return b.h; },
@@ -917,7 +928,9 @@
     $('showCars').addEventListener('change', function (e) { state.cars = e.target.checked; });
     $('showBld').addEventListener('change', function (e) {
       state.bld = e.target.checked;
-      if (state.bld && !buildings) {
+      // The vector map carries its own 3D buildings; the footprint file is only loaded when that layer is missing.
+      if (map && map.getLayer('itw-buildings')) { map.setLayoutProperty('itw-buildings', 'visibility', state.bld ? 'visible' : 'none'); return; }
+      if (state.bld && !buildings && vectorFailed) {
         getJSON('data/buildings.json').then(function (rows) {
           buildings = rows.map(function (r) { var ring = []; for (var i = 0; i < r[1].length; i += 2) { ring.push([r[1][i], r[1][i + 1]]); } return { h: r[0], ring: ring }; });
           redraw();
@@ -1040,8 +1053,8 @@
     wireControls();
     $('carNote').textContent = '(every vehicle; zoom in for 3D)';
     if (meta.buildings && meta.buildings.available) {
-      $('bldRow').hidden = false; $('bldNote').textContent = '(' + num(meta.buildings.shown) + ' largest, heights estimated)';
-      if ((CFG.layers || {}).buildings3d !== false) { $('showBld').checked = true; $('showBld').dispatchEvent(new Event('change')); }
+      $('bldRow').hidden = false; if (!$('bldNote').textContent) { $('bldNote').textContent = '(' + num(meta.buildings.shown) + ' largest, heights estimated)'; }
+      if ((CFG.layers || {}).buildings3d !== false) { $('showBld').checked = true; state.bld = true; }
     }
     renderFacts();
     setMode('live');

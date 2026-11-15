@@ -11,23 +11,24 @@
 window.INTELLITWIN_CONFIG = {
   /* ---- Base map ---------------------------------------------------------------------------- */
   map: {
-    // MapLibre style URL for the vector base map. Use a licensed or self-hosted style in production.
-    styleUrl: 'https://tiles.openfreemap.org/styles/dark',
-    // Raster tiles used if the vector style cannot be loaded.
-    rasterTiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-    rasterAttribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    // Light theme: its vector style and the pale green tint applied to the map background.
-    styleUrlLight: 'https://tiles.openfreemap.org/styles/positron',
+    // Base map: a MapLibre vector map with 3D buildings, built the way the MapLibre example "Display buildings in 3D"
+    // does it (https://maplibre.org/maplibre-gl-js/docs/examples/display-buildings-in-3d/). The tiles and styles come
+    // from OpenFreeMap, which is made from OpenStreetMap data. Use a licensed or self-hosted style in production.
+    styleUrl: 'https://tiles.openfreemap.org/styles/dark',           // dark theme
+    styleUrlLight: 'https://tiles.openfreemap.org/styles/bright',    // light theme (the style the example uses)
     lightTint: '#cfe0d2',
     theme: 'dark',              // 'dark' or 'light' at start; the Light map / Dark map button switches
-    // Google Maps as the base map (Map Tiles API). The key is published here by the owner's decision: this file is
-    // public, so the key can be read by anyone. Keep it restricted to this site's address (HTTP referrer) and to the
-    // Map Tiles API in the Google Cloud console, with a quota. Set key to null to go back to a per-browser key.
-    // type: 'roadmap', 'satellite', 'hybrid', or 'osm' to keep OpenStreetMap even when a key is set.
-    // tiles3d: Google's photorealistic 3D tiles (experimental). heightOffsetM lifts that 3D mesh to meet the twin's
-    // layers, which are drawn at zero height; regions can set their own value (regions[].heightOffsetM).
-    google: { key: 'AIzaSyDlXdILIUd5vPkDda7coYSgSS1txWcYLog', type: 'roadmap', tiles3d: false, heightOffsetM: 27 },
-    buildings3d: true
+    // Raster tiles shown if the vector map cannot be loaded. Empty: a plain background is shown instead.
+    rasterTiles: [],
+    rasterAttribution: '',
+    // Google Maps is no longer used. To bring it back set enabled: true and a key (Map Tiles API), then choose the
+    // type: 'roadmap', 'satellite' or 'hybrid'. tiles3d and heightOffsetM apply to Google's photorealistic 3D tiles.
+    google: { enabled: false, key: null, type: 'osm', tiles3d: false, heightOffsetM: 27 },
+    // 3D buildings on the vector base map, as in the MapLibre "Display buildings in 3D" example: the tiles' building layer
+    // is extruded to its height and coloured by height (0 m, 200 m, 400 m), growing in from buildingsMinZoom.
+    buildings3d: true,
+    buildingsMinZoom: 14,
+    buildingColors: { light: ['#d3d3d3', '#4169e1', '#add8e6'], dark: ['#33415c', '#3f6fd8', '#8fc3e6'] }
   },
 
   /* ---- Start-up view ------------------------------------------------------------------------- */
