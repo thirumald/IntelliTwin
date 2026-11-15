@@ -42,7 +42,7 @@ window.INTELLITWIN_CONFIG = {
     fullView: true,             // open with the panel, legend and site shortcuts minimised
     focus: 'most-congested-site', // select the major site (map chip) with the slowest traffic; 'most-congested' = slowest road; 'all' = whole area
     orbit: true,                // circle the camera; it stays on until the Orbit button is unclicked
-    selectionZoomBoost: 3,      // zoom levels added when a site, road or item is selected (0 = off)
+    selectionZoomBoost: 2,      // zoom levels added when a site, road or item is selected (0 = off)
     selectionMaxZoom: 17.5      // closest zoom a selection goes to
   },
 
