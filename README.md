@@ -13,6 +13,8 @@ IntelliTwin is a static traffic digital twin demonstrator for Abu Dhabi city. A 
 - **Scenarios:** typical weekday, demand +20%, demand −20%, each a full SUMO run.
 - **KPIs and morning profile:** network speed, extra travel time, vehicles moving, delay.
 - **Slowest roads:** ranked by name; tap to locate.
+- **Go to:** chips across the top of the map fly to major sites in a tilted 3D view (approximate locations); a selector in the top bar jumps to the longest major roads.
+- **3D and Orbit:** tilt the map, or let the camera circle the view; touching the map stops the orbit.
 - **Optional layers:** timetabled buses (ITC GTFS) and 3D buildings (Microsoft footprints), when those downloads succeed.
 
 ## Quick start
@@ -36,4 +38,4 @@ Eclipse SUMO 1.28 (mesoscopic) · osmium · Python (NumPy, SciPy, sumolib) · de
 
 ## Attribution
 
-Roads © OpenStreetMap contributors (ODbL). Base map © OpenStreetMap contributors © CARTO. Buildings: Microsoft Global ML Building Footprints. Bus timetable: Integrated Transport Centre Abu Dhabi GTFS via the Mobility Database.
+Roads and base map © OpenStreetMap contributors (ODbL). Buildings: Microsoft Global ML Building Footprints. Bus timetable: Integrated Transport Centre Abu Dhabi GTFS via the Mobility Database.

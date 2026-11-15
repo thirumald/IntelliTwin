@@ -44,14 +44,19 @@ Access: the pipeline first tries the Mobility Database API if the repository sec
 
 Buses are **not** part of the traffic simulation. They follow the timetable and do not interact with simulated traffic.
 
-## 4. Base map tiles
+## 4. Base map tiles — OpenStreetMap
 
 | | |
 | --- | --- |
-| Provider | CARTO “dark_all” raster tiles, built on OpenStreetMap data |
-| Loaded | At run time by the browser, from `basemaps.cartocdn.com` |
-| Attribution | “© OpenStreetMap contributors © CARTO” (shown on the map) |
-| Note | CARTO's hosted basemaps have their own terms of use. For production or commercial deployments, use a licensed tile service or self-hosted tiles and change the tile address in `js/app.js` |
+| Provider | OpenStreetMap standard tile layer |
+| Loaded | At run time by the browser, from `tile.openstreetmap.org` |
+| Licence | Map data ODbL; attribution “© OpenStreetMap contributors” (shown on the map) |
+| Display | The app dims and desaturates the tiles to suit its dark theme |
+| Usage policy | The OpenStreetMap Foundation's tile servers are for light use only and carry no service guarantee: <https://operations.osmfoundation.org/policies/tiles/>. For a public or client-facing deployment with real traffic, switch to a commercial OSM-based tile provider or self-hosted tiles by changing the tile address in `js/app.js` |
+
+## Branding
+
+The header shows the Presight logo, loaded at run time from `https://www.presight.ai/hubfs/Presight_2026/Logo.svg`. If that address changes or is unreachable, the logo is omitted and the header shows the product name only. The logo is Presight's trademark; use it only where Presight has approved the branding.
 
 ## 5. Population and employment — Statistics Centre Abu Dhabi (reference only)
 
@@ -69,4 +74,4 @@ SCAD figures are **not downloaded or used by the pipeline**. They are quoted in 
 
 ## Attribution text for deployments
 
-> Roads © OpenStreetMap contributors (ODbL). Base map © OpenStreetMap contributors © CARTO. Buildings: Microsoft Global ML Building Footprints. Bus timetable: Integrated Transport Centre Abu Dhabi GTFS via the Mobility Database. Simulation: Eclipse SUMO. Rendering: deck.gl, MapLibre GL JS.
+> Roads and base map © OpenStreetMap contributors (ODbL). Buildings: Microsoft Global ML Building Footprints. Bus timetable: Integrated Transport Centre Abu Dhabi GTFS via the Mobility Database. Simulation: Eclipse SUMO. Rendering: deck.gl, MapLibre GL JS.

@@ -46,7 +46,7 @@ There is no server-side component at run time. The simulation runs once, at buil
 | Numerics | NumPy, SciPy, pyproj | BSD / MIT |
 | Map rendering | MapLibre GL JS | BSD-3-Clause |
 | Data layers | deck.gl (`PathLayer`, `TripsLayer`, `PolygonLayer`, `MapboxOverlay`) | MIT |
-| Base map tiles | CARTO dark raster tiles over OpenStreetMap data | See [data-sources.md](data-sources.md) |
+| Base map tiles | OpenStreetMap standard raster tiles, dimmed in the app | See [data-sources.md](data-sources.md) |
 
 ## Run-time behaviour of the app
 

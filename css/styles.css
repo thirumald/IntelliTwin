@@ -172,6 +172,7 @@ select {
   .badge { display: none; }
   .timeline { flex-wrap: wrap; left: 8px; right: 8px; bottom: 8px; gap: 8px; }
   .timeline input[type=range] { order: 5; flex-basis: 100%; }
+  .timeline .btn { padding: 8px 10px; }
   .seg button { padding: 8px 8px; font-size: 12px; }
   .legend { top: 8px; left: 8px; font-size: 11px; }
   .maplibregl-ctrl-bottom-right { bottom: 100px; }
@@ -201,3 +202,33 @@ select {
 .btn[aria-pressed=true] { background: var(--accent); color: #05221a; border-color: var(--accent); }
 
 [hidden] { display: none !important; }
+
+/* Quick navigation */
+.goto { flex: 1; max-width: 340px; margin: 0 8px; }
+.goto select { padding: 8px 10px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 860px) {
+  .topbar { flex-wrap: wrap; }
+  .goto { order: 3; flex-basis: 100%; max-width: none; margin: 0; }
+}
+
+/* Major-site chips across the top of the map */
+.sites {
+  position: absolute; top: 10px; left: 12px; right: 52px; z-index: 2;
+  display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin;
+}
+.sites button {
+  flex: none; background: rgba(17, 26, 44, .92); color: var(--text); border: 1px solid var(--line);
+  border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.sites button:hover { border-color: var(--accent); }
+.sites button.on { background: var(--accent); color: #05221a; border-color: var(--accent); }
+.legend { top: 56px; }
+@media (max-width: 860px) {
+  .sites { left: 8px; right: 48px; top: 8px; }
+  .legend { top: 50px; }
+}
+
+/* Company logo on a light plate so a dark logo stays visible on the dark bar */
+.brand-logo { background: #ffffff; border-radius: 8px; padding: 6px 10px; display: inline-flex; align-items: center; }
+.brand-logo img { height: 20px; width: auto; display: block; }

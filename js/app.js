@@ -8,6 +8,29 @@
   var CLASS_WIDTH = [16, 14, 11, 9, 7];           // metres
   var $ = function (id) { return document.getElementById(id); };
 
+  // Major sites for quick navigation: [name, lon, lat, zoom]. Locations are approximate.
+  var SITES = [
+    ['Downtown', 54.3570, 24.4870, 14],
+    ['Corniche', 54.3400, 24.4750, 14],
+    ['Qasr Al Hosn', 54.3545, 24.4823, 15],
+    ['Emirates Palace', 54.3170, 24.4615, 14.5],
+    ['Qasr Al Watan', 54.3050, 24.4625, 14.5],
+    ['Etihad Towers', 54.3215, 24.4585, 15],
+    ['Al Maryah Island', 54.3900, 24.5020, 14.5],
+    ['Al Reem Island', 54.4050, 24.4980, 14],
+    ['Mina Zayed', 54.3780, 24.5220, 14],
+    ['Saadiyat Island', 54.3983, 24.5338, 13.5],
+    ['ADNEC', 54.4370, 24.4180, 14.5],
+    ['Sheikh Zayed Grand Mosque', 54.4750, 24.4128, 14.5],
+    ['Sheikh Zayed Bridge', 54.4970, 24.4190, 14.5],
+    ['Mussafah', 54.5000, 24.3550, 13],
+    ['Mohamed Bin Zayed City', 54.5450, 24.3400, 13.5],
+    ['Khalifa City', 54.5770, 24.4200, 13],
+    ['Masdar City', 54.6170, 24.4290, 14],
+    ['Yas Island', 54.6031, 24.4672, 13.5],
+    ['Zayed International Airport', 54.6511, 24.4330, 13]
+  ];
+
   function level(r) { return r >= 0.8 ? 'free' : r >= 0.6 ? 'moderate' : r >= 0.4 ? 'heavy' : 'severe'; }
   function num(n) { return Math.round(n).toLocaleString('en-US'); }
   function clock(sec) {
@@ -60,13 +83,14 @@
           sources: {
             base: {
               type: 'raster', tileSize: 256,
-              tiles: ['a', 'b', 'c', 'd'].map(function (s) { return 'https://' + s + '.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'; }),
-              attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
+              // OpenStreetMap standard tiles. Their usage policy allows light use only; see docs/data-sources.md.
+              tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], maxzoom: 19,
+              attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }
           },
           layers: [
             { id: 'bg', type: 'background', paint: { 'background-color': '#0a101c' } },
-            { id: 'base', type: 'raster', source: 'base', paint: { 'raster-opacity': 0.7 } }
+            { id: 'base', type: 'raster', source: 'base', paint: { 'raster-opacity': 0.9, 'raster-brightness-max': 0.42, 'raster-saturation': -0.55, 'raster-contrast': 0.1 } }
           ]
         },
         bounds: [[b[0], b[1]], [b[2], b[3]]],
@@ -304,6 +328,55 @@
       $('tilt').setAttribute('aria-pressed', on ? 'true' : 'false');
       if (map) { map.easeTo({ pitch: on ? 55 : 0, duration: 600 }); }
     });
+    // Orbit: the camera circles the centre of the view until the user touches the map or turns it off.
+    function setOrbit(on) {
+      orbiting = on && !!map;
+      $('orbit').setAttribute('aria-pressed', orbiting ? 'true' : 'false');
+      if (orbiting && map.getPitch() < 30) {
+        map.easeTo({ pitch: 55, duration: 600 });
+        $('tilt').setAttribute('aria-pressed', 'true');
+      }
+    }
+    $('orbit').addEventListener('click', function () { setOrbit(!orbiting); });
+    if (map) {
+      ['mousedown', 'touchstart', 'wheel'].forEach(function (ev) {
+        map.getCanvasContainer().addEventListener(ev, function () { if (orbiting) { setOrbit(false); } }, { passive: true });
+      });
+    }
+    // Quick navigation: major-site chips on the map, and the longest major roads in the top bar.
+    var go = $('goto'), majorRoads = groups.filter(function (g) { return g.c <= 2 && g.m >= 5000; })
+      .sort(function (a, b) { return b.m - a.m; }).slice(0, 30)
+      .sort(function (a, b) { return a.name.localeCompare(b.name); });
+    function leaveOrbit() { orbiting = false; $('orbit').setAttribute('aria-pressed', 'false'); }
+    function clearChips() { Array.prototype.forEach.call($('sites').children, function (c) { c.classList.remove('on'); }); }
+    SITES.forEach(function (st) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.textContent = st[0];
+      b.addEventListener('click', function () {
+        if (!map) { return; }
+        leaveOrbit(); clearChips(); b.classList.add('on'); go.value = '';
+        if (popup) { popup.remove(); }
+        // A site view is a close, tilted 3D view with buildings where they are available.
+        map.flyTo({ center: [st[1], st[2]], zoom: st[3], pitch: 55, duration: 1400 });
+        $('tilt').setAttribute('aria-pressed', 'true');
+        var box = $('showBld');
+        if (!$('bldRow').hidden && !box.checked) { box.checked = true; box.dispatchEvent(new Event('change')); }
+      });
+      $('sites').appendChild(b);
+    });
+    majorRoads.forEach(function (g, i) { var o = document.createElement('option'); o.value = 'r' + i; o.textContent = g.name; $('gotoRoads').appendChild(o); });
+    go.addEventListener('change', function () {
+      var v = go.value;
+      if (!v || !map) { return; }
+      leaveOrbit(); clearChips();
+      if (popup) { popup.remove(); }
+      if (v === 'all') {
+        map.fitBounds([[meta.bbox[0], meta.bbox[1]], [meta.bbox[2], meta.bbox[3]]], { padding: 10, pitch: 0, bearing: 0, duration: 900 });
+        $('tilt').setAttribute('aria-pressed', 'false');
+      } else {
+        map.fitBounds(majorRoads[Number(v.slice(1))].bounds, { padding: { top: 90, bottom: 120, left: 40, right: 40 }, maxZoom: 14, duration: 900 });
+      }
+    });
     var sel = $('scenario');
     meta.scenarios.forEach(function (s) { var o = document.createElement('option'); o.value = s.id; o.textContent = s.label; sel.appendChild(o); });
     sel.value = state.scenario;
@@ -322,7 +395,7 @@
             var ring = []; for (var i = 0; i < r[1].length; i += 2) { ring.push([r[1][i], r[1][i + 1]]); }
             return { h: r[0], ring: ring };
           });
-          if (map && map.getZoom() < 12) { map.easeTo({ zoom: 12.5, pitch: 50 }); $('tilt').setAttribute('aria-pressed', 'true'); }
+          if (map && map.getZoom() < 12 && !map.isMoving()) { map.easeTo({ zoom: 12.5, pitch: 50 }); $('tilt').setAttribute('aria-pressed', 'true'); }
         }).catch(function () { $('bldNote').textContent = '(could not load)'; });
       }
     });
@@ -331,12 +404,14 @@
 
   /* ---------- main loop ---------- */
   var last = performance.now(), lastBin = -1, lastLabel = '';
+  var orbiting = false, ORBIT_DEG_PER_S = 6;
   function frame(now) {
     var dt = Math.min((now - last) / 1000, 0.25); last = now;
     if (state.playing) { state.t += dt * state.rate; if (state.t >= t1) { state.t = t0; } }
     var bin = binOf(state.t), label = clock(meta.sim_begin + state.t);
     if (bin !== lastBin || dirty) { lastBin = bin; dirty = false; renderPanels(); }
     if (label !== lastLabel) { lastLabel = label; $('clock').textContent = label; $('time').value = Math.round(state.t); drawChart(); }
+    if (orbiting && map && !map.isEasing()) { map.setBearing(map.getBearing() + ORBIT_DEG_PER_S * dt); }
     buildLayers();
     requestAnimationFrame(frame);
   }
@@ -355,8 +430,8 @@
       e.i = i; e.path = path;
       var name = names[e.n];
       if (name && !e.k) {
-        var g = byName[name] = byName[name] || { name: name, idx: [], m: 0, bounds: [[180, 90], [-180, -90]] };
-        g.idx.push(i); g.m += e.m;
+        var g = byName[name] = byName[name] || { name: name, idx: [], m: 0, c: 9, bounds: [[180, 90], [-180, -90]] };
+        g.idx.push(i); g.m += e.m; g.c = Math.min(g.c, e.c);
         path.forEach(function (p) {
           g.bounds[0][0] = Math.min(g.bounds[0][0], p[0]); g.bounds[0][1] = Math.min(g.bounds[0][1], p[1]);
           g.bounds[1][0] = Math.max(g.bounds[1][0], p[0]); g.bounds[1][1] = Math.max(g.bounds[1][1], p[1]);
