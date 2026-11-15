@@ -95,7 +95,7 @@
   }
   function camPopup(c) {
     var r = reading(c.edge), allowed = !T.ops || T.ops.can('video');
-    var box = C.showPopup([c.lon, c.lat], c.id + ' · ' + c.name, [['Speed', Math.round(r.speed) + ' km/h'], ['Flow', num(r.flow) + ' veh/h'], ['Feed', c.stream ? 'Video stream' : 'Synthetic view']],
+    var box = C.showPopup([c.lon, c.lat], c.id + ' · ' + c.name, [['Speed', Math.round(r.speed) + ' km/h'], ['Flow', num(r.flow) + ' veh/h'], ['Feed', c.stream ? 'Video stream' : (CFG.devices.sampleVideos || []).length ? 'Sample footage' : 'Synthetic view']],
       c.real ? 'Camera from config.js' : 'Synthetic camera position');
     if (box && allowed) {
       var b = document.createElement('button'); b.className = 'btn small'; b.textContent = 'Open camera view'; b.style.marginTop = '8px';
@@ -107,6 +107,16 @@
   /* ---------- camera view ---------- */
   var open = null, raf = 0, lanes = [];
   function closeVideo() { open = null; cancelAnimationFrame(raf); $('video').hidden = true; $('videoBody').innerHTML = ''; }
+  // Synthetic camera view, drawn from the synthetic traffic on the camera's road.
+  function synthetic(c, body, why) {
+    var cv = document.createElement('canvas'); cv.width = 640; cv.height = 360; body.appendChild(cv);
+    $('videoSub').textContent = 'Synthetic view';
+    $('videoNote').textContent = why + 'This view is drawn from the synthetic traffic on its road; it is not footage.';
+    lanes = [];
+    var lastT = performance.now();
+    var loop = function (now) { if (open !== c) { return; } draw(cv, c, Math.min((now - lastT) / 1000, 0.1)); lastT = now; raf = requestAnimationFrame(loop); };
+    raf = requestAnimationFrame(loop);
+  }
   function openVideo(c) {
     if (T.ops && !T.ops.can('video')) { return; }
     closeVideo();
@@ -128,13 +138,23 @@
       } else { v.src = s; }
       v.addEventListener('error', function () { $('videoNote').textContent = 'The stream could not be played in this browser. For HLS streams set devices.hlsScript in config.js.'; });
     } else {
-      var cv = document.createElement('canvas'); cv.width = 640; cv.height = 360; body.appendChild(cv);
-      $('videoSub').textContent = 'Synthetic view';
-      $('videoNote').textContent = 'No video stream is configured for this camera. This view is drawn from the synthetic traffic on its road; it is not footage.';
-      lanes = [];
-      var lastT = performance.now();
-      var loop = function (now) { if (open !== c) { return; } draw(cv, c, Math.min((now - lastT) / 1000, 0.1)); lastT = now; raf = requestAnimationFrame(loop); };
-      raf = requestAnimationFrame(loop);
+      var samples = CFG.devices.sampleVideos || [], idx = cams.indexOf(c), sample = samples.length ? samples[Math.max(0, idx) % samples.length] : null;
+      if (sample) {
+        // Real traffic footage as a stand-in: the clip is not this camera's feed, and the window says so.
+        var sv = document.createElement('video'); sv.controls = true; sv.autoplay = true; sv.muted = true; sv.loop = true; sv.playsInline = true;
+        sample.sources.forEach(function (u) { var so = document.createElement('source'); so.src = u; sv.appendChild(so); });
+        body.appendChild(sv);
+        $('videoSub').textContent = 'Sample footage · not this camera';
+        $('videoNote').textContent = 'Real traffic footage used as a stand-in until this camera has a stream in config.js. It is not Abu Dhabi and not this camera\u2019s feed. ' + sample.credit + '.';
+        var failed = false, giveUp = function () {
+          if (failed || open !== c) { return; }
+          failed = true; body.innerHTML = ''; synthetic(c, body, 'The sample footage could not be played in this browser. ');
+        };
+        sv.addEventListener('error', giveUp);
+        // Give up as well if nothing can be shown after 12 seconds (blocked or very slow network).
+        setTimeout(function () { if (open === c && sv.readyState < 2) { giveUp(); } }, 12000);
+        sv.lastElementChild.addEventListener('error', giveUp);       // the last source failing means none could be played
+      } else { synthetic(c, body, 'No video stream is configured for this camera. '); }
     }
     if (T.audit) { T.audit('Camera view: ' + c.id); }
   }
@@ -185,7 +205,7 @@
       C.fact('Traffic signals', sig ? 'positions from OpenStreetMap; generic cycle' : 'positions arrive with the next data build', sig ? sig.length : '–');
     var cl = $('camList'); cl.innerHTML = '';
     cams.map(function (c) { return { c: c, r: reading(c.edge) }; }).sort(function (a, b) { return a.r.ratio - b.r.ratio; }).slice(0, 10).forEach(function (row) {
-      cl.appendChild(C.listButton(C.level(row.r.ratio), row.c.id + ' · ' + row.c.name, (row.c.stream ? 'Video stream' : 'Synthetic view') + ' · ' + num(row.r.flow) + ' veh/h',
+      cl.appendChild(C.listButton(C.level(row.r.ratio), row.c.id + ' · ' + row.c.name, (row.c.stream ? 'Video stream' : (CFG.devices.sampleVideos || []).length ? 'Sample footage' : 'Synthetic view') + ' · ' + num(row.r.flow) + ' veh/h',
         Math.round(row.r.speed) + '<small>km/h</small>', function () { C.flyTo(row.c.lon, row.c.lat, 15); openVideo(row.c); }));
     });
     var vl = $('vmsList'); vl.innerHTML = '';

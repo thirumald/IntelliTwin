@@ -70,6 +70,7 @@
   var map = null, overlay = null, popup = null, vectorBase = false;
   var state = { t: 8 * 3600, playing: true, rate: 1, scenario: 'base', mode: 'live', date: '', cars: true, buses: true, bld: false, acc: true, sites: true };
   var day = null, baseDay = null, ev = null, evCache = {}, calib = {}, fx = null;      // fx: what-if closure effect
+  var startFocus = '';
   var dirty = true, orbiting = false, layerProviders = [], minuteHooks = [], readyHooks = [];
   var carProgress = null, simDt = 0, prevT = 0, visibleEdges = [], visibleKey = '';
 
@@ -703,6 +704,7 @@
       occ: function (i) { return occAt(binOf(state.t), i) * 10 / SLOT; }, ratioAt: ratioAt, occAt: function (bin, i) { return occAt(bin, i) * 10 / SLOT; },
       kpiAt: kpiAt, roadStats: roadStats, eventTotals: eventTotals, showPopup: showPopup, flyTo: flyToPoint, locate: locate, listButton: listButton,
       fact: fact, barRow: barRow, addLayers: function (fn) { layerProviders.push(fn); }, onMinute: function (fn) { minuteHooks.push(fn); },
+      startFocus: function () { return startFocus; },
       onReady: function (fn) { if (meta && day) { fn(); } else { readyHooks.push(fn); } }, redraw: redraw, setClosure: setClosure,
       closure: function () { return fx; }, showTab: showTab, prettyDate: prettyDate, daySeriesKpi: function (id) { var d = id === state.scenario ? day : baseDay, bins = scenarioMeta(id).bins, out = []; for (var s = 0; s < SLOTS; s++) { out.push(bins[d.map[s]]); } return out; }
     },
@@ -779,6 +781,22 @@
     if (meta.buildings && meta.buildings.available) { $('bldRow').hidden = false; $('bldNote').textContent = '(' + num(meta.buildings.shown) + ' largest, heights estimated)'; }
     renderFacts();
     setMode('live');
+    // Start-up view from config.js: replay speed, full view, and the camera on the most congested road.
+    var st = CFG.start || {};
+    if (st.mode === 'replay') { setMode('hist'); setRate(st.rate || 30); setPlaying(true); }
+    if (st.fullView) { $('legend').classList.add('min'); $('sites').classList.add('min'); setPanel(false); }
+    if (typeof syncFull === 'function') { syncFull(); }
+    if (st.focus === 'most-congested' && map) {
+      var busy = roadStats(binOf(state.t), 60).filter(function (r) { return r.g.c <= 3; })[0] ||
+        roadStats(binOf(state.t), 0).sort(function (a, b) { return b.vehicles - a.vehicles; })[0];
+      if (busy) {
+        var gb = busy.g.bounds;
+        map.jumpTo({ center: [(gb[0][0] + gb[1][0]) / 2, (gb[0][1] + gb[1][1]) / 2], zoom: 14.6, pitch: 58 });
+        $('tilt').setAttribute('aria-pressed', 'true');
+        startFocus = busy.name;
+      }
+    }
+    if (st.orbit && map) { setOrbit(true); }
     readyHooks.forEach(function (fn) { fn(); });
     requestAnimationFrame(frame);
     if (meta.buses && meta.buses.available) {

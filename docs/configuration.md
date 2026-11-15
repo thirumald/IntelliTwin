@@ -8,6 +8,9 @@ All settings are in `config.js` at the repository root. Every value has a workin
 
 | Section | Key | Default | What it does |
 | --- | --- | --- | --- |
+| `start` | `mode`, `rate` | `'replay'`, 30 | Opening mode: `'replay'` plays today from the current time at this speed; `'live'` follows the clock at 1× |
+| | `fullView` | `true` | Open with the panel, legend and site shortcuts minimised |
+| | `focus`, `orbit` | `'most-congested'`, `true` | Open on the slowest busy road in a tilted 3D view, with the camera orbiting; `'all'` opens on the whole area |
 | `map` | `styleUrl` | OpenFreeMap dark style | MapLibre style for the vector base map. Use a licensed or self-hosted style in production |
 | | `rasterTiles`, `rasterAttribution` | OpenStreetMap standard tiles | Raster fallback if the vector style cannot load |
 | | `buildings3d` | `true` | Extrude buildings from the vector tiles |
@@ -16,12 +19,14 @@ All settings are in `config.js` at the repository root. Every value has a workin
 | `feeds` | `traffic` | `'synthetic'` | Traffic source. Only `'synthetic'` is implemented; see “Integration points” |
 | | `accidentsUrl` | `null` | Reserved for a real accident feed; not implemented yet |
 | `devices` | `cameras` | `[]` | Real CCTV cameras: `{ id, name, lon, lat, stream }` |
+| | `sampleVideos` | two Wikimedia Commons clips | Real traffic footage shown by cameras with no stream: `{ sources: [urls], credit }`. The clips are from Chicago and the camera window says they are not the camera's feed. `[]` uses the synthetic view only |
 | | `syntheticCameras`, `syntheticDetectors`, `syntheticSigns` | 40, 80, 15 | How many synthetic devices to place when no real ones are listed |
 | | `hlsScript` | `null` | URL of an HLS player script for browsers without native HLS |
 | | `signalCycleSeconds` | 90 | Generic signal cycle shown on the map |
 | `alerts` | `networkSpeedBelowKmh` | 40 | Alert when network speed falls below this |
 | | `roadRatioBelow`, `roadMinVehicles` | 0.3, 150 | Alert for a road below this share of its limit with at least this many vehicles |
 | | `seriousAccident`, `maxShown` | `true`, 12 | Alert on serious accidents; list length |
+| | `push`, `pushSeconds`, `pushMaxVisible` | `true`, 9, 4 | Push each new alert as an on-screen notification (and a browser notification when the user has allowed them and the page is in the background) |
 | `forecast` | `horizonsMin` | `[15, 30, 60]` | Forecast horizons |
 | `closure` | `radiusM`, `speedLoss`, `extraVehicles` | 1500, 0.4, 0.3 | The what-if closure estimate: affected radius, maximum speed loss, extra vehicles on nearby roads |
 | `auth` | `enabled`, `roles` | `true`, three roles | Demo sign-in and what each role may do |

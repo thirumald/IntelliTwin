@@ -17,6 +17,15 @@ window.INTELLITWIN_CONFIG = {
     buildings3d: true
   },
 
+  /* ---- Start-up view ------------------------------------------------------------------------- */
+  start: {
+    mode: 'replay',             // 'replay' = today from the current time at the rate below; 'live' = follow the clock
+    rate: 30,                   // playback speed: 1, 30, 120 or 600
+    fullView: true,             // open with the panel, legend and site shortcuts minimised
+    focus: 'most-congested',    // 'most-congested' = open on the slowest busy road; 'all' = whole study area
+    orbit: true                 // circle the camera around the opening view
+  },
+
   /* ---- Time ---------------------------------------------------------------------------------- */
   time: {
     timeZone: 'Asia/Dubai',
@@ -41,6 +50,17 @@ window.INTELLITWIN_CONFIG = {
     // playlist, or "iframe:https://…" for an embeddable player. Without a stream the camera shows a
     // synthetic view drawn from the simulated traffic at that location.
     cameras: [],
+    // Real traffic footage shown by cameras that have no stream of their own. These clips are filmed
+    // in Chicago, not Abu Dhabi, and are not the camera's feed; the camera window says so.
+    // Each entry: { sources: [urls tried in order], credit }. Set to [] to use the synthetic view only.
+    sampleVideos: [
+      { sources: ['https://upload.wikimedia.org/wikipedia/commons/transcoded/d/d5/Lake_Shore_Drive_Traffic.webm/Lake_Shore_Drive_Traffic.webm.480p.vp9.webm',
+          'https://commons.wikimedia.org/wiki/Special:FilePath/Lake_Shore_Drive_Traffic.webm'],
+        credit: '"Lake Shore Drive Traffic" by Sea Cow, CC BY-SA 4.0, Wikimedia Commons' },
+      { sources: ['https://upload.wikimedia.org/wikipedia/commons/transcoded/9/90/Jane_M._Byrne_Interchange_Traffic.webm/Jane_M._Byrne_Interchange_Traffic.webm.480p.vp9.webm',
+          'https://commons.wikimedia.org/wiki/Special:FilePath/Jane_M._Byrne_Interchange_Traffic.webm'],
+        credit: '"Jane M. Byrne Interchange Traffic" by Sea Cow, CC BY-SA 4.0, Wikimedia Commons' }
+    ],
     syntheticCameras: 40,
     syntheticDetectors: 80,
     syntheticSigns: 15,
@@ -55,7 +75,12 @@ window.INTELLITWIN_CONFIG = {
     roadRatioBelow: 0.3,             // road speed as a share of its limit …
     roadMinVehicles: 150,            // … with at least this many vehicles on it
     seriousAccident: true,
-    maxShown: 12
+    maxShown: 12,
+    // Push each new alert as an on-screen notification, and as a browser notification when the
+    // user has allowed them and the page is in the background.
+    push: true,
+    pushSeconds: 9,
+    pushMaxVisible: 4
   },
 
   /* ---- Forecast ------------------------------------------------------------------------------ */

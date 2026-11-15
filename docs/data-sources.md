@@ -55,6 +55,17 @@ Buses are **not** part of the traffic simulation. They follow the timetable and 
 | Fallback | If the vector style cannot be loaded within 8 seconds, the app switches to OpenStreetMap's standard raster tiles (`tile.openstreetmap.org`), dimmed for the dark theme |
 | Terms | OpenFreeMap is a free, donation-funded public service without a service guarantee. OpenStreetMap's own raster tile servers are for light use only: <https://operations.osmfoundation.org/policies/tiles/>. For a client-facing deployment, self-host the tiles or use a commercial provider and change the style address in `js/app.js` |
 
+## Camera footage (sample clips)
+
+Cameras without a stream of their own show real traffic footage as a stand-in. The clips are loaded at run time from Wikimedia Commons and are **not Abu Dhabi and not the camera's feed**; the camera window states this and shows the credit.
+
+| Clip | Author | Licence |
+| --- | --- | --- |
+| Lake Shore Drive Traffic (Chicago) | Sea Cow | CC BY-SA 4.0 |
+| Jane M. Byrne Interchange Traffic (Chicago) | Sea Cow | CC BY-SA 4.0 |
+
+The clips are WebM (VP9). If a browser cannot play them, or they cannot be reached within 12 seconds, the camera falls back to the synthetic view. Replace them in `config.js` (`devices.sampleVideos`), or give each camera its own `stream`.
+
 ## Branding
 
 The header shows the Presight logo from `assets/presight-logo.png` (496 × 142 px, white lettering on a transparent background, supplied by the project owner). It is displayed 34 px high, so it stays sharp on high-density screens. The logo is Presight's trademark; use it only where Presight has approved the branding. To change it, replace the file.

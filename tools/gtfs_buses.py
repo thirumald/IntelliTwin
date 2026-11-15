@@ -14,6 +14,9 @@ import config as C
 from build import write_paths
 
 
+UA = "Mozilla/5.0 (compatible; IntelliTwin-pipeline; +https://github.com/thirumald/IntelliTwin)"
+
+
 def _seconds(text):
     h, m, s = text.strip().split(":")
     return int(h) * 3600 + int(m) * 60 + int(s)
@@ -30,7 +33,7 @@ def _download(build_dir):
     path = os.path.join(build_dir, "gtfs.zip")
     if os.path.exists(path) and os.path.getsize(path) > 1000:
         return path, "local file"
-    last = None
+    last, api_error = None, ""
     urls = list(C.GTFS_URLS)
     token = os.environ.get("MOBILITY_DATABASE_REFRESH_TOKEN", "").strip()
     if token:
@@ -38,27 +41,28 @@ def _download(build_dir):
         try:
             req = urllib.request.Request(
                 "https://api.mobilitydatabase.org/v1/tokens", method="POST",
-                data=json.dumps({"refresh_token": token}).encode(), headers={"Content-Type": "application/json"})
+                data=json.dumps({"refresh_token": token}).encode(),
+                headers={"Content-Type": "application/json", "Accept": "application/json", "User-Agent": UA})
             access = json.load(urllib.request.urlopen(req, timeout=60))["access_token"]
             req = urllib.request.Request(
                 f"https://api.mobilitydatabase.org/v1/gtfs_feeds/{C.GTFS_FEED_ID}",
-                headers={"Authorization": f"Bearer {access}", "Accept": "application/json"})
+                headers={"Authorization": f"Bearer {access}", "Accept": "application/json", "User-Agent": UA})
             feed = json.load(urllib.request.urlopen(req, timeout=60))
             hosted = (feed.get("latest_dataset") or {}).get("hosted_url")
             producer = (feed.get("source_info") or {}).get("producer_url")
             urls = [u for u in (hosted, producer) if u] + urls
         except Exception as exc:
-            last = exc
+            api_error = f"Mobility Database API: {type(exc).__name__}: {exc}"
     for url in urls:
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "IntelliTwin-pipeline"})
+            req = urllib.request.Request(url, headers={"User-Agent": UA})
             with urllib.request.urlopen(req, timeout=120) as r, open(path, "wb") as f:
                 f.write(r.read())
             zipfile.ZipFile(path).namelist()
             return path, url
         except Exception as exc:
             last = exc
-    raise RuntimeError(f"GTFS download failed: {last}")
+    raise RuntimeError(f"GTFS download failed: {last}" + (f"; {api_error}" if api_error else "; no API token step error" if token else "; no API token set"))
 
 
 def build(out_file, build_dir):

@@ -62,7 +62,7 @@
     var a = CFG.alerts, out = [], k = C.kpiAt(state.scenario, state.t), fx = C.closure();
     if (fx) { out.push({ sev: 2, title: fx.name + ' closed (what-if)', sub: 'Estimated effect on roads within ' + (CFG.closure.radiusM / 1000) + ' km', go: function () { C.locate(fx.group); } }); }
     if (k.speed != null && k.speed < a.networkSpeedBelowKmh) {
-      out.push({ sev: 2, title: 'Network speed ' + Math.round(k.speed) + ' km/h', sub: 'Below the ' + a.networkSpeedBelowKmh + ' km/h threshold', go: function () { C.showTab('cong'); } });
+      out.push({ key: 'network-speed', sev: 2, title: 'Network speed ' + Math.round(k.speed) + ' km/h', sub: 'Below the ' + a.networkSpeedBelowKmh + ' km/h threshold', go: function () { C.showTab('cong'); } });
     }
     var e = C.eventTotals(state.scenario, state.t);
     if (e && a.seriousAccident) {
@@ -76,8 +76,34 @@
     out.sort(function (x, y) { return y.sev - x.sev; });
     return out;
   }
+  // Push: every alert that was not active a minute ago is shown as a notification.
+  var known = null, toastCount = 0;
+  function toast(al) {
+    var box = $('toasts');
+    while (box.children.length >= CFG.alerts.pushMaxVisible) { box.removeChild(box.firstChild); }
+    var t = document.createElement('button');
+    t.type = 'button'; t.className = 'toast sev' + al.sev;
+    t.innerHTML = '<strong></strong><span></span><em>' + clock(state.t) + ' · synthetic data</em>';
+    t.querySelector('strong').textContent = al.title; t.querySelector('span').textContent = al.sub;
+    t.addEventListener('click', function () { if (al.go) { al.go(); } t.remove(); });
+    box.appendChild(t);
+    setTimeout(function () { t.remove(); }, CFG.alerts.pushSeconds * 1000);
+    if (document.hidden && window.Notification && Notification.permission === 'granted') {
+      try { new Notification('IntelliTwin alert', { body: al.title + ' — ' + al.sub + ' (synthetic data)', tag: 'itw-' + (toastCount++ % 6) }); } catch (e) { /* notifications unavailable */ }
+    }
+  }
+  function pushNew(list) {
+    if (!CFG.alerts.push) { return; }
+    var now = {};
+    list.forEach(function (al) { now[al.key || al.title] = 1; });
+    var fresh = list.filter(function (al) { return !known || !known[al.key || al.title]; });
+    // On the first pass announce only the most severe few, so the page does not open under a pile of notices.
+    (known ? fresh : fresh.slice(0, 2)).slice(0, CFG.alerts.pushMaxVisible).forEach(toast);
+    known = now;
+  }
   function renderAlerts() {
     current = computeAlerts();
+    pushNew(current);
     $('alertCount').textContent = current.length;
     $('alertBtn').classList.toggle('hot', current.some(function (x) { return x.sev >= 2; }));
     $('alertNote').textContent = current.length ? current.length + ' active' : '';
@@ -176,6 +202,13 @@
     C.majorRoads().forEach(function (g) { var o = document.createElement('option'); o.value = o.textContent = g.name; $('closureRoad').appendChild(o); });
     $('closureRoad').addEventListener('change', function () { closeRoad($('closureRoad').value); });
     $('alertBtn').addEventListener('click', function () { C.showTab('dash'); });
+    var nb = $('notifyBtn');
+    if (!window.Notification || !CFG.alerts.push) { nb.hidden = true; }
+    else {
+      var label = function () { nb.textContent = Notification.permission === 'granted' ? 'Browser notifications on' : Notification.permission === 'denied' ? 'Notifications blocked in browser' : 'Enable browser notifications'; nb.disabled = Notification.permission !== 'default'; };
+      label();
+      nb.addEventListener('click', function () { Notification.requestPermission().then(label, label); });
+    }
     Array.prototype.forEach.call(document.querySelectorAll('[data-export]'), function (b) { b.addEventListener('click', function () { exportData(b.getAttribute('data-export')); }); });
     $('auditClear').addEventListener('click', function () { try { localStorage.removeItem(AUDIT_KEY); } catch (e) { /* ignore */ } renderAudit(); });
     $('repLabel').textContent = 'Synthetic data';

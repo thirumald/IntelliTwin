@@ -92,6 +92,9 @@
       <form id="chatForm" autocomplete="off"><input id="chatInput" type="text" placeholder="Ask about traffic, roads, alerts, accidents, fines…" aria-label="Question"><button class="btn" type="submit">Send</button></form>
     </section>
 
+    <!-- Pushed alerts -->
+    <div id="toasts" class="toasts" aria-live="assertive"></div>
+
     <!-- Camera video window -->
     <section id="video" class="video" hidden aria-label="Camera view">
       <header><div><strong id="videoTitle">Camera</strong><span id="videoSub"></span></div><button id="videoClose" class="btn small">Close</button></header>
@@ -102,8 +105,8 @@
     <div class="timeline" role="group" aria-label="Time controls">
       <button id="play" class="btn icon" aria-label="Pause">❚❚</button>
       <div class="seg" id="rate" role="radiogroup" aria-label="Playback speed">
-        <button data-rate="1" role="radio" aria-checked="true" class="on" title="Real time">1×</button>
-        <button data-rate="30" role="radio" aria-checked="false">30×</button>
+        <button data-rate="1" role="radio" aria-checked="false" title="Real time">1×</button>
+        <button data-rate="30" role="radio" aria-checked="true" class="on">30×</button>
         <button data-rate="120" role="radio" aria-checked="false">120×</button>
         <button data-rate="600" role="radio" aria-checked="false">600×</button>
       </div>
@@ -144,6 +147,7 @@
     <section class="card" data-tab="dash">
       <div class="card-head"><h2 data-i18n="alerts">Alerts</h2><span class="muted" id="alertNote"></span></div>
       <ol class="corridors" id="alertList"></ol>
+      <button type="button" class="btn small" id="notifyBtn" style="margin-top:10px">Enable browser notifications</button>
     </section>
 
     <section class="card" data-tab="dash">
