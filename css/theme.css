@@ -650,3 +650,10 @@ body.map-light .pop h3 { background: #e4efe7; border-bottom-color: #b9cdbf; }
 body.os-open .rail button[data-tab].on { background: none; color: var(--text-2); }
 body.os-open .rail button[data-tab].on::before { display: none; }
 body.os-open .rail #osintBtn { background: var(--accent-soft); color: var(--accent); }
+
+/* ---------------------------------------------------------------- 3D map options */
+.m3-box { margin: 4px 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.m3-box .cc-h { margin-top: 4px; }
+.field input[type=range] { width: 100%; accent-color: var(--accent); }
+.field em { font-style: normal; font-weight: 400; margin-left: 6px; }
+body.light-night .maplibregl-canvas { filter: brightness(.72) saturate(.85); }

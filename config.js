@@ -272,6 +272,10 @@ sampleVideos: [
 
   // OSINT menu: real public feeds (weather, rain and dust forecast, earthquakes, natural events, space weather, fire
   // detections, flights, vessels, satellites, global incidents). It opens as a page of its own with a 3D map.
+  // 3D map options for every 3D map: lighting ('auto' follows the clock, or 'morning', 'noon', 'evening', 'night') and
+  // the floor view (floors are estimated from building height, one every floorHeightM metres).
+  map3d: { lighting: 'auto', floorHeightM: 3.3, maxFloor: 60, floorColor: '#f2a900' },
+
   // Live camera wall (the camera button beside Scenario and layers). earthStream is an embeddable player address for
   // the "Earth from space" tile: NASA's live stream on YouTube by default; null hides the tile.
   cameraWall: { tilesPerPage: 12, earthStream: 'https://www.youtube.com/embed/live_stream?channel=UCLA_DiR1FfKNvjuUpBHmylQ&autoplay=1&mute=1' },

@@ -310,10 +310,12 @@
         $('themeBtn').textContent = theme === 'light' ? 'Dark map' : 'Light map';
         var seq = ++loadSeq, url = styleUrl(theme), done = false;
         vectorBase = false;
+        // If the vector map has not arrived after a while, say so and bring in the footprint buildings, but keep waiting:
+        // a slow connection or a busy device may still deliver it, and it is then used as soon as it loads.
         var fallback = function () {
           if (done || seq !== loadSeq) { return; }
-          done = true; vectorFailed = true; map.setStyle(rasterStyle(theme));
-          baseStatus('The vector map could not be loaded. Showing a plain background; buildings come from the footprint file.'); notice('Base map', 'The MapLibre vector map (OpenFreeMap) could not be loaded from this network. The twin’s own layers are shown on a plain background.');
+          vectorFailed = true;
+          baseStatus('The vector map has not loaded yet. Showing a plain background meanwhile.'); notice('Base map', 'The MapLibre vector map (OpenFreeMap) is slow to load or cannot be reached from this network. The twin’s own layers are shown on a plain background until it arrives.');
           if ($('showBld').checked) { $('showBld').dispatchEvent(new Event('change')); }
         };
         gNow = null; gCredit();
@@ -332,15 +334,15 @@
         }
         osmBase();
         function osmBase() {
-        if (!url) { fallback(); return; }
+        if (!url) { vectorFailed = true; map.setStyle(rasterStyle(theme)); return; }
         map.setStyle(url, { diff: false });                       // a full load, so the style's load event always fires
         var onStyle = function () {
           if (seq !== loadSeq || done) { map.off('style.load', onStyle); map.off('styledata', onStyle); return; }
           var st = map.getStyle(), hasVector = st && Object.keys(st.sources || {}).some(function (k) { return st.sources[k].type === 'vector'; });
-          if (hasVector) { done = true; map.off('style.load', onStyle); map.off('styledata', onStyle); vectorFailed = false; dress(); baseStatus(); }       // ignore the placeholder's own load event
+          if (hasVector) { var late = vectorFailed; done = true; map.off('style.load', onStyle); map.off('styledata', onStyle); vectorFailed = false; dress(); baseStatus(); if (late) { buildings = buildings || null; dirty = true; } }       // ignore the placeholder's own load event
         };
         map.on('style.load', onStyle); map.on('styledata', onStyle);
-        setTimeout(fallback, 8000);
+        setTimeout(fallback, 20000);
         dirty = true; roadLayer = null;
         }
       };
@@ -971,7 +973,7 @@
   /* ---------- public interface for the other modules ---------- */
   function clickIf(id, want) { if (($(id).getAttribute('aria-pressed') === 'true') !== want) { $(id).click(); } }
   window.IntelliTwin = {
-    state: state, getMap: function () { return map; },
+    state: state, getMap: function () { return map; }, getOverlay: function () { return overlay; },
     core: {
       CFG: CFG, $: $, num: num, pad: pad, clock: clock, level: level, LEVEL_LABEL: LEVEL_LABEL, CLASS_NAME: CLASS_NAME, SLOT: SLOT, SLOTS: SLOTS, DAY: DAY,
       meta: function () { return meta; }, edges: function () { return edges; }, names: function () { return names; }, groups: function () { return groups; },

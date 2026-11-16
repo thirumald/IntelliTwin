@@ -26,7 +26,7 @@
   }
   function setView(v, at) {
     view = v; var bb = (C.meta() || {}).bbox || [54.2, 24.2, 54.8, 24.7];
-    var cam = v === 'world' ? { center: at || [45, 22], zoom: at ? 4.2 : 1.7, pitch: at ? 35 : 0, bearing: 0 } : v === 'region' ? { center: [(bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2], zoom: 9.6, pitch: 55, bearing: -15 } :
+    var cam = v === 'world' ? { center: at || [45, 22], zoom: at ? 4.2 : 1.7, pitch: at ? 35 : 0, bearing: 0 } : v === 'region' ? { center: (C.sites()[0] ? [C.sites()[0][1], C.sites()[0][2]] : [(bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2]), zoom: 14.6, pitch: 60, bearing: -20 } :
       { center: M.centre || [54.6, 24.9], zoom: M.zoom || 6.4, pitch: M.pitch || 52, bearing: M.bearing || -12 };
     if (map) { map.flyTo(Object.assign({ duration: 1500 }, cam)); }
     Array.prototype.forEach.call($('opViews').children, function (b) { var on = b.getAttribute('data-v') === v; b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false'); });
@@ -36,7 +36,7 @@
     if (map) { return; }
     var light = document.body.classList.contains('map-light');
     map = new maplibregl.Map({ container: 'opMap', style: { version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': light ? '#dfeae2' : '#0a101c' } }] },
-      center: M.centre || [54.6, 24.9], zoom: M.zoom || 6.4, pitch: M.pitch || 52, bearing: M.bearing || -12, minZoom: 1, maxZoom: 16, maxPitch: 70, attributionControl: false, antialias: true });
+      center: M.centre || [54.6, 24.9], zoom: M.zoom || 6.4, pitch: M.pitch || 52, bearing: M.bearing || -12, minZoom: 1, maxZoom: 18, maxPitch: 70, attributionControl: false, antialias: true });
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
     overlay = new deck.MapboxOverlay({ interleaved: false, layers: [] }); map.addControl(overlay);
@@ -44,6 +44,8 @@
     var url = light ? CFG.map.styleUrlLight : CFG.map.styleUrl;
     if (url) { fetch(url).then(function (r) { return r.ok ? r.json() : null; }).then(function (st) { if (st && map) { map.setStyle(st, { diff: false }); } }).catch(function () { /* plain background */ }); }
     map.on('zoomend', draw); map.on('load', draw);
+    // 3D buildings, floors and lighting, shared with the main map.
+    if (T.map3d) { T.map3d.attach(map, function () { return overlay; }); }
   }
   function open() {
     if (isOpen) { return; }
@@ -64,6 +66,7 @@
     var grid = $('opGrid');
     Array.prototype.forEach.call(document.querySelectorAll('.panel section[data-tab="osint"]'), function (sec) { sec.removeAttribute('data-tab'); sec.hidden = false; grid.appendChild(sec); });
     var src = $('osSources'); if (src) { grid.appendChild(src); }
+    if (T.map3d) { var m3 = $('opM3'); m3.innerHTML = T.map3d.controls(); T.map3d.wire(m3); T.map3d.sync(); }
     $('osintBtn').addEventListener('click', function () { if (isOpen) { close(); } else { open(); } });
     $('opClose').addEventListener('click', close);
     $('opViews').addEventListener('click', function (e) { var b = e.target.closest('[data-v]'); if (b) { setView(b.getAttribute('data-v')); } });
@@ -71,5 +74,5 @@
     document.getElementById('tabs').addEventListener('click', function (e) { if (e.target.closest('[data-tab]')) { close(); } });
     document.addEventListener('change', function (e) { if (isOpen && e.target && e.target.type === 'checkbox') { setTimeout(draw, 50); } });
   });
-  T.osintPage = { open: open, close: close, isOpen: function () { return isOpen; }, world: function (at) { open(); setView('world', at); $('opMap').scrollIntoView({ block: 'start' }); } };
+  T.osintPage = { map: function () { return map; }, open: open, close: close, isOpen: function () { return isOpen; }, world: function (at) { open(); setView('world', at); $('opMap').scrollIntoView({ block: 'start' }); } };
 })();

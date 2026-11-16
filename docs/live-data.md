@@ -100,3 +100,26 @@ layer tree) opens a wall of camera views, 12 to a page, with search.
 
 Pop-ups have a solid background and border in both themes, sit above the 3D layer, are lifted clear of the symbol they
 belong to, and only one is open at a time.
+
+## 3D map: buildings, floors and lighting
+
+`js/map3d.js` gives every 3D map the same options: the main map and the map on
+the OSINT page.
+
+- **Buildings.** The OSINT map now draws the same 3D buildings as the main map.
+  "Open region" on the OSINT page flies to the selected city at street level.
+- **Floors.** A slider cuts all buildings at the chosen floor and marks that
+  floor with a coloured band. Floors are **estimated from building height**
+  (`map3d.floorHeightM`, 3.3 m by default). There are no real floor plans in the
+  data.
+- **Lighting.** "Follow the clock" places the sun from the simulation time and
+  the region's position; Morning, Noon, Evening and Night are fixed presets. The
+  light is applied to the buildings and to the 3D symbols drawn over them.
+
+The controls sit in the Scenario and layers pop-up (gear button on the map) and
+in the side panel of the OSINT page. Both maps share one setting. Defaults are
+in `config.js` under `map3d`.
+
+If the vector base map is slow to load, the app now keeps waiting and shows a
+notice after 20 seconds. Before, it gave up after 8 seconds and showed a plain
+background without buildings.
