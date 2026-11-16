@@ -11,7 +11,8 @@
   var T = window.IntelliTwin, C = T.core, CFG = C.CFG, $ = C.$, num = C.num, state = T.state;
   function ch() { return T.analytics.charts; }
   function vis(id) { var el = $(id); return el && !el.closest('[data-an-sec]').hidden; }
-  function tone(v, warn, bad) { var S = ch().STATUS; return v >= bad ? S.critical : v >= warn ? S.warning : S.good; }
+  // One hue for normal values; amber and red only where a limit is passed.
+  function tone(v, warn, bad) { var S = ch().STATUS; return v >= bad ? S.critical : v >= warn ? S.warning : ch().COL[0]; }
 
   function renderOps() {
     if (!vis('anOpsTiles')) { return; }

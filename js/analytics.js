@@ -10,10 +10,17 @@
   var T = window.IntelliTwin, C = T.core, CFG = C.CFG, $ = C.$, num = C.num, state = T.state;
   var A = CFG.analytics;
   // Categorical colours validated for the dark surface (blue, orange, aqua, yellow), assigned in this fixed order.
-  var COL = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#0ca30c'], INK = '#e8eef9', MUTED = '#8fa0bd', GRID = '#22314d';
+  // Categorical palette and status colours, stepped for the dark and the light surface. themeInk() fills them in.
+  var PAL = { dark: ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#0ca30c'], light: ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300'] };
+  var STAT = { dark: { good: '#2fae6f', warning: '#e5a823', serious: '#e8824f', critical: '#e05252' }, light: { good: '#218a4c', warning: '#d99200', serious: '#dd6b33', critical: '#c93a35' } };
+  var COL = PAL.dark.slice(), INK = '#e8eef9', MUTED = '#8fa0bd', GRID = '#22314d', TRACK = 'rgba(127,140,160,.16)';
   // Text and grid colours follow the page theme.
-  function themeInk() { var cs = getComputedStyle(document.body), g = function (n, f) { return cs.getPropertyValue(n).trim() || f; }; INK = g('--text', '#e8eef9'); MUTED = g('--muted', '#8fa0bd'); GRID = g('--line', '#22314d'); }
-  var STATUS = { good: '#0ca30c', warning: '#fab219', serious: '#ec835a', critical: '#d03b3b' };
+  var STATUS = { good: STAT.dark.good, warning: STAT.dark.warning, serious: STAT.dark.serious, critical: STAT.dark.critical };
+  function themeInk() {
+    var cs = getComputedStyle(document.body), g = function (n, f) { return cs.getPropertyValue(n).trim() || f; }, light = document.body.classList.contains('map-light'), mode = light ? 'light' : 'dark';
+    INK = g('--text', '#e8eef9'); MUTED = g('--muted', '#8fa0bd'); GRID = light ? 'rgba(20,40,30,.12)' : 'rgba(200,215,240,.13)'; TRACK = light ? 'rgba(20,40,30,.07)' : 'rgba(200,215,240,.09)';
+    PAL[mode].forEach(function (c, i) { COL[i] = c; }); Object.keys(STAT[mode]).forEach(function (k) { STATUS[k] = STAT[mode][k]; });
+  }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
   /* ================= charts (canvas, with hover) ================= */
@@ -80,8 +87,9 @@
       g.fillStyle = INK; g.textAlign = 'left'; g.textBaseline = 'middle';
       var lb = r.label; while (g.measureText(lb).width > labelW - 10 && lb.length > 4) { lb = lb.slice(0, -2); }
       g.fillText(lb === r.label ? lb : lb + '…', 0, yy + rowH / 2 - 2);
-      g.fillStyle = r.color || COL[0]; roundRect(g, labelW, yy + 5, bw, rowH - 12, 4); g.fill();
-      g.fillStyle = MUTED; g.fillText(num(r.value) + (o.unit ? ' ' + o.unit : ''), labelW + bw + 6, yy + rowH / 2 - 2);
+      g.fillStyle = TRACK; roundRect(g, labelW, yy + 8, c.w - labelW - pr, rowH - 18, 4); g.fill();
+      g.fillStyle = r.color || COL[0]; roundRect(g, labelW, yy + 8, bw, rowH - 18, 4); g.fill();
+      g.fillStyle = INK; g.textAlign = 'right'; g.fillText(num(r.value) + (o.unit ? ' ' + o.unit : ''), c.w - 2, yy + rowH / 2 - 2); g.textAlign = 'left';
     });
     cv.onmousemove = function (ev) {
       var r = cv.getBoundingClientRect(), i = Math.floor((ev.clientY - r.top - 4) / rowH), row = o.rows[i];
@@ -100,12 +108,12 @@
     function y(v) { return pt + (c.h - pt - pb) * (1 - v / top); }
     g.strokeStyle = GRID; g.fillStyle = MUTED; g.lineWidth = 1; g.textAlign = 'right'; g.textBaseline = 'middle';
     for (var k = 0; k <= 4; k++) { var v = top * k / 4; g.beginPath(); g.moveTo(pl, y(v)); g.lineTo(c.w - pr, y(v)); g.stroke(); g.fillText(num(v), pl - 6, y(v)); }
-    var band = (c.w - pl - pr) / n, bw = Math.min(34, (band - 10) / m - 2);
+    var band = (c.w - pl - pr) / n, bw = Math.max(3, Math.min(24, (band - 12) / m - 2));
     o.labels.forEach(function (lb, i) {
       g.fillStyle = MUTED; g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(lb, pl + band * (i + 0.5), c.h - pb + 6);
       o.series.forEach(function (s, j) {
         var bx = pl + band * (i + 0.5) - (m * (bw + 2)) / 2 + j * (bw + 2) + 1, by = y(s.values[i]);
-        g.fillStyle = s.color; roundRect(g, bx, by, bw, Math.max(1, c.h - pb - by), 4); g.fill();
+        g.fillStyle = s.color; roundRect(g, bx, by, bw, Math.max(1, c.h - pb - by), Math.min(3, bw / 2)); g.fill();
         if (m === 1) { g.fillStyle = MUTED; g.textBaseline = 'bottom'; g.fillText(num(s.values[i]), bx + bw / 2, by - 2); g.textBaseline = 'top'; }
       });
     });
@@ -120,9 +128,9 @@
   function pieChart(id, o) {
     var cv = $(id); if (!cv || !cv.clientWidth) { return; }
     var c = setup(cv), g = c.g, rows = o.rows.filter(function (r) { return r.value > 0; }), total = rows.reduce(function (s, r) { return s + r.value; }, 0) || 1;
-    var cx = c.w / 2, cy = c.h / 2, R = Math.min(c.w, c.h) / 2 - 6, r0 = R * 0.58, a = -Math.PI / 2, arcs = [];
+    var cx = c.w / 2, cy = c.h / 2, R = Math.min(c.w, c.h) / 2 - 6, r0 = R * 0.7, a = -Math.PI / 2, arcs = [];
     rows.forEach(function (r) {
-      var da = 2 * Math.PI * r.value / total, gap = rows.length > 1 ? 0.012 : 0;
+      var da = 2 * Math.PI * r.value / total, gap = rows.length > 1 ? 0.018 : 0;
       g.beginPath(); g.arc(cx, cy, R, a + gap, a + da - gap); g.arc(cx, cy, r0, a + da - gap, a + gap, true); g.closePath(); g.fillStyle = r.color; g.fill();
       arcs.push({ from: a, to: a + da, row: r }); a += da;
     });
@@ -519,7 +527,7 @@
       var sc = g.kpis.filter(function (k) { return k.target !== null && k.target !== undefined && k.status !== 'none'; }), okn = sc.filter(function (k) { return k.status === 'good'; }).length, p = sc.length ? Math.round(100 * okn / sc.length) : 0;
       return { label: g.goal, value: p, color: p >= 75 ? STATUS.good : p >= 40 ? STATUS.warning : STATUS.critical, sub: okn + ' of ' + sc.length + ' KPIs on target' };
     }) });
-    var gaps = []; goals.forEach(function (g) { g.kpis.forEach(function (k) { if (k.target !== null && k.target !== undefined && k.status === 'bad' && k.ratio && isFinite(k.ratio)) { gaps.push({ label: k.label, value: Math.round((k.ratio - 1) * 100), color: STATUS.critical, sub: g.goal + ' · ' + k.text + ' against a target of ' + num(k.target) }); } }); });
+    var gaps = []; goals.forEach(function (g) { g.kpis.forEach(function (k) { if (k.target !== null && k.target !== undefined && k.status === 'bad' && k.ratio && isFinite(k.ratio)) { gaps.push({ label: k.label, value: Math.round((k.ratio - 1) * 100), color: COL[0], sub: g.goal + ' · ' + k.text + ' against a target of ' + num(k.target) }); } }); });
     hbarChart('scGaps', { unit: '%', rows: gaps.sort(function (a, b) { return b.value - a.value; }).slice(0, 8) });
     $('scGapsCard').hidden = !gaps.length;
     $('scSummary').innerHTML = tile('KPIs on target', good + ' of ' + all, 'across ' + goals.length + ' goals', 'good') + tile('To watch', warn, 'within 25% of the target') + tile('Off target', bad, 'more than 25% from the target', bad ? 'bad' : '') +

@@ -1,4 +1,4 @@
-# Live data: NASA FIRMS, N2YO and aisstream.io
+# Live data and the OSINT menu
 
 Three real data sources are shown beside the simulation. They show the real world at the real time, whatever
 the twin's own clock shows.
@@ -48,3 +48,35 @@ attempt worked, when, and the error if it did not. A source that fails keeps its
 Scenario and layers opens from the small settings button at the bottom left of the map, just above the zoom buttons; it is no longer a card in the Dashboard panel. Its layers are grouped as a tree: Road, Public
 transport, Sea, Air and space, People and safety, City and environment. Each group and the whole tree has a tick box
 that selects or clears everything under it (a dash means some are on); a second click clears.
+
+## OSINT menu
+
+A separate **OSINT** menu section holds every real public feed. All of it is fetched by the Live data workflow.
+
+| Card | Source | Key |
+| --- | --- | --- |
+| Weather now | Open-Meteo, for the open region | none |
+| Rain forecast, 48 hours | Open-Meteo | none |
+| Sand and dust storm forecast, 48 hours | Open-Meteo air quality (CAMS dust), wind gusts and visibility | none |
+| Earthquakes, magnitude 4 and above within 2,000 km, 30 days | USGS | none |
+| Natural events, Red Sea to India, 60 days | NASA EONET | none |
+| Space weather (planetary K index) | NOAA SWPC | none |
+| Fire and heat detections | NASA FIRMS | `FIRMS_API_KEY` |
+| Live flights | Flightradar24 | `FLIGHT_RADAR` |
+| Live vessels (AIS) | aisstream.io | `AIS_API_KEY` |
+| Satellites overhead | N2YO | `N2YO_API_KEY` |
+| Sources | State and age of every feed | |
+
+- **Sand and dust risk** is worked out in the workflow from forecast dust (µg/m³), gusts and visibility: Low, Moderate,
+  High, Severe. It is indicative, not an official warning.
+- **Alerts.** A high dust risk in the next 24 hours, 5 mm or more of rain in the next 12 hours, visibility under 1 km,
+  and an earthquake of magnitude 5 or more within 800 km in the last day raise alerts. They follow the two tick boxes
+  "Weather, rain and dust warnings" and "Earthquake warnings" in Scenario and layers. Thresholds: `osint` in `config.js`.
+- **OSIRIS.** The feed list follows the open-source OSIRIS project (MIT licence). OSIRIS itself is a Next.js server
+  application, so it cannot run inside this static site; `osint.osirisUrl` sets the link shown in the Sources card
+  (the public demo by default; point it at your own instance if you host one).
+
+## Alerts follow the selections
+
+An alert is raised only while its layer is ticked in Scenario and layers. While the roads show live TomTom traffic the
+simulated congestion alerts are held back. The alert panel says how many alerts are not shown for that reason.

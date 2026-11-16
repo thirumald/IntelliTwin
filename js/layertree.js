@@ -17,7 +17,7 @@
     ['Sea', [['lyLvShip'], ['showSea', 'Ships and sea lanes <span class="muted">(synthetic)</span>']]],
     ['Air and space', [['lyLvAir'], ['showAir', 'Aircraft and flight paths <span class="muted">(synthetic)</span>'], ['lyLvSat']]],
     ['People and safety', [['showPeople'], ['showBases'], ['showCams'], ['showZones', 'Critical sites'], ['lyLvFire']]],
-    ['City and environment', [['showBld'], ['showEnv', 'Environment sensors <span class="muted">(synthetic)</span>']]]
+    ['City and environment', [['showBld'], ['showEnv', 'Environment sensors <span class="muted">(synthetic)</span>'], ['lyOsWx'], ['lyOsQk']]]
   ];
   var groups = [], allBox = null, busy = false, top = { last: null };
 

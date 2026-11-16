@@ -26,6 +26,8 @@
   function card(tab, id, title, notice, body) {
     var sec = document.createElement('section'); sec.className = 'card'; sec.id = id; sec.setAttribute('data-tab', tab); sec.hidden = true;
     sec.innerHTML = '<p class="notice">' + notice + '</p><div class="card-head"><h2>' + title + '</h2><span class="muted" id="' + id + 'Sub"></span></div>' + body;
+    var end = $('osSources');                                   // the live cards sit above the source list of the OSINT section
+    if (end) { end.parentNode.insertBefore(sec, end); return; }
     var all = document.querySelectorAll('.panel section[data-tab="' + tab + '"]'), last = all[all.length - 1];
     last.parentNode.insertBefore(sec, last.nextSibling);
   }
@@ -149,8 +151,7 @@
     });
   }
   function render() {
-    if (K.tabOpen('emg')) { renderFires(); }
-    if (K.tabOpen('bus')) { renderAir(); renderShips(); renderSats(); }
+    if (K.tabOpen('osint')) { renderFires(); renderAir(); renderShips(); renderSats(); }
     var f = $('lyLvFireN'), v = $('lyLvShipN'), s = $('lyLvSatN'), a = $('lyLvAirN');
     if (a) { a.textContent = air ? '(' + air.flights.length + ' at ' + uae(air.updated) + ')' : '(not available yet)'; }
     if (f) { f.textContent = fires ? '(' + num(fires.list.length) + ' in 2 days)' : '(not available yet)'; }
@@ -190,18 +191,18 @@
 
   C.onReady(function () {
     var REAL = '<strong>Real data.</strong> ';
-    card('emg', 'lvFire', 'Fire and heat detections', REAL + 'Heat seen by satellites in the last two days (NASA FIRMS, VIIRS). In the UAE most detections are gas flares and industrial sites, not wildfires. Shown at real time, not the twin’s clock.',
+    card('osint', 'lvFire', 'Fire and heat detections', REAL + 'Heat seen by satellites in the last two days (NASA FIRMS, VIIRS). In the UAE most detections are gas flares and industrial sites, not wildfires. Shown at real time, not the twin’s clock.',
       '<div class="kpis">' + tile('Detections, UAE', 'lvFireAll') + tile('In this region', 'lvFireHere') + tile('Strongest', 'lvFireTop') + tile('Latest, UAE time', 'lvFireLast') + '</div><p class="muted" id="lvFireNote"></p><ol class="corridors" id="lvFireList"></ol>');
-    card('bus', 'lvAir', 'Live flights', REAL + 'Aircraft flying to or from UAE airports, from Flightradar24. This is a snapshot: positions are as they were at the time shown and are refreshed a few times a day, because each returned flight is billed. Synthetic flights are no longer shown.',
+    card('osint', 'lvAir', 'Live flights', REAL + 'Aircraft flying to or from UAE airports, from Flightradar24. This is a snapshot: positions are as they were at the time shown and are refreshed a few times a day, because each returned flight is billed. Synthetic flights are no longer shown.',
       '<div class="kpis">' + tile('Aircraft in the air', 'lvAirAll') + tile('Arriving in the UAE', 'lvAirArr') + tile('Departing', 'lvAirDep') + tile('Snapshot, UAE time', 'lvAirAt') + '</div><p class="muted" id="lvAirNote"></p><div id="lvAirBars"></div><ol class="corridors" id="lvAirList"></ol>');
-    card('bus', 'lvShip', 'Live vessels (AIS)', REAL + 'Vessels heard on AIS (aisstream.io) in the last few hours, each at its last reported position. Coverage near the UAE depends on the receivers that feed aisstream.io and is thin, so this is not every ship. Shown at real time, not the twin’s clock.',
+    card('osint', 'lvShip', 'Live vessels (AIS)', REAL + 'Vessels heard on AIS (aisstream.io) in the last few hours, each at its last reported position. Coverage near the UAE depends on the receivers that feed aisstream.io and is thin, so this is not every ship. Shown at real time, not the twin’s clock.',
       '<div class="kpis">' + tile('Vessels heard, UAE waters', 'lvShipAll') + tile('Near this region', 'lvShipHere') + tile('Under way', 'lvShipMove') + tile('Tankers and cargo', 'lvShipTank') + '</div><div id="lvShipBars"></div><ol class="corridors" id="lvShipList"></ol>');
-    card('bus', 'lvSat', 'Satellites overhead', REAL + 'Orbits from N2YO; each position is computed in this browser for the present moment, so the satellites move as you watch. Elevation is measured from the centre of this region.',
+    card('osint', 'lvSat', 'Satellites overhead', REAL + 'Orbits from N2YO; each position is computed in this browser for the present moment, so the satellites move as you watch. Elevation is measured from the centre of this region.',
       '<div class="kpis">' + tile('Satellites tracked', 'lvSatAll') + tile('Above the horizon now', 'lvSatUp') + tile('Higher than 30°', 'lvSatHigh') + tile('Space Station', 'lvSatIss') + '</div><ol class="corridors" id="lvSatList"></ol>');
     [['lyLvFire', 'fires'], ['lyLvShip', 'vessels'], ['lyLvSat', 'sats'], ['lyLvAir', 'air']].forEach(function (p) { var el = $(p[0]); if (el) { el.checked = show[p[1]]; el.addEventListener('change', function () { show[p[1]] = el.checked; C.redraw(); }); } });
     load();
     setInterval(load, Math.max(2, L.refreshMin || 10) * 60000);
-    setInterval(function () { if (sats && (show.sats || K.tabOpen('bus'))) { tick(); if (K.tabOpen('bus')) { renderSats(); } if (show.sats) { C.redraw(); } } }, 2000);
+    setInterval(function () { if (sats && (show.sats || K.tabOpen('osint'))) { tick(); if (K.tabOpen('osint')) { renderSats(); } if (show.sats && satNow.some(function (s) { return inRegion(s.at, 6); })) { C.redraw(); } } }, 2000);
   });
   C.onTab(render);
   T.live = { flights: function () { return air; }, flightStats: flightStats, fires: function () { return fires; }, vessels: function () { return ships; }, satellites: function () { return satNow; }, status: function () { return status; }, reload: load };

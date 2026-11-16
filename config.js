@@ -270,6 +270,10 @@ sampleVideos: [
     fireAlertMw: 10              // raise an alert for a heat detection in the open region at or above this power
   },
 
+  // OSINT menu: real public feeds (weather, rain and dust forecast, earthquakes, natural events, space weather, fire
+  // detections, flights, vessels, satellites). Set osirisUrl to the address of an OSIRIS dashboard to show a link to it.
+  osint: { osirisUrl: 'https://osirisai.live/', rainAlertMm: 5, quakeAlertMag: 5, quakeAlertKm: 800 },
+
   // Critical smart-city use cases added to the existing sections (js/citycases.js). All figures are synthetic or screening estimates.
   cityCases: {
     venues: 10,                 // crowd safety: how many of the region's sites are watched as venues

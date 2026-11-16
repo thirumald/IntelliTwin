@@ -137,6 +137,10 @@
           out.push({ lay: 'lyLvFire', at: f.at, key: 'fire:' + f.at.join(',') + f.date + f.time, sev: f.frp >= 40 ? 3 : 2, title: 'Heat detection: ' + f.frp.toFixed(0) + ' MW', sub: f.date + ' ' + f.time + ' UTC · real, NASA FIRMS (often a gas flare or industrial site)', go: function () { C.flyTo(f.at[0], f.at[1], 12.5); } });
         });
     }
+    if (T.osint) {
+      T.osint.warnings().forEach(function (w) { out.push({ lay: 'lyOsWx', key: w.key, sev: w.sev, title: w.title, sub: w.sub, go: function () { C.showTab('osint'); } }); });
+      T.osint.quakeWarnings().forEach(function (w) { out.push({ lay: 'lyOsQk', key: w.key, sev: w.sev, title: w.title, sub: w.sub, go: function () { C.showTab('osint'); } }); });
+    }
     if (T.cityCases && T.cityCases.venues) {
       T.cityCases.venues().filter(function (v) { return v.lvl >= 2; }).slice(0, 3).forEach(function (v) {
         out.push({ lay: 'showPeople', at: v.at, key: 'crowd:' + v.n + ':' + v.lvl, sev: v.lvl >= 3 ? 3 : 2, title: (v.lvl >= 3 ? 'Over capacity: ' : 'Crowded: ') + v.name, sub: Math.round(v.load * 100) + '% of capacity · synthetic', go: function () { C.showTab('ped'); C.flyTo(v.at[0], v.at[1], 15.5); } });
