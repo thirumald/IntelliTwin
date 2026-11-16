@@ -5,6 +5,10 @@ Sources (each optional; a missing key or a failed call leaves the previous file 
   N2YO         orbital elements of satellites over the UAE   N2YO_API_KEY
   aisstream.io vessel positions (AIS) in UAE waters          AIS_API_KEY
   Flightradar24 aircraft to and from UAE airports           FLIGHT_RADAR (billed: 8 credits for each flight returned)
+  Open-Meteo   weather now, rain and dust forecast per region   no key
+  USGS         earthquakes within 1,500 km, last 7 days         no key
+  NASA EONET   open natural events around the Gulf              no key
+  NOAA SWPC    planetary K index (space weather)                no key
 
 The keys come from the environment (GitHub Actions secrets) and are never written to the output or the log.
 status.json records, for each source, whether the last attempt worked and when.
@@ -227,6 +231,95 @@ def flights(prev):
     return f"{len(rows)} flights (limit {limit}), about {credits} credits", credits
 
 
+PLACES = [("abudhabi", "Abu Dhabi", 54.37, 24.47), ("dubai", "Dubai", 55.27, 25.20), ("sharjah", "Sharjah", 55.40, 25.34), ("ajman", "Ajman", 55.45, 25.40),
+          ("ummalquwain", "Umm Al Quwain", 55.57, 25.56), ("rasalkhaimah", "Ras Al Khaimah", 55.96, 25.79), ("fujairah", "Fujairah", 56.33, 25.13), ("alain", "Al Ain", 55.74, 24.21)]
+
+
+def dust_risk(dust, gust, vis):
+    """Indicative sand and dust risk for one hour, from forecast dust (ug/m3), wind gusts (km/h) and visibility (m).
+    0 low, 1 moderate, 2 high, 3 severe. Not an official warning."""
+    dust, gust, vis = dust or 0, gust or 0, vis if vis is not None else 99999
+    if dust >= 500 or vis < 1000:
+        return 3
+    if dust >= 200 or (gust >= 50 and dust >= 100) or vis < 3000:
+        return 2
+    if dust >= 100 or gust >= 45:
+        return 1
+    return 0
+
+
+def weather():
+    lat = ",".join(str(p[3]) for p in PLACES)
+    lon = ",".join(str(p[2]) for p in PLACES)
+    wx = json.loads(get("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
+                        "&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m"
+                        "&hourly=temperature_2m,precipitation,precipitation_probability,wind_gusts_10m,visibility,weather_code&forecast_days=3&timezone=Asia%2FDubai"))
+    aq = json.loads(get("https://air-quality-api.open-meteo.com/v1/air-quality?latitude=" + lat + "&longitude=" + lon +
+                        "&current=dust,pm10,pm2_5,aerosol_optical_depth&hourly=dust,pm10,aerosol_optical_depth&forecast_days=3&timezone=Asia%2FDubai"))
+    wx = wx if isinstance(wx, list) else [wx]
+    aq = aq if isinstance(aq, list) else [aq]
+    if len(wx) != len(PLACES) or "hourly" not in wx[0]:
+        raise RuntimeError("Open-Meteo answered: " + scrub(json.dumps(wx)[:200]))
+    out = {}
+    for i, place in enumerate(PLACES):
+        w, a = wx[i], aq[i] if i < len(aq) else {}
+        h, ah, cur, acur = w["hourly"], a.get("hourly") or {}, w.get("current") or {}, a.get("current") or {}
+        times = h["time"]
+        start = next((k for k, t in enumerate(times) if t >= (cur.get("time") or "")[:13]), 0)
+        n = min(48, len(times) - start)
+        sl = lambda arr: [(None if v is None else round(v, 1)) for v in (arr or [])[start:start + n]]
+        dust = sl(ah.get("dust")) + [None] * n
+        gust, vis = sl(h.get("wind_gusts_10m")), sl(h.get("visibility"))
+        out[place[0]] = {"name": place[1], "now": {"time": cur.get("time"), "temp": cur.get("temperature_2m"), "feels": cur.get("apparent_temperature"), "humidity": cur.get("relative_humidity_2m"),
+                                                    "rain": cur.get("precipitation"), "code": cur.get("weather_code"), "wind": cur.get("wind_speed_10m"), "gust": cur.get("wind_gusts_10m"),
+                                                    "dir": cur.get("wind_direction_10m"), "vis": vis[0] if vis else None, "dust": acur.get("dust"), "pm10": acur.get("pm10"), "pm25": acur.get("pm2_5"),
+                                                    "aod": acur.get("aerosol_optical_depth")},
+                         "from": times[start], "temp": sl(h.get("temperature_2m")), "rain": sl(h.get("precipitation")), "rainProb": sl(h.get("precipitation_probability")),
+                         "gust": gust, "vis": vis, "code": (h.get("weather_code") or [])[start:start + n], "dust": dust[:n],
+                         "dustRisk": [dust_risk(dust[k], gust[k] if k < len(gust) else None, vis[k] if k < len(vis) else None) for k in range(n)]}
+    save("weather.json", {"updated": NOW, "source": "Open-Meteo weather and air-quality forecast (CC BY 4.0); dust from CAMS", "hours": 48, "places": out})
+    a = out["abudhabi"]
+    return f"{len(out)} places; Abu Dhabi now {a['now']['temp']} C, rain next 48 h {round(sum(v or 0 for v in a['rain']), 1)} mm, highest dust risk {max(a['dustRisk'])}"
+
+
+def quakes():
+    start = time.strftime("%Y-%m-%d", time.gmtime(time.time() - 7 * 86400))
+    d = json.loads(get(f"https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime={start}&minmagnitude=3&latitude=24.5&longitude=54.5&maxradiuskm=1500&orderby=time"))
+    rows = []
+    for f in d.get("features") or []:
+        p, c = f.get("properties") or {}, (f.get("geometry") or {}).get("coordinates") or [None, None, None]
+        if c[0] is None:
+            continue
+        rows.append({"mag": p.get("mag"), "place": p.get("place") or "", "time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime((p.get("time") or 0) / 1000)),
+                     "lon": round(c[0], 3), "lat": round(c[1], 3), "depth": round(c[2] or 0, 1), "url": p.get("url") or ""})
+    save("quakes.json", {"updated": NOW, "source": "USGS earthquake catalogue, magnitude 3 and above within 1,500 km of the UAE, last 7 days", "quakes": rows})
+    return f"{len(rows)} earthquakes" + (f", strongest M{max(r['mag'] or 0 for r in rows)}" if rows else "")
+
+
+def events():
+    d = json.loads(get("https://eonet.gsfc.nasa.gov/api/v3/events?status=open&days=30&bbox=40,40,70,10"))
+    rows = []
+    for e in d.get("events") or []:
+        g = (e.get("geometry") or [{}])[-1]
+        c = g.get("coordinates") or []
+        if g.get("type") != "Point" or len(c) < 2:
+            continue
+        rows.append({"title": e.get("title") or "", "kind": ((e.get("categories") or [{}])[0]).get("title") or "", "date": (g.get("date") or "")[:19] + "Z",
+                     "lon": round(c[0], 3), "lat": round(c[1], 3), "url": e.get("link") or ""})
+    save("events.json", {"updated": NOW, "source": "NASA EONET open natural events around the Gulf, last 30 days", "events": rows})
+    return f"{len(rows)} open natural events"
+
+
+def space():
+    d = json.loads(get("https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json"))
+    rows = [r for r in d[1:] if len(r) >= 2] if d and isinstance(d[0], list) else [[r.get("time_tag"), r.get("Kp")] for r in d]
+    series = [[r[0], float(r[1])] for r in rows[-24:] if r[1] not in (None, "")]
+    if not series:
+        raise RuntimeError("NOAA SWPC returned no K index")
+    save("space.json", {"updated": NOW, "source": "NOAA Space Weather Prediction Center, planetary K index (3-hourly)", "kp": series})
+    return f"Kp now {series[-1][1]}"
+
+
 status_path = os.path.join(OUT, "status.json")
 try:
     with open(status_path, encoding="utf-8") as f:
@@ -235,7 +328,7 @@ except (OSError, ValueError):
     status = {}
 status["checked"] = NOW
 failed = 0
-SOURCES = (("fires", fires), ("satellites", satellites), ("vessels", vessels), ("flights", flights))
+SOURCES = (("weather", weather), ("quakes", quakes), ("events", events), ("space", space), ("fires", fires), ("satellites", satellites), ("vessels", vessels), ("flights", flights))
 skipped = 0
 for name, fn in SOURCES:
     prev = status.get(name) or {}
