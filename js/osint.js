@@ -17,6 +17,7 @@
   function km(lon, lat) { var kx = 111.32 * Math.cos(centre[1] * Math.PI / 180); return Math.hypot((lon - centre[0]) * kx, (lat - centre[1]) * 110.57); }
   function ago(iso) { if (!iso) { return 'never'; } var m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 1 ? 'just now' : m < 90 ? m + ' min ago' : m < 2880 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' days ago'; }
   function set(id, html) { var el = $(id); if (el) { el.innerHTML = html; } }
+  var CEN = { abudhabi: [54.37, 24.47], dubai: [55.27, 25.20], sharjah: [55.40, 25.34], ajman: [55.45, 25.40], ummalquwain: [55.57, 25.56], rasalkhaimah: [55.96, 25.79], fujairah: [56.33, 25.13], alain: [55.74, 24.21] };
   function place() { return wx && (wx.places[C.region.id] || wx.places.abudhabi); }
   var WMO = { 0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Overcast', 45: 'Fog', 48: 'Fog', 51: 'Light drizzle', 53: 'Drizzle', 55: 'Heavy drizzle', 61: 'Light rain', 63: 'Rain', 65: 'Heavy rain', 80: 'Rain showers', 81: 'Rain showers', 82: 'Violent showers', 95: 'Thunderstorm', 96: 'Thunderstorm with hail', 99: 'Thunderstorm with hail' };
   var DIR = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], RISK = ['Low', 'Moderate', 'High', 'Severe'], RCOL = ['#2e9e6b', '#d99a00', '#e0662b', '#c7362f'];
@@ -98,8 +99,26 @@
     var bust = '?t=' + Math.floor(Date.now() / 120000), get = function (f) { return fetch(L.baseUrl + f + bust, { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }); };
     return Promise.all([get('weather.json'), get('quakes.json'), get('events.json'), get('space.json'), get('status.json'), get('world.json')]).then(function (r) {
       loaded = true; wx = r[0] || wx; quakes = r[1] || quakes; events = r[2] || events; space = r[3] || space; status = r[4] || status; world = r[5] || world; render(); C.redraw();
+      if (O.directWeather !== false && (!wx || Date.now() - Date.parse(wx.updated) > 75 * 60000)) { direct(); }
     });
   }
+  // The published weather file can be stale when the forecast service turns the workflow away. The same public service
+  // is then asked directly from this browser for the open region (no key), and the result is shaped the same way.
+  function risk(dust, gust, vis) { dust = dust || 0; gust = gust || 0; vis = vis == null ? 99999 : vis; return dust >= 500 || vis < 1000 ? 3 : dust >= 200 || (gust >= 50 && dust >= 100) || vis < 3000 ? 2 : dust >= 100 || gust >= 45 ? 1 : 0; }
+  function direct() {
+    var c = CEN[C.region.id] || centre, q = 'latitude=' + c[1] + '&longitude=' + c[0] + '&forecast_days=3&timezone=Asia%2FDubai';
+    var j = function (u) { return fetch(u).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }); };
+    return Promise.all([j('https://api.open-meteo.com/v1/forecast?' + q + '&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m&hourly=temperature_2m,precipitation,precipitation_probability,wind_gusts_10m,visibility,weather_code'),
+      j('https://air-quality-api.open-meteo.com/v1/air-quality?' + q + '&current=dust,pm10,pm2_5,aerosol_optical_depth&hourly=dust,pm10,aerosol_optical_depth')]).then(function (r) {
+      var w = r[0], a = r[1] || {}; if (!w || !w.hourly || !w.current) { return; }
+      var h = w.hourly, ah = a.hourly || {}, cur = w.current, ac = a.current || {}, start = Math.max(0, h.time.findIndex(function (t) { return t >= String(cur.time).slice(0, 13); })), n = Math.min(48, h.time.length - start);
+      var sl = function (arr) { return (arr || []).slice(start, start + n); }, dust = sl(ah.dust), gust = sl(h.wind_gusts_10m), vis = sl(h.visibility); while (dust.length < n) { dust.push(null); }
+      var p = { name: C.region.name, now: { time: cur.time, temp: cur.temperature_2m, feels: cur.apparent_temperature, humidity: cur.relative_humidity_2m, rain: cur.precipitation, code: cur.weather_code, wind: cur.wind_speed_10m, gust: cur.wind_gusts_10m, dir: cur.wind_direction_10m, vis: vis[0], dust: ac.dust, pm10: ac.pm10, pm25: ac.pm2_5, aod: ac.aerosol_optical_depth },
+        from: h.time[start], temp: sl(h.temperature_2m), rain: sl(h.precipitation), rainProb: sl(h.precipitation_probability), gust: gust, vis: vis, code: sl(h.weather_code), dust: dust, dustRisk: dust.map(function (d, k) { return risk(d, gust[k], vis[k]); }) };
+      wx = wx || { places: {} }; wx.places[C.region.id] = p; wx.updated = new Date().toISOString(); wx.direct = true; render(); C.redraw();
+    });
+  }
+
   // Warnings for the alert feed (js/ops.js), from the forecast for the open region.
   function warnings() {
     var out = [], p = place();
@@ -118,7 +137,6 @@
 
   C.onReady(function () { load(); setInterval(load, Math.max(2, L.refreshMin || 10) * 60000); });
   C.onTab(render);
-  var CEN = { abudhabi: [54.37, 24.47], dubai: [55.27, 25.20], sharjah: [55.40, 25.34], ajman: [55.45, 25.40], ummalquwain: [55.57, 25.56], rasalkhaimah: [55.96, 25.79], fujairah: [56.33, 25.13], alain: [55.74, 24.21] };
   function places() { return !wx ? null : Object.keys(wx.places).filter(function (k) { return CEN[k]; }).map(function (k) { return Object.assign({ id: k, lon: CEN[k][0], lat: CEN[k][1] }, wx.places[k]); }); }
   T.osint = { render: render, world: function () { return world ? world.incidents : null; }, weather: place, places: places, quakes: function () { return quakes ? quakes.quakes : null; }, events: function () { return events ? events.events : null; }, warnings: warnings, quakeWarnings: quakeWarnings, reload: load };
 })();

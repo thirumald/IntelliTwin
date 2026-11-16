@@ -278,7 +278,8 @@ sampleVideos: [
 
   // OSINT on the 3D map: the UAE-wide view and how far heights are scaled so that aircraft and satellites can be seen.
   osintMap: { centre: [54.6, 24.9], zoom: 6.4, pitch: 52, bearing: -12, minZoom: 4, heightExaggeration: 6, satelliteHeightScale: 0.2 },
-  osint: { rainAlertMm: 5, quakeAlertMag: 5, quakeAlertKm: 800 },
+  // directWeather: when the published weather file is older than 75 minutes, ask Open-Meteo from the browser instead.
+  osint: { rainAlertMm: 5, quakeAlertMag: 5, quakeAlertKm: 800, directWeather: true },
 
   // Critical smart-city use cases added to the existing sections (js/citycases.js). All figures are synthetic or screening estimates.
   cityCases: {
