@@ -6,5 +6,6 @@ cd "$(dirname "$0")"
 PY="${PYTHON:-python3}"
 if [ -f .env ]; then set -a; . ./.env; set +a; fi
 [ -f frontend/index.html ] || tools/fetch_frontend.sh
-if [ ! -x .venv/bin/uvicorn ]; then "$PY" -m venv .venv && .venv/bin/pip install -q -r requirements.txt; fi
+[ -x .venv/bin/pip ] || "$PY" -m venv .venv
+.venv/bin/pip install -q -r requirements.txt   # fast when nothing changed; picks up new requirements after a git pull
 exec .venv/bin/uvicorn intellitwin.app:app --host "${HOST:-0.0.0.0}" --port "${PORT:-8090}"
