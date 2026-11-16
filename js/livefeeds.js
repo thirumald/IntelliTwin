@@ -162,6 +162,7 @@
   /* ---------------------------------------------------------------- map */
   C.addLayers(function () {
     var out = [];
+    if (T.osintMap) { return out; }                 // js/osintmap.js draws the pictogram layers
     if (show.fires && fires) {
       out.push(new deck.ScatterplotLayer({ id: 'lv-fires', data: fires.list, pickable: true, radiusUnits: 'meters', radiusMinPixels: 4, radiusMaxPixels: 22, stroked: true, lineWidthUnits: 'pixels', getLineWidth: 1.5, getLineColor: [255, 235, 160],
         getPosition: function (f) { return f.at; }, getRadius: function (f) { return 250 + 60 * Math.sqrt(f.frp); }, getFillColor: function (f) { return f.frp >= 30 ? [235, 60, 40, 220] : f.frp >= 8 ? [245, 130, 40, 210] : [250, 190, 60, 200]; },

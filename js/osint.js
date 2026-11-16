@@ -87,7 +87,7 @@
   function load() {
     var bust = '?t=' + Math.floor(Date.now() / 120000), get = function (f) { return fetch(L.baseUrl + f + bust, { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }); };
     return Promise.all([get('weather.json'), get('quakes.json'), get('events.json'), get('space.json'), get('status.json')]).then(function (r) {
-      loaded = true; wx = r[0] || wx; quakes = r[1] || quakes; events = r[2] || events; space = r[3] || space; status = r[4] || status; render();
+      loaded = true; wx = r[0] || wx; quakes = r[1] || quakes; events = r[2] || events; space = r[3] || space; status = r[4] || status; render(); C.redraw();
     });
   }
   // Warnings for the alert feed (js/ops.js), from the forecast for the open region.
@@ -108,5 +108,7 @@
 
   C.onReady(function () { load(); setInterval(load, Math.max(2, L.refreshMin || 10) * 60000); });
   C.onTab(render);
-  T.osint = { weather: place, warnings: warnings, quakeWarnings: quakeWarnings, reload: load };
+  var CEN = { abudhabi: [54.37, 24.47], dubai: [55.27, 25.20], sharjah: [55.40, 25.34], ajman: [55.45, 25.40], ummalquwain: [55.57, 25.56], rasalkhaimah: [55.96, 25.79], fujairah: [56.33, 25.13], alain: [55.74, 24.21] };
+  function places() { return !wx ? null : Object.keys(wx.places).filter(function (k) { return CEN[k]; }).map(function (k) { return Object.assign({ id: k, lon: CEN[k][0], lat: CEN[k][1] }, wx.places[k]); }); }
+  T.osint = { weather: place, places: places, quakes: function () { return quakes ? quakes.quakes : null; }, events: function () { return events ? events.events : null; }, warnings: warnings, quakeWarnings: quakeWarnings, reload: load };
 })();

@@ -272,6 +272,8 @@ sampleVideos: [
 
   // OSINT menu: real public feeds (weather, rain and dust forecast, earthquakes, natural events, space weather, fire
   // detections, flights, vessels, satellites). Set osirisUrl to the address of an OSIRIS dashboard to show a link to it.
+  // OSINT on the 3D map: the UAE-wide view and how far heights are scaled so that aircraft and satellites can be seen.
+  osintMap: { centre: [54.6, 24.9], zoom: 6.4, pitch: 52, bearing: -12, minZoom: 4, heightExaggeration: 6, satelliteHeightScale: 0.2 },
   osint: { osirisUrl: 'https://osirisai.live/', rainAlertMm: 5, quakeAlertMag: 5, quakeAlertKm: 800 },
 
   // Critical smart-city use cases added to the existing sections (js/citycases.js). All figures are synthetic or screening estimates.
