@@ -643,10 +643,15 @@ body.map-light .pop h3 { background: #e4efe7; border-bottom-color: #b9cdbf; }
 .op-top { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; }
 .op-map { height: min(62vh, 620px); min-height: 340px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: var(--surface-2); }
 .op-side { margin: 0; align-self: start; }
-.op-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; align-items: start; }
-.op-grid .card { margin: 0; }
+.op-grid { display: block; columns: 340px; column-gap: 14px; }
+.op-grid .card { margin: 0 0 14px; break-inside: avoid; display: flex; flex-direction: column; }
+.op-grid .card > .card-head { order: -1; margin-bottom: 8px; }
+.op-grid .card > .notice { margin: 0 0 10px; }
+.op-grid .card > .kpis { margin-bottom: 8px; }
+.op-grid .card .corridors { max-height: 300px; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; margin-bottom: 0; scrollbar-width: thin; }
+.op-grid .card > :last-child { margin-bottom: 0; }
 .rail .rail-item.active { color: var(--accent); }
-@media (max-width: 900px) { .op-top { grid-template-columns: 1fr; } .op-map { height: 52vh; } .op-body { padding: 10px; } .op-grid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .op-top { grid-template-columns: 1fr; } .op-map { height: 52vh; } .op-body { padding: 10px; } .op-grid { columns: 1; } .op-grid .card .corridors { max-height: 260px; } }
 body.os-open .rail button[data-tab].on { background: none; color: var(--text-2); }
 body.os-open .rail button[data-tab].on::before { display: none; }
 body.os-open .rail #osintBtn { background: var(--accent-soft); color: var(--accent); }
