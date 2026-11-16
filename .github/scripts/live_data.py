@@ -47,7 +47,7 @@ def scrub(text):
     return text[:600]
 
 
-def get(url, timeout=45, tries=3):
+def get(url, timeout=30, tries=5):
     """GET with a few retries: public services sometimes time out or refuse a first connection."""
     req = urllib.request.Request(url, headers={"User-Agent": "IntelliTwin live data (github.com/thirumald/IntelliTwin)"})
     for attempt in range(tries):
