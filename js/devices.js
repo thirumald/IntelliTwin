@@ -58,6 +58,7 @@
 
   /* ---------- map layers ---------- */
   function hash01(i) { var h = Math.imul(i + 11, 2654435761) >>> 0; h ^= h >>> 15; return (h >>> 0) / 4294967296; }
+  var CAM_PIC = { url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="white"><rect x="2.5" y="7" width="12.5" height="10" rx="2"/><path d="M15.5 10.5l6-3.2v9.4l-6-3.2z"/></svg>'), width: 48, height: 48, mask: true };
   function layers(ctx) {
     var out = [];
     function dots(id, data, color, radius, onClick) {
@@ -71,8 +72,12 @@
     if (show.vms && ctx.zoom >= 10.5) { out.push(dots('signs', signs, [255, 190, 60, 245], 6, vmsPopup)); }
     if (show.cams) {
       // Cameras stay visible at every zoom and are drawn larger, with a white ring, so they are easy to click.
-      var camLayer = dots('cameras', cams, [70, 200, 255, 255], ctx.zoom >= 13 ? 9 : 7, camPopup);
+      // A round badge with a camera pictogram on it.
+      var camLayer = dots('cameras', cams, [22, 110, 190, 255], ctx.zoom >= 13 ? 11 : 8, camPopup);
       out.push(camLayer.clone({ getLineColor: [255, 255, 255], getLineWidth: 2 }));
+      if (deck.IconLayer && ctx.zoom >= 10.5) {
+        out.push(new deck.IconLayer({ id: 'camera-pics', data: cams, sizeUnits: 'pixels', getSize: ctx.zoom >= 13 ? 15 : 11, getIcon: function () { return CAM_PIC; }, getPosition: function (d) { return [d.lon, d.lat]; }, getColor: [255, 255, 255] }));
+      }
     }
     var sig = C.signals();
     if (show.sig && sig && ctx.zoom >= 13.5) {

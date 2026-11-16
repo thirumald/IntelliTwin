@@ -51,7 +51,8 @@ that selects or clears everything under it (a dash means some are on); a second 
 
 ## OSINT menu
 
-A separate **OSINT** menu section holds every real public feed. All of it is fetched by the Live data workflow.
+**OSINT** opens from the menu as a page of its own, like Analytics: a 3D map of the feeds (UAE 3D, World or the open
+region), a symbol legend, and the feed cards in a grid. All of it is real and fetched by the Live data workflow.
 
 | Card | Source | Key |
 | --- | --- | --- |
@@ -61,6 +62,7 @@ A separate **OSINT** menu section holds every real public feed. All of it is fet
 | Earthquakes, magnitude 4 and above within 2,000 km, 30 days | USGS | none |
 | Natural events, Red Sea to India, 60 days | NASA EONET | none |
 | Space weather (planetary K index) | NOAA SWPC | none |
+| Global incidents | USGS earthquakes of magnitude 5.5 and above, NASA EONET open events, GDACS orange and red alerts | none |
 | Fire and heat detections | NASA FIRMS | `FIRMS_API_KEY` |
 | Live flights | Flightradar24 | `FLIGHT_RADAR` |
 | Live vessels (AIS) | aisstream.io | `AIS_API_KEY` |
@@ -72,11 +74,29 @@ A separate **OSINT** menu section holds every real public feed. All of it is fet
 - **Alerts.** A high dust risk in the next 24 hours, 5 mm or more of rain in the next 12 hours, visibility under 1 km,
   and an earthquake of magnitude 5 or more within 800 km in the last day raise alerts. They follow the two tick boxes
   "Weather, rain and dust warnings" and "Earthquake warnings" in Scenario and layers. Thresholds: `osint` in `config.js`.
-- **OSIRIS.** The feed list follows the open-source OSIRIS project (MIT licence). OSIRIS itself is a Next.js server
-  application, so it cannot run inside this static site; `osint.osirisUrl` sets the link shown in the Sources card
-  (the public demo by default; point it at your own instance if you host one).
+- **On the map.** Each kind of data has its own symbol: flame on a column (fire, height = power), aircraft on a stem
+  (flight, height scaled), hull (vessel, colour = type), satellite on a stem, rings on a column (earthquake, height =
+  magnitude), weather symbol with temperature, triangle (incident, colour = alert level). The same symbols are drawn on
+  the main map at the scale of the open region.
 
 ## Alerts follow the selections
 
 An alert is raised only while its layer is ticked in Scenario and layers. While the roads show live TomTom traffic the
 simulated congestion alerts are held back. The alert panel says how many alerts are not shown for that reason.
+
+## Live camera wall
+
+The camera button beside the Scenario and layers button (and "Open the live camera wall" in the Cameras group of the
+layer tree) opens a wall of camera views, 12 to a page, with search.
+
+- 120 synthetic camera positions on the busiest roads (`devices.syntheticCameras`), each shown on the map with a camera
+  symbol.
+- Each tile plays one of the test clips in `devices.sampleVideos`: recorded footage from other cities, marked
+  "TEST VIDEO". It is not that camera's feed. A camera with a real `stream` in `devices.cameras` is marked "LIVE".
+- The first tile is "Earth from space": NASA's live stream on YouTube (`cameraWall.earthStream`; `null` hides it).
+- Only the page shown loads video; closing the wall stops everything.
+
+## Map pop-ups
+
+Pop-ups have a solid background and border in both themes, sit above the 3D layer, are lifted clear of the symbol they
+belong to, and only one is open at a time.

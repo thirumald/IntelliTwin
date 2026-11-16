@@ -15,7 +15,7 @@
   'use strict';
   var T = window.IntelliTwin, C = T.core, CFG = C.CFG, $ = C.$, num = C.num, K = T.kit;
   if (!T.live || !T.osint) { return; }
-  var M = CFG.osintMap || {}, EX = M.heightExaggeration || 6, wide = false, home = null;
+  var M = CFG.osintMap || {}, EX = M.heightExaggeration || 6;
   function svg(body) { return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="white">' + body + '</svg>'); }
   // Pictograms (white, tinted per data point).
   var PIC = {
@@ -38,93 +38,80 @@
   function shipType(c) { return c >= 80 && c < 90 ? 'Tanker' : c >= 70 && c < 80 ? 'Cargo' : c >= 60 && c < 70 ? 'Passenger' : c === 30 ? 'Fishing' : c ? 'Other' : 'Not reported'; }
   function wxPic(p) { var r = Math.max.apply(null, p.dustRisk.slice(0, 6)), c = p.now.code; return r >= 2 ? 'dust' : c >= 51 ? 'rain' : c >= 2 ? 'cloud' : 'sun'; }
 
-  function data() {
+  function data(view) {
     var f = T.live.fires(), a = T.live.flights(), v = T.live.vessels(), s = T.live.satellites() || [], q = T.osint.quakes(), e = T.osint.events(), w = T.osint.places();
-    return { fires: on('lyLvFire') && f ? f.list : [], flights: on('lyLvAir') && a ? a.flights : [], ships: on('lyLvShip') && v ? v.ships : [], sats: on('lyLvSat') ? s : [],
+    var g = T.osint.world();
+    return { world: on('lyOsQk') && g && view === 'world' ? g : [], fires: on('lyLvFire') && f ? f.list : [], flights: on('lyLvAir') && a ? a.flights : [], ships: on('lyLvShip') && v ? v.ships : [], sats: on('lyLvSat') ? s : [],
       quakes: on('lyOsQk') && q ? q : [], events: on('lyOsQk') && e ? e : [], wx: on('lyOsWx') && w ? w : [], air: a };
   }
-  function near(p, d) { var c = T.getMap().getCenter(); return Math.abs(p[0] - c.lng) < d && Math.abs(p[1] - c.lat) < d; }
+  function near(map, p, d) { var c = map.getCenter(); return Math.abs(p[0] - c.lng) < d && Math.abs(p[1] - c.lat) < d; }
 
-  C.addLayers(function () {
-    var D = data(), out = [], z = T.getMap().getZoom(), big = z < 9.5, isz = function (b) { return big ? b : b + 6; };
+  // The layers for one map. o.view: 'region', 'uae' or 'world'; o.pop(lngLat, title, rows, note) shows a pop-up on that map.
+  function layersFor(map, o) {
+    var D = data(o.view), out = [], z = map.getZoom(), big = z < 9.5, wide = o.view !== 'region', POP = o.pop, isz = function (b) { return big ? b : b + 6; };
     if (D.fires.length) {
       out.push(new deck.ColumnLayer({ id: 'os-fire-col', data: D.fires, diskResolution: 12, radius: big ? 1400 : 220, extruded: true, pickable: true, getPosition: function (f) { return f.at; },
-        getElevation: function (f) { return (big ? 900 : 120) * Math.sqrt(Math.max(1, f.frp)); }, getFillColor: function (f) { return (f.frp >= 30 ? COLR.fireHot : COLR.fire).concat(190); }, onClick: pickFire }));
+        getElevation: function (f) { return (big ? 900 : 120) * Math.sqrt(Math.max(1, f.frp)); }, getFillColor: function (f) { return (f.frp >= 30 ? COLR.fireHot : COLR.fire).concat(190); }, onClick: function (i) { pickFire(i, POP); } }));
       out.push(new deck.IconLayer({ id: 'os-fire', data: D.fires, pickable: true, sizeUnits: 'pixels', getSize: function (f) { return isz(f.frp >= 30 ? 26 : 20); }, getIcon: function () { return URLS.fire; },
-        getPosition: function (f) { return [f.at[0], f.at[1], (big ? 900 : 120) * Math.sqrt(Math.max(1, f.frp))]; }, getColor: function (f) { return f.frp >= 30 ? COLR.fireHot : COLR.fire; }, getPixelOffset: [0, -10], onClick: pickFire }));
+        getPosition: function (f) { return [f.at[0], f.at[1], (big ? 900 : 120) * Math.sqrt(Math.max(1, f.frp))]; }, getColor: function (f) { return f.frp >= 30 ? COLR.fireHot : COLR.fire; }, getPixelOffset: [0, -10], onClick: function (i) { pickFire(i, POP); } }));
     }
     if (D.ships.length) {
       out.push(new deck.IconLayer({ id: 'os-ship', data: D.ships, pickable: true, billboard: false, sizeUnits: 'pixels', getSize: function (s) { return isz(s.len >= 150 ? 26 : 20); }, getIcon: function () { return URLS.ship; },
-        getPosition: function (s) { return [s.lon, s.lat]; }, getAngle: function (s) { return -(s.cog || 0); }, getColor: function (s) { return SHIP[shipType(s.type)] || COLR.ship; }, onClick: pickShip }));
+        getPosition: function (s) { return [s.lon, s.lat]; }, getAngle: function (s) { return -(s.cog || 0); }, getColor: function (s) { return SHIP[shipType(s.type)] || COLR.ship; }, onClick: function (i) { pickShip(i, POP); } }));
     }
     if (D.flights.length) {
       var h = function (f) { return Math.max(300, f.alt * 0.3048 * EX); };
       out.push(new deck.LineLayer({ id: 'os-plane-stem', data: D.flights, widthUnits: 'pixels', getWidth: 1, getColor: [90, 110, 140, 120], getSourcePosition: function (f) { return [f.lon, f.lat, 0]; }, getTargetPosition: function (f) { return [f.lon, f.lat, h(f)]; } }));
       out.push(new deck.IconLayer({ id: 'os-plane', data: D.flights, pickable: true, billboard: false, sizeUnits: 'pixels', getSize: isz(28), getIcon: function () { return URLS.plane; },
-        getPosition: function (f) { return [f.lon, f.lat, h(f)]; }, getAngle: function (f) { return -f.track; }, getColor: function (f) { return /^(AUH|DXB|DWC|SHJ|RKT|FJR|AAN|AZI)$/.test(f.to) ? COLR.planeIn : COLR.plane; }, onClick: pickFlight }));
+        getPosition: function (f) { return [f.lon, f.lat, h(f)]; }, getAngle: function (f) { return -f.track; }, getColor: function (f) { return /^(AUH|DXB|DWC|SHJ|RKT|FJR|AAN|AZI)$/.test(f.to) ? COLR.planeIn : COLR.plane; }, onClick: function (i) { pickFlight(i, POP); } }));
       out.push(new deck.TextLayer({ id: 'os-plane-name', data: D.flights, getPosition: function (f) { return [f.lon, f.lat, h(f)]; }, getText: function (f) { return f.flight || f.call || ''; }, getSize: 11, getColor: [30, 45, 70], getPixelOffset: [0, -20],
         fontFamily: 'system-ui, sans-serif', fontWeight: 600, outlineWidth: 3, outlineColor: [255, 255, 255, 230], fontSettings: { sdf: true } }));
     }
-    var sats = D.sats.filter(function (s) { return near(s.at, big ? 25 : 6); });
+    var sats = D.sats.filter(function (s) { return near(map, s.at, big ? 25 : 6); });
     if (sats.length) {
       var sh = function (s) { return Math.min(s.alt, 2000) * 1000 * (M.satelliteHeightScale || 0.2); }, tick = Math.floor(Date.now() / 2000);
       out.push(new deck.LineLayer({ id: 'os-sat-stem', data: sats, widthUnits: 'pixels', getWidth: 1, getColor: [124, 92, 214, 110], getSourcePosition: function (s) { return [s.at[0], s.at[1], 0]; }, getTargetPosition: function (s) { return [s.at[0], s.at[1], sh(s)]; }, updateTriggers: { getSourcePosition: tick, getTargetPosition: tick } }));
-      out.push(new deck.IconLayer({ id: 'os-sat', data: sats, pickable: true, sizeUnits: 'pixels', getSize: isz(24), getIcon: function () { return URLS.sat; }, getPosition: function (s) { return [s.at[0], s.at[1], sh(s)]; }, getColor: COLR.sat, updateTriggers: { getPosition: tick }, onClick: pickSat }));
+      out.push(new deck.IconLayer({ id: 'os-sat', data: sats, pickable: true, sizeUnits: 'pixels', getSize: isz(24), getIcon: function () { return URLS.sat; }, getPosition: function (s) { return [s.at[0], s.at[1], sh(s)]; }, getColor: COLR.sat, updateTriggers: { getPosition: tick }, onClick: function (i) { pickSat(i, POP); } }));
       out.push(new deck.TextLayer({ id: 'os-sat-name', data: sats, getPosition: function (s) { return [s.at[0], s.at[1], sh(s)]; }, getText: function (s) { return s.name; }, getSize: 10.5, getColor: [80, 55, 160], getPixelOffset: [0, -18], fontFamily: 'system-ui, sans-serif',
         outlineWidth: 3, outlineColor: [255, 255, 255, 230], fontSettings: { sdf: true }, updateTriggers: { getPosition: tick } }));
     }
     if (D.quakes.length) {
       var qh = function (q) { return Math.max(0.3, (q.mag || 4) - 3.5) * 60000; };
-      out.push(new deck.ColumnLayer({ id: 'os-quake-col', data: D.quakes, diskResolution: 16, radius: 9000, extruded: true, pickable: true, getPosition: function (q) { return [q.lon, q.lat]; }, getElevation: qh, getFillColor: COLR.quake.concat(150), onClick: pickQuake }));
-      out.push(new deck.IconLayer({ id: 'os-quake', data: D.quakes, pickable: true, sizeUnits: 'pixels', getSize: function (q) { return 16 + 5 * Math.max(0, (q.mag || 4) - 4); }, getIcon: function () { return URLS.quake; }, getPosition: function (q) { return [q.lon, q.lat, qh(q)]; }, getColor: COLR.quake, onClick: pickQuake }));
+      out.push(new deck.ColumnLayer({ id: 'os-quake-col', data: D.quakes, diskResolution: 16, radius: 9000, extruded: true, pickable: true, getPosition: function (q) { return [q.lon, q.lat]; }, getElevation: qh, getFillColor: COLR.quake.concat(150), onClick: function (i) { pickQuake(i, POP); } }));
+      out.push(new deck.IconLayer({ id: 'os-quake', data: D.quakes, pickable: true, sizeUnits: 'pixels', getSize: function (q) { return 16 + 5 * Math.max(0, (q.mag || 4) - 4); }, getIcon: function () { return URLS.quake; }, getPosition: function (q) { return [q.lon, q.lat, qh(q)]; }, getColor: COLR.quake, onClick: function (i) { pickQuake(i, POP); } }));
     }
-    if (D.events.length) { out.push(new deck.IconLayer({ id: 'os-event', data: D.events, pickable: true, sizeUnits: 'pixels', getSize: 24, getIcon: function () { return URLS.event; }, getPosition: function (e) { return [e.lon, e.lat]; }, getColor: COLR.event, onClick: function (i) { if (i.object) { C.showPopup([i.object.lon, i.object.lat], i.object.title, [['Kind', i.object.kind], ['Date', i.object.date.slice(0, 10)]], 'NASA EONET'); } } })); }
+    if (D.events.length) { out.push(new deck.IconLayer({ id: 'os-event', data: D.events, pickable: true, sizeUnits: 'pixels', getSize: 24, getIcon: function () { return URLS.event; }, getPosition: function (e) { return [e.lon, e.lat]; }, getColor: COLR.event, onClick: function (i) { if (i.object) { POP([i.object.lon, i.object.lat], i.object.title, [['Kind', i.object.kind], ['Date', i.object.date.slice(0, 10)]], 'NASA EONET'); } } })); }
+    if (D.world.length) {
+      var LV = [[200, 150, 0], [200, 150, 0], [224, 102, 43], [199, 54, 47]];
+      out.push(new deck.ScatterplotLayer({ id: 'os-world-ring', data: D.world, radiusUnits: 'pixels', getRadius: function (x) { return 9 + 4 * x.level; }, stroked: true, filled: true, lineWidthUnits: 'pixels', getLineWidth: 1.5,
+        getPosition: function (x) { return [x.lon, x.lat]; }, getFillColor: function (x) { return LV[x.level].concat(60); }, getLineColor: function (x) { return LV[x.level]; } }));
+      out.push(new deck.IconLayer({ id: 'os-world', data: D.world, pickable: true, sizeUnits: 'pixels', getSize: function (x) { return 16 + 3 * x.level; }, getIcon: function (x) { return URLS[x.kind === 'Earthquake' ? 'quake' : /fire/i.test(x.kind) ? 'fire' : /storm|cyclone|flood/i.test(x.kind) ? 'rain' : /dust/i.test(x.kind) ? 'dust' : 'event']; },
+        getPosition: function (x) { return [x.lon, x.lat]; }, getColor: function (x) { return LV[x.level]; },
+        onClick: function (i) { var x = i.object; if (x) { POP([x.lon, x.lat], x.title || x.kind, [['Kind', x.kind], ['When', x.time.slice(0, 16).replace('T', ' ') + ' UTC'], ['Alert level', ['', 'Advisory', 'Orange', 'Red'][x.level]], ['Source', x.src]], 'Real data'); } } }));
+    }
     if (D.wx.length && (big || wide)) {
       out.push(new deck.IconLayer({ id: 'os-wx', data: D.wx, pickable: true, sizeUnits: 'pixels', getSize: 30, getIcon: function (p) { return URLS[wxPic(p)]; }, getPosition: function (p) { return [p.lon, p.lat, 4000]; },
-        getColor: function (p) { return wxPic(p) === 'dust' ? COLR.dust : wxPic(p) === 'sun' ? [230, 150, 0] : COLR.wx; }, onClick: pickWx }));
+        getColor: function (p) { return wxPic(p) === 'dust' ? COLR.dust : wxPic(p) === 'sun' ? [230, 150, 0] : COLR.wx; }, onClick: function (i) { pickWx(i, POP); } }));
       out.push(new deck.TextLayer({ id: 'os-wx-temp', data: D.wx, getPosition: function (p) { return [p.lon, p.lat, 4000]; }, getText: function (p) { return Math.round(p.now.temp) + '°'; }, getSize: 13, getColor: [25, 40, 60], getPixelOffset: [22, 0], fontFamily: 'system-ui, sans-serif', fontWeight: 700,
         outlineWidth: 3, outlineColor: [255, 255, 255, 235], fontSettings: { sdf: true }, characterSet: '0123456789°-' }));
     }
     return out;
-  });
+  }
   function uae(iso) { var d = new Date(Date.parse(iso) + 4 * 3600000); return C.pad(d.getUTCHours()) + ':' + C.pad(d.getUTCMinutes()); }
-  function pickFire(i) { var f = i.object; if (f) { C.showPopup(f.at, 'Heat detection', [['Radiative power', f.frp.toFixed(1) + ' MW'], ['Seen', f.date + ' ' + uae(f.iso) + ' UAE time'], ['Confidence', f.conf === 'h' ? 'High' : f.conf === 'l' ? 'Low' : 'Nominal']], 'Real detection, NASA FIRMS. Column height follows the power.'); } }
-  function pickShip(i) { var s = i.object; if (s) { C.showPopup([s.lon, s.lat], s.name || 'MMSI ' + s.mmsi, [['Type', shipType(s.type)], ['Speed', (s.sog || 0).toFixed(1) + ' knots'], ['Course', Math.round(s.cog || 0) + '°'], ['Destination', s.dest || 'not reported']], 'Real position from AIS'); } }
-  function pickFlight(i) { var f = i.object, a = T.live.flights(); if (f) { C.showPopup([f.lon, f.lat], (f.flight || f.call || 'Flight') + (f.airline ? ' · ' + f.airline : ''), [['Route', (f.from || '?') + ' → ' + (f.to || '?')], ['Aircraft', f.type || 'not reported'], ['Height', num(f.alt) + ' ft'], ['Ground speed', num(f.gs) + ' knots'], ['Position at', uae(a.updated) + ' UAE time']], 'Flightradar24 snapshot. Height on the map is exaggerated ' + EX + ' times.'); } }
-  function pickSat(i) { var s = i.object; if (s) { C.showPopup(s.at, s.name, [['Height', num(Math.round(s.alt)) + ' km'], ['Speed', num(Math.round(s.speed)) + ' km/h'], ['Elevation from here', Math.round(s.el) + '°']], 'Position computed now from N2YO orbits. Height on the map is scaled down.'); } }
-  function pickQuake(i) { var q = i.object; if (q) { C.showPopup([q.lon, q.lat], 'Earthquake M' + (q.mag || 0).toFixed(1), [['Place', q.place], ['Time', q.time.slice(0, 16).replace('T', ' ') + ' UTC'], ['Depth', q.depth + ' km']], 'USGS. Column height follows the magnitude.'); } }
-  function pickWx(i) { var p = i.object; if (p) { C.showPopup([p.lon, p.lat], p.name, [['Temperature', Math.round(p.now.temp) + ' °C'], ['Wind', Math.round(p.now.wind) + ' km/h, gusts ' + Math.round(p.now.gust)], ['Rain, next 48 h', p.rain.reduce(function (s, v) { return s + (v || 0); }, 0).toFixed(1) + ' mm'], ['Dust risk, next 6 h', ['Low', 'Moderate', 'High', 'Severe'][Math.max.apply(null, p.dustRisk.slice(0, 6))]]], 'Open-Meteo'); } }
+  function pickFire(i, POP) { var f = i.object; if (f) { POP(f.at, 'Heat detection', [['Radiative power', f.frp.toFixed(1) + ' MW'], ['Seen', f.date + ' ' + uae(f.iso) + ' UAE time'], ['Confidence', f.conf === 'h' ? 'High' : f.conf === 'l' ? 'Low' : 'Nominal']], 'Real detection, NASA FIRMS. Column height follows the power.'); } }
+  function pickShip(i, POP) { var s = i.object; if (s) { POP([s.lon, s.lat], s.name || 'MMSI ' + s.mmsi, [['Type', shipType(s.type)], ['Speed', (s.sog || 0).toFixed(1) + ' knots'], ['Course', Math.round(s.cog || 0) + '°'], ['Destination', s.dest || 'not reported']], 'Real position from AIS'); } }
+  function pickFlight(i, POP) { var f = i.object, a = T.live.flights(); if (f) { POP([f.lon, f.lat], (f.flight || f.call || 'Flight') + (f.airline ? ' · ' + f.airline : ''), [['Route', (f.from || '?') + ' → ' + (f.to || '?')], ['Aircraft', f.type || 'not reported'], ['Height', num(f.alt) + ' ft'], ['Ground speed', num(f.gs) + ' knots'], ['Position at', uae(a.updated) + ' UAE time']], 'Flightradar24 snapshot. Height on the map is exaggerated ' + EX + ' times.'); } }
+  function pickSat(i, POP) { var s = i.object; if (s) { POP(s.at, s.name, [['Height', num(Math.round(s.alt)) + ' km'], ['Speed', num(Math.round(s.speed)) + ' km/h'], ['Elevation from here', Math.round(s.el) + '°']], 'Position computed now from N2YO orbits. Height on the map is scaled down.'); } }
+  function pickQuake(i, POP) { var q = i.object; if (q) { POP([q.lon, q.lat], 'Earthquake M' + (q.mag || 0).toFixed(1), [['Place', q.place], ['Time', q.time.slice(0, 16).replace('T', ' ') + ' UTC'], ['Depth', q.depth + ' km']], 'USGS. Column height follows the magnitude.'); } }
+  function pickWx(i, POP) { var p = i.object; if (p) { POP([p.lon, p.lat], p.name, [['Temperature', Math.round(p.now.temp) + ' °C'], ['Wind', Math.round(p.now.wind) + ' km/h, gusts ' + Math.round(p.now.gust)], ['Rain, next 48 h', p.rain.reduce(function (s, v) { return s + (v || 0); }, 0).toFixed(1) + ' mm'], ['Dust risk, next 6 h', ['Low', 'Moderate', 'High', 'Severe'][Math.max.apply(null, p.dustRisk.slice(0, 6))]]], 'Open-Meteo'); } }
 
-  /* ---------------------------------------------------------------- the card: view buttons and a pictogram legend */
-  function setWide(on2) {
-    var map = T.getMap(); wide = on2;
-    if (on2) {
-      home = { center: map.getCenter(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() };
-      var ob = $('orbit'); if (ob && ob.getAttribute('aria-pressed') === 'true') { ob.click(); }
-      map.setMinZoom(M.minZoom || 4); map.flyTo({ center: M.centre || [54.6, 24.9], zoom: M.zoom || 6.4, pitch: M.pitch || 52, bearing: M.bearing || -12, duration: 1800 });
-    } else {
-      map.flyTo({ center: home ? home.center : map.getCenter(), zoom: home ? Math.max(home.zoom, 10) : 11, pitch: home ? home.pitch : 55, bearing: home ? home.bearing : 0, duration: 1600 });
-      map.once('moveend', function () { if (!wide) { map.setMinZoom(8); } });
-    }
-    $('osMapWide').hidden = on2; $('osMapBack').hidden = !on2; C.redraw();
+  // On the main map the OSINT symbols are drawn at the scale of the open region.
+  C.addLayers(function () { return layersFor(T.getMap(), { view: 'region', pop: C.showPopup }); });
+  function legendRows(view) {
+    var D = data(view || 'world');
+    return [['fire', COLR.fire, 'Fire or heat detection', D.fires.length, 'column height = power'], ['plane', COLR.plane, 'Flight', D.flights.length, 'green = arriving in the UAE'], ['ship', COLR.ship, 'Vessel', D.ships.length, 'colour = ship type'],
+      ['sat', COLR.sat, 'Satellite', D.sats.length, 'moves in real time'], ['quake', COLR.quake, 'Earthquake', D.quakes.length, 'column height = magnitude'], ['sun', [230, 150, 0], 'Weather', D.wx.length, 'sun, cloud, rain or dust'],
+      ['event', [199, 54, 47], 'Global incident', (T.osint.world() || []).length, 'world view; colour = alert level']].map(function (r) { return { pic: PIC[r[0]], color: r[1], name: r[2], count: r[3], note: r[4] }; });
   }
-  function legend() {
-    if (!K.tabOpen('osint')) { return; }
-    var D = data(), rows = [['fire', COLR.fire, 'Fire or heat detection', D.fires.length, 'column height = power'], ['plane', COLR.plane, 'Flight', D.flights.length, 'green = arriving in the UAE'], ['ship', COLR.ship, 'Vessel', D.ships.length, 'colour = ship type'],
-      ['sat', COLR.sat, 'Satellite', D.sats.length, 'moves in real time'], ['quake', COLR.quake, 'Earthquake', D.quakes.length, 'column height = magnitude'], ['sun', [230, 150, 0], 'Weather', D.wx.length, 'sun, cloud, rain or dust'], ['event', COLR.event, 'Natural event', D.events.length, '']];
-    $('osMapLegend').innerHTML = rows.map(function (r) {
-      return '<div class="os-leg"><svg viewBox="0 0 24 24" width="22" height="22" fill="rgb(' + r[1].join(',') + ')" aria-hidden="true">' + PIC[r[0]] + '</svg><span><strong>' + r[2] + '</strong>' + (r[4] ? '<em>' + r[4] + '</em>' : '') + '</span><b>' + num(r[3]) + '</b></div>';
-    }).join('');
-  }
-  C.onReady(function () {
-    var sec = document.createElement('section'); sec.className = 'card'; sec.id = 'osMapCard'; sec.setAttribute('data-tab', 'osint'); sec.hidden = true;
-    sec.innerHTML = '<div class="card-head"><h2>OSINT on the 3D map</h2><span class="muted">Real data</span></div><div class="search-row"><button type="button" class="btn small" id="osMapWide">UAE-wide 3D view</button><button type="button" class="btn small" id="osMapBack" hidden>Back to the region</button></div>' +
-      '<div id="osMapLegend" class="os-legend"></div><p class="muted">Each kind of data has its own symbol. Tap a symbol on the map for its details. Flight and satellite heights are scaled so they can be seen.</p>';
-    var first = document.querySelector('.panel section[data-tab="osint"]'); first.parentNode.insertBefore(sec, first);
-    $('osMapWide').addEventListener('click', function () { setWide(true); }); $('osMapBack').addEventListener('click', function () { setWide(false); });
-    setInterval(legend, 5000);
-    T.getMap().on('zoomend', C.redraw);
-  });
-  C.onTab(function (id) { legend(); if (id !== 'osint' && wide) { setWide(false); } });
-  T.osintMap = { wide: setWide, isWide: function () { return wide; } };
+  T.osintMap = { layersFor: layersFor, legend: legendRows };
 })();

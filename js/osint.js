@@ -7,13 +7,12 @@
  *   Fire detections, flights, vessels, satellites        added by js/livefeeds.js
  *
  * Everything here is real and is read from the files the "Live data" workflow publishes; nothing is simulated.
- * The feed list follows the open-source OSIRIS project (MIT), whose own dashboard can be linked from osint.osirisUrl.
  */
 (function () {
   'use strict';
   var T = window.IntelliTwin, C = T.core, CFG = C.CFG, $ = C.$, num = C.num, K = T.kit, esc = K.esc;
   var L = CFG.live || {}, O = CFG.osint || {}; if (L.enabled === false || !L.baseUrl) { return; }
-  var wx = null, quakes = null, events = null, space = null, status = {}, loaded = false;
+  var wx = null, quakes = null, events = null, space = null, world = null, status = {}, loaded = false;
   var bb = (C.meta() || {}).bbox || [54.2, 24.2, 54.8, 24.7], centre = [(bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2];
   function km(lon, lat) { var kx = 111.32 * Math.cos(centre[1] * Math.PI / 180); return Math.hypot((lon - centre[0]) * kx, (lat - centre[1]) * 110.57); }
   function ago(iso) { if (!iso) { return 'never'; } var m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 1 ? 'just now' : m < 90 ? m + ' min ago' : m < 2880 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' days ago'; }
@@ -78,16 +77,27 @@
     $('osSpNote').textContent = lvl >= 2 ? 'A geomagnetic storm is in progress: satellite positioning and HF radio can be degraded.' : 'No geomagnetic storm. Satellite positioning and radio are unaffected.';
   }
   function renderSources() {
-    var names = { weather: 'Open-Meteo weather and dust', quakes: 'USGS earthquakes', events: 'NASA EONET natural events', space: 'NOAA space weather', fires: 'NASA FIRMS fire detections', flights: 'Flightradar24 flights', vessels: 'aisstream.io vessels', satellites: 'N2YO satellites' };
+    var names = { world: 'Global incidents (USGS, EONET, GDACS)', weather: 'Open-Meteo weather and dust', quakes: 'USGS earthquakes', events: 'NASA EONET natural events', space: 'NOAA space weather', fires: 'NASA FIRMS fire detections', flights: 'Flightradar24 flights', vessels: 'aisstream.io vessels', satellites: 'N2YO satellites' };
     $('osSrcTable').innerHTML = Object.keys(names).map(function (k) { var s = status[k] || {}; return C.fact(names[k], s.ok === false ? 'last attempt failed' : s.note ? String(s.note).slice(0, 70) : '', s.ok ? 'Updated ' + ago(s.updated) : s.updated ? 'Stale: ' + ago(s.updated) : 'No data'); }).join('');
-    var u = O.osirisUrl, a = $('osOsiris'); a.hidden = !u; if (u) { a.href = u; }
   }
-  function render() { if (!K.tabOpen('osint')) { return; } renderWx(); renderQuakes(); renderEvents(); renderSpace(); renderSources(); }
+  function renderWorld() {
+    $('osWdSub').textContent = world ? 'Updated ' + ago(world.updated) : loaded ? 'Not available yet' : 'Loading…'; if (!world) { return; }
+    var w = world.incidents, kinds = {};
+    w.forEach(function (x) { kinds[x.kind] = (kinds[x.kind] || 0) + 1; });
+    set('osWdN', num(w.length)); set('osWdRed', w.filter(function (x) { return x.level >= 3; }).length); set('osWdQk', w.filter(function (x) { return x.kind === 'Earthquake'; }).length); set('osWdKinds', Object.keys(kinds).length);
+    var mx = Math.max.apply(null, Object.keys(kinds).map(function (k) { return kinds[k]; }).concat([1]));
+    $('osWdBars').innerHTML = Object.keys(kinds).sort(function (a, b) { return kinds[b] - kinds[a]; }).slice(0, 7).map(function (k) { return C.barRow(esc(k), '', kinds[k], kinds[k] / mx); }).join('');
+    var ol = $('osWdList'); ol.innerHTML = '';
+    w.slice(0, 10).forEach(function (x) {
+      ol.appendChild(C.listButton(x.level >= 3 ? 'severe' : x.level === 2 ? 'heavy' : 'moderate', x.title || x.kind, x.kind + (x.country ? ' · ' + (x.country.split(',').length > 3 ? x.country.split(',').slice(0, 3).join(',') + ' and ' + (x.country.split(',').length - 3) + ' more' : x.country) : '') + ' · ' + ago(x.time) + ' · ' + num(Math.round(km(x.lon, x.lat))) + ' km from here · ' + x.src, '', function () { if (T.osintPage) { T.osintPage.world([x.lon, x.lat]); } }));
+    });
+  }
+  function render() { if (!K.tabOpen('osint')) { return; } renderWx(); renderQuakes(); renderEvents(); renderSpace(); renderWorld(); renderSources(); }
 
   function load() {
     var bust = '?t=' + Math.floor(Date.now() / 120000), get = function (f) { return fetch(L.baseUrl + f + bust, { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }); };
-    return Promise.all([get('weather.json'), get('quakes.json'), get('events.json'), get('space.json'), get('status.json')]).then(function (r) {
-      loaded = true; wx = r[0] || wx; quakes = r[1] || quakes; events = r[2] || events; space = r[3] || space; status = r[4] || status; render(); C.redraw();
+    return Promise.all([get('weather.json'), get('quakes.json'), get('events.json'), get('space.json'), get('status.json'), get('world.json')]).then(function (r) {
+      loaded = true; wx = r[0] || wx; quakes = r[1] || quakes; events = r[2] || events; space = r[3] || space; status = r[4] || status; world = r[5] || world; render(); C.redraw();
     });
   }
   // Warnings for the alert feed (js/ops.js), from the forecast for the open region.
@@ -110,5 +120,5 @@
   C.onTab(render);
   var CEN = { abudhabi: [54.37, 24.47], dubai: [55.27, 25.20], sharjah: [55.40, 25.34], ajman: [55.45, 25.40], ummalquwain: [55.57, 25.56], rasalkhaimah: [55.96, 25.79], fujairah: [56.33, 25.13], alain: [55.74, 24.21] };
   function places() { return !wx ? null : Object.keys(wx.places).filter(function (k) { return CEN[k]; }).map(function (k) { return Object.assign({ id: k, lon: CEN[k][0], lat: CEN[k][1] }, wx.places[k]); }); }
-  T.osint = { weather: place, places: places, quakes: function () { return quakes ? quakes.quakes : null; }, events: function () { return events ? events.events : null; }, warnings: warnings, quakeWarnings: quakeWarnings, reload: load };
+  T.osint = { render: render, world: function () { return world ? world.incidents : null; }, weather: place, places: places, quakes: function () { return quakes ? quakes.quakes : null; }, events: function () { return events ? events.events : null; }, warnings: warnings, quakeWarnings: quakeWarnings, reload: load };
 })();

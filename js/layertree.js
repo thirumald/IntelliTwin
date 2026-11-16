@@ -12,11 +12,12 @@
   var T = window.IntelliTwin, C = T.core, $ = C.$;
   // [group, [[tick box id, label for a linked copy (only for boxes that live in another section)], …]]
   var TREE = [
-    ['Road', [['showCars'], ['showSig'], ['lyTtFlow'], ['lyTtInc'], ['showAcc'], ['showSites'], ['showVms'], ['showDet'], ['showRail'], ['showCycle'], ['lyTtEv'], ['lyTtFuel']]],
+    ['Road', [['showCars'], ['showSig'], ['lyTtFlow'], ['lyTtInc'], ['showAcc'], ['showVms'], ['showDet'], ['showRail'], ['showCycle'], ['lyTtEv'], ['lyTtFuel']]],
     ['Public transport', [['showSynBuses', 'Buses <span class="muted">(synthetic)</span>'], ['showTaxis', 'Taxis <span class="muted">(synthetic)</span>'], ['showShuttles', 'Shuttles <span class="muted">(synthetic)</span>']]],
     ['Sea', [['lyLvShip'], ['showSea', 'Ships and sea lanes <span class="muted">(synthetic)</span>']]],
     ['Air and space', [['lyLvAir'], ['showAir', 'Aircraft and flight paths <span class="muted">(synthetic)</span>'], ['lyLvSat']]],
-    ['People and safety', [['showPeople'], ['showBases'], ['showCams'], ['showZones', 'Critical sites'], ['lyLvFire']]],
+    ['Cameras', [['showCams'], ['showSites'], ['lyCamWallRow']]],
+    ['People and safety', [['showPeople'], ['showBases'], ['showZones', 'Critical sites'], ['lyLvFire']]],
     ['City and environment', [['showBld'], ['showEnv', 'Environment sensors <span class="muted">(synthetic)</span>'], ['lyOsWx'], ['lyOsQk']]]
   ];
   var groups = [], allBox = null, busy = false, top = { last: null };
@@ -64,6 +65,7 @@
       var boxes = [], body = document.createElement('div'); body.className = 'ly-items'; body.setAttribute('role', 'group');
       def[1].forEach(function (it) {
         var orig = $(it[0]); if (!orig) { return; }
+        if (orig.tagName !== 'INPUT') { body.appendChild(orig); return; }      // a plain row (a button), not a layer
         if (it[1]) { var lab = link(orig, it[1]); body.appendChild(lab); boxes.push(lab.firstChild); }
         else { body.appendChild(rowOf(orig)); boxes.push(orig); }
       });

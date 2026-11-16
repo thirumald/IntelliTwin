@@ -206,5 +206,5 @@
     setInterval(function () { if (sats && (show.sats || K.tabOpen('osint'))) { tick(); if (K.tabOpen('osint')) { renderSats(); } if (show.sats && satNow.some(function (s) { return inRegion(s.at, 6); })) { C.redraw(); } } }, 2000);
   });
   C.onTab(render);
-  T.live = { flights: function () { return air; }, flightStats: flightStats, fires: function () { return fires; }, vessels: function () { return ships; }, satellites: function () { return satNow; }, status: function () { return status; }, reload: load };
+  T.live = { render: render, flights: function () { return air; }, flightStats: flightStats, fires: function () { return fires; }, vessels: function () { return ships; }, satellites: function () { return satNow; }, status: function () { return status; }, reload: load };
 })();

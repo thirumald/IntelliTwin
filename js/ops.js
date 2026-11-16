@@ -138,8 +138,8 @@
         });
     }
     if (T.osint) {
-      T.osint.warnings().forEach(function (w) { out.push({ lay: 'lyOsWx', key: w.key, sev: w.sev, title: w.title, sub: w.sub, go: function () { C.showTab('osint'); } }); });
-      T.osint.quakeWarnings().forEach(function (w) { out.push({ lay: 'lyOsQk', key: w.key, sev: w.sev, title: w.title, sub: w.sub, go: function () { C.showTab('osint'); } }); });
+      T.osint.warnings().forEach(function (w) { out.push({ lay: 'lyOsWx', key: w.key, sev: w.sev, title: w.title, sub: w.sub, go: function () { if (T.osintPage) { T.osintPage.open(); } } }); });
+      T.osint.quakeWarnings().forEach(function (w) { out.push({ lay: 'lyOsQk', key: w.key, sev: w.sev, title: w.title, sub: w.sub, go: function () { if (T.osintPage) { T.osintPage.open(); } } }); });
     }
     if (T.cityCases && T.cityCases.venues) {
       T.cityCases.venues().filter(function (v) { return v.lvl >= 2; }).slice(0, 3).forEach(function (v) {

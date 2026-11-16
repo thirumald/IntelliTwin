@@ -153,7 +153,7 @@ sampleVideos: [
       { kind: 'City street', classes: [2, 3, 4], sources: ['assets/video/city-street.mp4', 'https://commons.wikimedia.org/wiki/Special:FilePath/Causeway_Bay_Time-lapse_videos_(afternoon).ogv'],
         credit: '"Causeway Bay Time-lapse videos (afternoon)" (Hong Kong), CC0, Wikimedia Commons' }
     ],
-    syntheticCameras: 40,
+    syntheticCameras: 120,
     syntheticDetectors: 80,
     syntheticSigns: 15,
     // Script that adds HLS playback to browsers without native support (for example a hosted hls.js).
@@ -271,10 +271,14 @@ sampleVideos: [
   },
 
   // OSINT menu: real public feeds (weather, rain and dust forecast, earthquakes, natural events, space weather, fire
-  // detections, flights, vessels, satellites). Set osirisUrl to the address of an OSIRIS dashboard to show a link to it.
+  // detections, flights, vessels, satellites, global incidents). It opens as a page of its own with a 3D map.
+  // Live camera wall (the camera button beside Scenario and layers). earthStream is an embeddable player address for
+  // the "Earth from space" tile: NASA's live stream on YouTube by default; null hides the tile.
+  cameraWall: { tilesPerPage: 12, earthStream: 'https://www.youtube.com/embed/live_stream?channel=UCLA_DiR1FfKNvjuUpBHmylQ&autoplay=1&mute=1' },
+
   // OSINT on the 3D map: the UAE-wide view and how far heights are scaled so that aircraft and satellites can be seen.
   osintMap: { centre: [54.6, 24.9], zoom: 6.4, pitch: 52, bearing: -12, minZoom: 4, heightExaggeration: 6, satelliteHeightScale: 0.2 },
-  osint: { osirisUrl: 'https://osirisai.live/', rainAlertMm: 5, quakeAlertMag: 5, quakeAlertKm: 800 },
+  osint: { rainAlertMm: 5, quakeAlertMag: 5, quakeAlertKm: 800 },
 
   // Critical smart-city use cases added to the existing sections (js/citycases.js). All figures are synthetic or screening estimates.
   cityCases: {

@@ -430,7 +430,9 @@
     box.innerHTML = '<h3></h3><table>' + rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>'; }).join('') +
       '</table>' + (note ? '<div class="muted">' + note + '</div>' : '');
     box.querySelector('h3').textContent = title;
-    popup = new maplibregl.Popup({ closeButton: true, maxWidth: '290px' }).setLngLat(lngLat).setDOMContent(box).addTo(map);
+    // One pop-up at a time, lifted clear of the symbol it belongs to.
+    Array.prototype.forEach.call(document.querySelectorAll('.maplibregl-popup'), function (el) { el.remove(); });
+    popup = new maplibregl.Popup({ closeButton: true, maxWidth: '300px', offset: 16 }).setLngLat(lngLat).setDOMContent(box).addTo(map);
     return box;
   }
   function roadPopup(i, coordinate) {
