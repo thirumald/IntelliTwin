@@ -9,6 +9,7 @@ Sources (each optional; a missing key or a failed call leaves the previous file 
   USGS         earthquakes within 1,500 km, last 7 days         no key
   NASA EONET   open natural events around the Gulf              no key
   NOAA SWPC    planetary K index (space weather)                no key
+  World        strong earthquakes, natural events, GDACS alerts  no key
 
 The keys come from the environment (GitHub Actions secrets) and are never written to the output or the log.
 status.json records, for each source, whether the last attempt worked and when.
@@ -335,6 +336,58 @@ def space():
     return f"Kp now {series[-1][1]}"
 
 
+def world():
+    """Incidents around the world: strong earthquakes (USGS), open natural events (NASA EONET) and disaster alerts (GDACS)."""
+    rows, notes = [], []
+    start = time.strftime("%Y-%m-%d", time.gmtime(time.time() - 7 * 86400))
+    try:
+        d = json.loads(get(f"https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime={start}&minmagnitude=5.5&orderby=time"))
+        n = 0
+        for f in d.get("features") or []:
+            p, c = f.get("properties") or {}, (f.get("geometry") or {}).get("coordinates") or [None, None]
+            if c[0] is None:
+                continue
+            rows.append({"kind": "Earthquake", "title": f"M{p.get('mag')} {p.get('place') or ''}".strip(), "level": 3 if (p.get("mag") or 0) >= 7 else 2 if (p.get("mag") or 0) >= 6 else 1,
+                         "time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime((p.get("time") or 0) / 1000)), "lon": round(c[0], 3), "lat": round(c[1], 3), "src": "USGS", "url": p.get("url") or ""})
+            n += 1
+        notes.append(f"USGS {n}")
+    except Exception as err:
+        notes.append("USGS failed: " + scrub(err)[:60])
+    try:
+        d = json.loads(get("https://eonet.gsfc.nasa.gov/api/v3/events?status=open&days=20&limit=120"))
+        n = 0
+        for e in d.get("events") or []:
+            g = (e.get("geometry") or [{}])[-1]
+            c = g.get("coordinates") or []
+            if g.get("type") != "Point" or len(c) < 2:
+                continue
+            rows.append({"kind": ((e.get("categories") or [{}])[0]).get("title") or "Natural event", "title": e.get("title") or "", "level": 1, "time": (g.get("date") or "")[:19] + "Z",
+                         "lon": round(c[0], 3), "lat": round(c[1], 3), "src": "NASA EONET", "url": e.get("link") or ""})
+            n += 1
+        notes.append(f"EONET {n}")
+    except Exception as err:
+        notes.append("EONET failed: " + scrub(err)[:60])
+    try:
+        d = json.loads(get(f"https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH?fromDate={start}&alertlevel=Orange;Red&eventlist=EQ;TC;FL;VO;WF;DR"))
+        kinds = {"EQ": "Earthquake", "TC": "Tropical cyclone", "FL": "Flood", "VO": "Volcano", "WF": "Wildfire", "DR": "Drought"}
+        n = 0
+        for f in d.get("features") or []:
+            p, c = f.get("properties") or {}, (f.get("geometry") or {}).get("coordinates") or []
+            if (f.get("geometry") or {}).get("type") != "Point" or len(c) < 2:
+                continue
+            rows.append({"kind": kinds.get(p.get("eventtype"), p.get("eventtype") or "Disaster"), "title": (p.get("name") or p.get("description") or "")[:120], "level": 3 if p.get("alertlevel") == "Red" else 2,
+                         "time": (p.get("fromdate") or "")[:19] + "Z", "lon": round(c[0], 3), "lat": round(c[1], 3), "src": "GDACS", "country": p.get("country") or "", "url": ((p.get("url") or {}).get("report") or "")})
+            n += 1
+        notes.append(f"GDACS {n}")
+    except Exception as err:
+        notes.append("GDACS failed: " + scrub(err)[:60])
+    if not rows:
+        raise RuntimeError("no global incident source answered: " + "; ".join(notes))
+    rows.sort(key=lambda r: (r["level"], r["time"]), reverse=True)
+    save("world.json", {"updated": NOW, "source": "USGS earthquakes of magnitude 5.5 and above (7 days), NASA EONET open natural events (20 days), GDACS orange and red disaster alerts (7 days)", "incidents": rows[:250]})
+    return f"{len(rows)} incidents ({', '.join(notes)})"
+
+
 status_path = os.path.join(OUT, "status.json")
 try:
     with open(status_path, encoding="utf-8") as f:
@@ -343,7 +396,7 @@ except (OSError, ValueError):
     status = {}
 status["checked"] = NOW
 failed = 0
-SOURCES = (("weather", weather), ("quakes", quakes), ("events", events), ("space", space), ("fires", fires), ("satellites", satellites), ("vessels", vessels), ("flights", flights))
+SOURCES = (("weather", weather), ("quakes", quakes), ("events", events), ("space", space), ("world", world), ("fires", fires), ("satellites", satellites), ("vessels", vessels), ("flights", flights))
 skipped = 0
 for name, fn in SOURCES:
     prev = status.get(name) or {}
