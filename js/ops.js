@@ -84,44 +84,73 @@
 
   /* ---------- alerts ---------- */
   var current = [];
+  var filtered = 0;
   function computeAlerts() {
     var a = CFG.alerts, out = [], k = C.kpiAt(state.scenario, state.t), fx = C.closure();
     if (fx) { out.push({ sev: 2, title: fx.name + ' closed (what-if)', sub: 'Estimated effect on roads within ' + (CFG.closure.radiusM / 1000) + ' km', go: function () { C.locate(fx.group); } }); }
     if (k.speed != null && k.speed < a.networkSpeedBelowKmh) {
-      out.push({ key: 'network-speed', sev: 2, title: 'Network speed ' + Math.round(k.speed) + ' km/h', sub: 'Below the ' + a.networkSpeedBelowKmh + ' km/h threshold', go: function () { C.showTab('cong'); } });
+      out.push({ lay: 'showCars', sim: true, key: 'network-speed', sev: 2, title: 'Network speed ' + Math.round(k.speed) + ' km/h', sub: 'Below the ' + a.networkSpeedBelowKmh + ' km/h threshold', go: function () { C.showTab('cong'); } });
     }
     var e = C.eventTotals(state.scenario, state.t);
     if (e && a.everyAccident) {
       e.active.forEach(function (x) {
         var sv = x.severity === 'Serious injury' ? 3 : x.severity === 'Minor injury' ? 2 : 1;
-        out.push({ at: [x.lon, x.lat], key: 'acc:' + x.road + ':' + Math.round(x.t), sev: sv, title: (sv === 3 ? 'Serious accident: ' : 'Accident: ') + x.road,
+        out.push({ lay: 'showAcc', at: [x.lon, x.lat], key: 'acc:' + x.road + ':' + Math.round(x.t), sev: sv, title: (sv === 3 ? 'Serious accident: ' : 'Accident: ') + x.road,
           sub: x.severity + ' · reported ' + clock(x.t) + ' · illustrative', go: function () { C.flyTo(x.lon, x.lat); } });
       });
     } else if (e && a.seriousAccident) {
       e.active.filter(function (x) { return x.severity === 'Serious injury'; }).forEach(function (x) {
-        out.push({ sev: 3, title: 'Serious accident: ' + x.road, sub: 'Reported ' + clock(x.t) + ' · illustrative', go: function () { C.flyTo(x.lon, x.lat); } });
+        out.push({ lay: 'showAcc', sev: 3, title: 'Serious accident: ' + x.road, sub: 'Reported ' + clock(x.t) + ' · illustrative', go: function () { C.flyTo(x.lon, x.lat); } });
       });
     }
     opsEvents().forEach(function (ev) {
-      out.push({ at: [ev.cam.lon, ev.cam.lat], key: ev.key, sev: ev.type.sev, title: ev.type.text + ': ' + ev.cam.name, sub: ev.cam.id + ' · raised ' + clock(ev.t) + ' · synthetic',
+      out.push({ lay: 'showCams', at: [ev.cam.lon, ev.cam.lat], key: ev.key, sev: ev.type.sev, title: ev.type.text + ': ' + ev.cam.name, sub: ev.cam.id + ' · raised ' + clock(ev.t) + ' · synthetic',
         go: function () { if (ev.type.text === 'Camera offline') { C.flyTo(ev.cam.lon, ev.cam.lat, 15); } if (ev.type.text !== 'Camera offline' && T.devices) { T.devices.openCamera(ev.cam.id); } } });
     });
     // Environmental sensors over their thresholds (synthetic readings).
     if (CFG.environment && CFG.environment.alert && T.environment) {
       T.environment.alerts().slice(0, 4).forEach(function (x) {
-        out.push({ at: [x.s.lon, x.s.lat], key: 'env:' + x.s.id, sev: x.sev, title: x.text + ': ' + x.s.name, sub: x.s.id + ' · synthetic sensor reading', go: function () { T.environment.open(x.s); } });
+        out.push({ lay: 'showEnv', at: [x.s.lon, x.s.lat], key: 'env:' + x.s.id, sev: x.sev, title: x.text + ': ' + x.s.name, sub: x.s.id + ' · synthetic sensor reading', go: function () { T.environment.open(x.s); } });
       });
     }
     // Critical sites in alert (defence, embassies, hospitals, schools …).
     if (CFG.zones && CFG.zones.alert && T.zones) {
       T.zones.alerts().slice(0, 6).forEach(function (s) {
-        out.push({ at: [s.lon, s.lat], key: 'zone:' + s.id, sev: (CFG.zones.types[s.type] || {}).priority >= 3 ? 3 : 2, title: T.zones.label(s.type) + ' zone: ' + s.name, sub: s.reason,
+        out.push({ lay: 'showZones', at: [s.lon, s.lat], key: 'zone:' + s.id, sev: (CFG.zones.types[s.type] || {}).priority >= 3 ? 3 : 2, title: T.zones.label(s.type) + ' zone: ' + s.name, sub: s.reason,
           go: function () { T.zones.open(s); } });
       });
     }
     C.roadStats(C.binNow(), a.roadMinVehicles).filter(function (r) { return r.ratio < a.roadRatioBelow; }).slice(0, 8).forEach(function (r) {
-      out.push({ sev: 1, title: 'Severe congestion: ' + r.name, sub: Math.round(r.speed) + ' km/h · ' + Math.round(r.ratio * 100) + '% of limit · ' + num(r.vehicles) + ' vehicles', go: function () { C.locate(r.g); } });
+      out.push({ lay: 'showCars', sim: true, sev: 1, title: 'Severe congestion: ' + r.name, sub: Math.round(r.speed) + ' km/h · ' + Math.round(r.ratio * 100) + '% of limit · ' + num(r.vehicles) + ' vehicles', go: function () { C.locate(r.g); } });
     });
+    // Alerts from the real live layers, when those layers are switched on.
+    if (T.tomtom && T.tomtom.incidents) {
+      T.tomtom.incidents().slice(0, 5).forEach(function (x) {
+        out.push({ lay: 'lyTtInc', at: x.at, key: 'tt:' + x.at.join(',') + x.kind, sev: x.delayMin >= 10 || x.magnitude >= 4 ? 3 : x.delayMin >= 3 || x.magnitude >= 3 ? 2 : 1, title: 'Live incident: ' + x.kind + (x.from ? ' at ' + x.from : ''),
+          sub: (x.what ? x.what + ' · ' : '') + (x.delayMin ? x.delayMin + ' min delay · ' : '') + 'real, TomTom', go: function () { C.flyTo(x.at[0], x.at[1], 15); } });
+      });
+    }
+    if (T.live && T.live.fires && T.live.fires()) {
+      var bb = (C.meta() || {}).bbox || [0, 0, 0, 0];
+      T.live.fires().list.filter(function (f) { return f.at[0] >= bb[0] - 0.15 && f.at[0] <= bb[2] + 0.15 && f.at[1] >= bb[1] - 0.15 && f.at[1] <= bb[3] + 0.15 && f.frp >= ((CFG.live || {}).fireAlertMw || 10); })
+        .sort(function (x, y) { return y.frp - x.frp; }).slice(0, 3).forEach(function (f) {
+          out.push({ lay: 'lyLvFire', at: f.at, key: 'fire:' + f.at.join(',') + f.date + f.time, sev: f.frp >= 40 ? 3 : 2, title: 'Heat detection: ' + f.frp.toFixed(0) + ' MW', sub: f.date + ' ' + f.time + ' UTC · real, NASA FIRMS (often a gas flare or industrial site)', go: function () { C.flyTo(f.at[0], f.at[1], 12.5); } });
+        });
+    }
+    if (T.cityCases && T.cityCases.venues) {
+      T.cityCases.venues().filter(function (v) { return v.lvl >= 2; }).slice(0, 3).forEach(function (v) {
+        out.push({ lay: 'showPeople', at: v.at, key: 'crowd:' + v.n + ':' + v.lvl, sev: v.lvl >= 3 ? 3 : 2, title: (v.lvl >= 3 ? 'Over capacity: ' : 'Crowded: ') + v.name, sub: Math.round(v.load * 100) + '% of capacity · synthetic', go: function () { C.showTab('ped'); C.flyTo(v.at[0], v.at[1], 15.5); } });
+      });
+    }
+    // Alerts follow the Scenario and layers selections: an alert is raised only while its layer is switched on, and
+    // the simulated congestion alerts step aside while the roads show live traffic ("Live traffic now").
+    var hiddenBy = {};
+    out = out.filter(function (al) {
+      if (al.sim && state.liveFlow) { hiddenBy.live = (hiddenBy.live || 0) + 1; return false; }
+      var box = al.lay && $(al.lay); if (box && !box.checked) { hiddenBy[al.lay] = (hiddenBy[al.lay] || 0) + 1; return false; }
+      return true;
+    });
+    filtered = Object.keys(hiddenBy).reduce(function (s, k2) { return s + hiddenBy[k2]; }, 0);
     out.sort(function (x, y) { return y.sev - x.sev; });
     return out;
   }
@@ -161,12 +190,13 @@
     (known ? fresh : fresh.slice(0, 2)).slice(0, CFG.alerts.pushMaxVisible).forEach(toast);
     known = now;
   }
-  function renderAlerts() {
+  function renderAlerts(quiet) {
     current = computeAlerts();
-    pushNew(current);
+    // After a layer or scenario change the list is rebuilt at once, without announcing alerts that merely came back.
+    if (quiet === true) { known = {}; current.forEach(function (al) { known[al.key || al.title] = 1; }); } else { pushNew(current); }
     $('alertCount').textContent = current.length;
     $('alertBtn').classList.toggle('hot', current.some(function (x) { return x.sev >= 2; }));
-    $('alertNote').textContent = current.length ? current.length + ' active' : '';
+    $('alertNote').textContent = (current.length ? current.length + ' active' : '') + (filtered ? (current.length ? ' · ' : '') + filtered + ' not shown: their layers are switched off' + (state.liveFlow ? ' or live traffic is on' : '') : '');
     var list = $('alertList'); list.innerHTML = '';
     current.slice(0, CFG.alerts.maxShown).forEach(function (al) {
       list.appendChild(C.listButton(al.sev >= 3 ? 'acc-active' : al.sev === 2 ? 'severe' : 'heavy', al.title, al.sub, '', function () { act(al); }));
@@ -274,5 +304,11 @@
     $('repLabel').textContent = 'Synthetic data';
     renderConfig(); renderAudit(); renderAlerts(); renderForecast();
     C.onMinute(function () { renderAlerts(); renderForecast(); });
+    // A change of layer or demand case rebuilds the alert list straight away.
+    var alertTimer = 0;
+    document.addEventListener('change', function (e) {
+      var el = e.target; if (!el || !(el.type === 'checkbox' || el.id === 'scenario')) { return; }
+      clearTimeout(alertTimer); alertTimer = setTimeout(function () { renderAlerts(true); }, el.id === 'scenario' ? 1500 : 200);
+    });
   });
 })();

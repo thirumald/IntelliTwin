@@ -573,3 +573,12 @@ body.map-light .svc-ok { color: #1c7a4b; } body.map-light .svc-part { color: #94
 .timeline { flex-wrap: wrap; row-gap: 6px; }
 .timeline .btn, .timeline .seg { flex: none; white-space: nowrap; }
 .timeline input[type=range] { min-width: 120px; }
+
+/* ---------------------------------------------------------------- Scenario and layers: settings button and pop-up on the map */
+.ly-ctrl button { display: grid; place-items: center; color: var(--text); }
+.ly-ctrl button.on { background: var(--accent); color: #05221a; }
+.ly-pop { position: fixed; z-index: 60; width: 348px; max-width: calc(100vw - 16px); overflow: auto; border-radius: 10px; box-shadow: 0 10px 34px rgba(0, 0, 0, .45); }
+.ly-pop .ly-card { margin: 0; }
+.ly-pop .card-head { position: sticky; top: 0; z-index: 1; background: inherit; }
+.ly-close { margin-left: 8px; width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: var(--text); font-size: 16px; line-height: 1; cursor: pointer; }
+@media (max-width: 719px) { .ly-pop { width: auto; } }

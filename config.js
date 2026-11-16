@@ -17,7 +17,7 @@ window.INTELLITWIN_CONFIG = {
     styleUrl: 'https://tiles.openfreemap.org/styles/dark',           // dark theme
     styleUrlLight: 'https://tiles.openfreemap.org/styles/bright',    // light theme (the style the example uses)
     lightTint: '#cfe0d2',
-    theme: 'dark',              // 'dark' or 'light' at start; the Light map / Dark map button switches
+    theme: 'light',             // 'dark' or 'light' at start; the Light map / Dark map button switches
     // Raster tiles shown if the vector map cannot be loaded. Empty: a plain background is shown instead.
     rasterTiles: [],
     rasterAttribution: '',
@@ -36,7 +36,7 @@ window.INTELLITWIN_CONFIG = {
   // or 'enterprise' (compact, rounded).
   // Visitors can switch with the Style button in the status bar.
   // menu: 'minimised' (icons only, with a button to expand) or 'expanded'.
-  ui: { style: 'government', menu: 'minimised' },
+  ui: { style: 'enterprise', menu: 'minimised' },
 
   /* ---- Regions ------------------------------------------------------------------------------- */
   // The region selector in the top bar. Abu Dhabi is the default and keeps the settings in this file.
@@ -266,7 +266,8 @@ sampleVideos: [
     refreshMin: 10,              // how often the browser looks for newer files
     fires: true, vessels: true, satellites: true, flights: true,   // layers on at start
     replaceSyntheticShips: true, // hide the synthetic ships once enough real AIS vessels are loaded
-    minVesselsToReplace: 15      // fewer real vessels than this: keep the synthetic ships as well
+    minVesselsToReplace: 15,     // fewer real vessels than this: keep the synthetic ships as well
+    fireAlertMw: 10              // raise an alert for a heat detection in the open region at or above this power
   },
 
   // Critical smart-city use cases added to the existing sections (js/citycases.js). All figures are synthetic or screening estimates.

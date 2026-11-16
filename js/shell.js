@@ -20,7 +20,7 @@
   }
   // Interface style: 'government' (navy and gold, labelled side menu) or 'enterprise'. The choice is remembered in this browser.
   var cfg = (window.INTELLITWIN_CONFIG || {}).ui || {}, styleBtn = document.getElementById('styleBtn'), style = cfg.style || 'government';
-  try { style = localStorage.getItem('itw-style') || style; } catch (e1) { /* storage unavailable */ }
+  try { style = localStorage.getItem('itw-style2') || style; } catch (e1) { /* storage unavailable */ }
   // Styles: three colour schemes on the formal layout (standard, military, police) and the compact enterprise look.
   var STYLES = ['government', 'military', 'police', 'enterprise'], STYLE_NAME = { government: 'Standard', military: 'Military', police: 'Police', enterprise: 'Enterprise' };
   function setStyle(v, save) {
@@ -28,7 +28,7 @@
     var b = document.body.classList;
     b.toggle('ui-gov', style !== 'enterprise'); b.toggle('scheme-military', style === 'military'); b.toggle('scheme-police', style === 'police');
     if (styleBtn) { styleBtn.textContent = 'Style: ' + STYLE_NAME[style]; }
-    if (save) { try { localStorage.setItem('itw-style', style); } catch (e2) { /* storage unavailable */ } }
+    if (save) { try { localStorage.setItem('itw-style2', style); } catch (e2) { /* storage unavailable */ } }
     var T = window.IntelliTwin, m = T && T.getMap && T.getMap();
     if (m) { setTimeout(function () { m.resize(); if (T.core && T.core.redraw) { T.core.redraw(); } }, 60); }
   }

@@ -87,8 +87,39 @@
       var open = groups.some(function (g) { return g.el.open; }); groups.forEach(function (g) { g.el.open = !open; });
       this.textContent = open ? 'Expand all' : 'Collapse all'; this.setAttribute('aria-expanded', open ? 'false' : 'true');
     });
+    floatCard(card);
     refresh();
     setInterval(refresh, 2000);          // rows appear or become available as data and keys load
   });
+  // The card leaves the Dashboard panel and opens from a small settings button at the bottom left of the map,
+  // just above the zoom buttons.
+  function floatCard(card) {
+    var map = T.getMap(), box = map && map.getContainer().querySelector('.maplibregl-ctrl-bottom-left'); if (!box) { return; }
+    var ctrl = document.createElement('div'); ctrl.className = 'maplibregl-ctrl maplibregl-ctrl-group ly-ctrl';
+    ctrl.innerHTML = '<button type="button" id="lyBtn" title="Scenario and layers" aria-label="Scenario and layers" aria-expanded="false" aria-controls="lyPop">' +
+      '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>';
+    var nav = box.querySelector('.maplibregl-ctrl-group'); box.insertBefore(ctrl, nav || box.firstChild);
+    var pop = document.createElement('div'); pop.id = 'lyPop'; pop.className = 'ly-pop'; pop.hidden = true; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Scenario and layers');
+    card.removeAttribute('data-tab'); card.hidden = false; card.classList.add('ly-card');
+    var close = document.createElement('button'); close.type = 'button'; close.className = 'ly-close'; close.setAttribute('aria-label', 'Close'); close.title = 'Close'; close.textContent = '\u00D7';
+    card.querySelector('.card-head').appendChild(close);
+    pop.appendChild(card); document.body.appendChild(pop);
+    var btn = $('lyBtn');
+    function place() {
+      var r = btn.getBoundingClientRect(), narrow = window.innerWidth < 720;
+      pop.style.left = narrow ? '8px' : Math.round(r.right + 8) + 'px'; pop.style.right = narrow ? '8px' : 'auto';
+      pop.style.bottom = Math.round(window.innerHeight - (narrow ? r.top - 8 : r.bottom)) + 'px';
+      pop.style.maxHeight = Math.max(220, Math.round((narrow ? r.top : r.bottom) - 76)) + 'px';
+    }
+    setInterval(function () { if (!pop.hidden) { place(); } }, 400);          // follow the button when the side panel opens or closes
+    function open(on) { pop.hidden = !on; btn.setAttribute('aria-expanded', on ? 'true' : 'false'); btn.classList.toggle('on', on); if (on) { place(); refresh(); } }
+    btn.addEventListener('click', function () { open(pop.hidden); });
+    close.addEventListener('click', function () { open(false); btn.focus(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !pop.hidden) { open(false); } });
+    map.getCanvas().addEventListener('pointerdown', function () { if (!pop.hidden && window.innerWidth < 720) { open(false); } });
+    window.addEventListener('resize', function () { if (!pop.hidden) { place(); } });
+    C.onTab(function () { if (!pop.hidden) { setTimeout(place, 320); } });
+    T.layerTree.open = open;
+  }
   T.layerTree = { refresh: refresh };
 })();

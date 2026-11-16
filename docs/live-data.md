@@ -45,6 +45,6 @@ attempt worked, when, and the error if it did not. A source that fails keeps its
 
 ## Layer tree
 
-The Scenario and layers card is the first card on the Dashboard. Its layers are grouped as a tree: Road, Public
+Scenario and layers opens from the small settings button at the bottom left of the map, just above the zoom buttons; it is no longer a card in the Dashboard panel. Its layers are grouped as a tree: Road, Public
 transport, Sea, Air and space, People and safety, City and environment. Each group and the whole tree has a tick box
 that selects or clears everything under it (a dash means some are on); a second click clears.

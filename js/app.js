@@ -399,7 +399,8 @@
       };
       $('viewMode').addEventListener('click', function (e) { var b = e.target.closest('[data-view]'); if (b) { setView(b.getAttribute('data-view'), true); } });
       $('g3d').addEventListener('change', function (e) { setView(e.target.checked ? 'city' : '3d', true); });
-      var wantView = (CFG.start || {}).view || '3d'; try { wantView = localStorage.getItem('itw-view') || wantView; } catch (e) { /* storage unavailable */ }
+      // The view at start always comes from the configuration (3D); a view chosen on the switch lasts for the visit.
+      var wantView = (CFG.start || {}).view || '3d';
       if (wantView !== '3d') { map.once('load', function () { setView(wantView, false); }); setTimeout(function () { if (viewMode !== wantView) { setView(wantView, false); } }, 2500); }
       $('gType').addEventListener('change', function () { try { localStorage.setItem('itw-basemap2', $('gType').value); } catch (e) { /* storage unavailable */ } baseStatus(); setTheme(theme); });
       window.addEventListener('resize', function () { padKey = ''; applyPadding(); });
