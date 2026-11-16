@@ -46,10 +46,21 @@ def scrub(text):
     return text[:600]
 
 
-def get(url, timeout=60):
+def get(url, timeout=45, tries=3):
+    """GET with a few retries: public services sometimes time out or refuse a first connection."""
     req = urllib.request.Request(url, headers={"User-Agent": "IntelliTwin live data (github.com/thirumald/IntelliTwin)"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return r.read().decode("utf-8", "replace")
+    for attempt in range(tries):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as e:
+            if e.code < 500 and e.code != 429:
+                raise
+            last = e
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            last = e
+        time.sleep(4 * (attempt + 1))
+    raise last
 
 
 def save(name, obj):
@@ -180,6 +191,10 @@ def vessels():
         merged[sh["mmsi"]] = {**merged.get(sh["mmsi"], {}), **sh}
     cutoff = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(time.time() - keep_hours * 3600))
     kept = [sh for sh in merged.values() if (sh.get("t") or "") >= cutoff]
+    if not ships and not kept and not log and attempts <= 1:
+        # The stream stayed connected and simply carried no vessel for this area: that is an answer, not a failure.
+        save("vessels.json", {"updated": NOW, "source": f"aisstream.io AIS, vessels heard in the last {keep_hours:g} hours", "bbox": BBOX, "heard_now": 0, "keep_hours": keep_hours, "ships": []})
+        return f"0 vessels heard near the UAE in {seconds} s ({msgs} messages); the stream was connected"
     if not ships and not kept:
         k = key.strip()
         shape = f"key has {len(k)} characters" + ("" if all(c in "0123456789abcdefABCDEF" for c in k) and len(k) == 40 else ", not the usual 40 letters and digits (a-f, 0-9)")
@@ -283,8 +298,8 @@ def weather():
 
 
 def quakes():
-    start = time.strftime("%Y-%m-%d", time.gmtime(time.time() - 7 * 86400))
-    d = json.loads(get(f"https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime={start}&minmagnitude=3&latitude=24.5&longitude=54.5&maxradiuskm=1500&orderby=time"))
+    start = time.strftime("%Y-%m-%d", time.gmtime(time.time() - 30 * 86400))
+    d = json.loads(get(f"https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime={start}&minmagnitude=4&latitude=24.5&longitude=54.5&maxradiuskm=2000&orderby=time"))
     rows = []
     for f in d.get("features") or []:
         p, c = f.get("properties") or {}, (f.get("geometry") or {}).get("coordinates") or [None, None, None]
@@ -292,12 +307,12 @@ def quakes():
             continue
         rows.append({"mag": p.get("mag"), "place": p.get("place") or "", "time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime((p.get("time") or 0) / 1000)),
                      "lon": round(c[0], 3), "lat": round(c[1], 3), "depth": round(c[2] or 0, 1), "url": p.get("url") or ""})
-    save("quakes.json", {"updated": NOW, "source": "USGS earthquake catalogue, magnitude 3 and above within 1,500 km of the UAE, last 7 days", "quakes": rows})
+    save("quakes.json", {"updated": NOW, "source": "USGS earthquake catalogue, magnitude 4 and above within 2,000 km of the UAE, last 30 days", "quakes": rows})
     return f"{len(rows)} earthquakes" + (f", strongest M{max(r['mag'] or 0 for r in rows)}" if rows else "")
 
 
 def events():
-    d = json.loads(get("https://eonet.gsfc.nasa.gov/api/v3/events?status=open&days=30&bbox=40,40,70,10"))
+    d = json.loads(get("https://eonet.gsfc.nasa.gov/api/v3/events?days=60&bbox=30,45,80,5"))
     rows = []
     for e in d.get("events") or []:
         g = (e.get("geometry") or [{}])[-1]
@@ -306,7 +321,7 @@ def events():
             continue
         rows.append({"title": e.get("title") or "", "kind": ((e.get("categories") or [{}])[0]).get("title") or "", "date": (g.get("date") or "")[:19] + "Z",
                      "lon": round(c[0], 3), "lat": round(c[1], 3), "url": e.get("link") or ""})
-    save("events.json", {"updated": NOW, "source": "NASA EONET open natural events around the Gulf, last 30 days", "events": rows})
+    save("events.json", {"updated": NOW, "source": "NASA EONET natural events from the Red Sea to India, last 60 days", "events": rows})
     return f"{len(rows)} open natural events"
 
 
