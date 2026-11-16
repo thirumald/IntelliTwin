@@ -4,6 +4,8 @@ services:
   app:
     build: .
     env_file: .env
+    environment:
+      INTELLITWIN_ENV: production   # refuses weak or missing sign-in settings at start
     volumes:
       - appdata:/app/data
     restart: unless-stopped

@@ -10,7 +10,7 @@ from urllib.parse import quote
 from fastapi import Body, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
-from . import __version__, analytics as an, auth as authmod, gateway
+from . import __version__, analytics as an, auth as authmod, gateway, oidc
 from .city import list_cities
 from .engine import Engine, start_background
 from .evidence import render_frame, render_plate
@@ -18,12 +18,15 @@ from .evidence import render_frame, render_plate
 WEB = Path(__file__).resolve().parent.parent / "web"
 engine: Engine | None = None
 auth: authmod.Auth | None = None
-PUBLIC_API = {"/api/auth/login", "/api/health"}
+PUBLIC_API = {"/api/auth/login", "/api/health", "/api/auth/config", "/api/auth/oidc/login", "/api/auth/oidc/callback"}
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global engine, auth
+    bad = authmod.startup_problems()
+    if bad:
+        raise RuntimeError("Refusing to start (INTELLITWIN_ENV=production):\n  - " + "\n  - ".join(bad))
     auth = authmod.Auth()
     if auth.bootstrap_note:
         print("\n" + "=" * 72 + "\n  " + auth.bootstrap_note + "\n" + "=" * 72 + "\n", flush=True)
@@ -115,6 +118,59 @@ def login(request: Request, response: Response, body: dict = Body(...)):
     return user
 
 
+def _cookie(request: Request, response: Response, token: str) -> None:
+    response.set_cookie(authmod.COOKIE, token, max_age=authmod.SESSION_TTL, httponly=True, samesite="lax",
+                        secure=request.url.scheme == "https", path="/")
+
+
+@app.get("/api/auth/config")
+def auth_config():
+    return {"mode": authmod.mode(), "enabled": authmod.enabled(), "sso_name": oidc.cfg("OIDC_NAME", "single sign-on") if authmod.mode() == "oidc" else None}
+
+
+def _login_error(msg: str):
+    return RedirectResponse("/login.html?error=" + quote(msg), status_code=302)
+
+
+@app.get("/api/auth/oidc/login")
+def oidc_login(request: Request, next: str = "/"):
+    if authmod.mode() != "oidc":
+        raise HTTPException(404, "Single sign-on is not enabled")
+    nxt = next if next.startswith("/") and not next.startswith("//") and not next.startswith("/login") else "/"
+    base = str(request.base_url)
+    try:
+        return RedirectResponse(oidc.start(base, nxt), status_code=302)
+    except Exception as ex:
+        auth.log("-", "sso_failed", None, "start: " + type(ex).__name__, _ip(request))
+        return _login_error("The identity provider could not be reached")
+
+
+@app.get("/api/auth/oidc/callback")
+def oidc_callback(request: Request, state: str = "", code: str = "", error: str = ""):
+    if authmod.mode() != "oidc":
+        raise HTTPException(404, "Single sign-on is not enabled")
+    if error or not state or not code:
+        auth.log("-", "sso_failed", None, "provider error: " + (error or "missing code")[:80], _ip(request))
+        return _login_error("The identity provider did not sign you in")
+    try:
+        claims, nxt = oidc.finish(state, code)
+        role = oidc.role_from(claims)
+        who = str(claims.get("preferred_username") or claims.get("email") or claims["sub"])
+        if not role:
+            auth.log(who, "sso_denied", None, "no IntelliTwin role in the token", _ip(request))
+            return _login_error("Your account has no IntelliTwin role. Ask an administrator.")
+        token, _ = auth.login_sso(str(claims["sub"]), who, str(claims.get("name") or ""), role, _ip(request))
+    except (oidc.OidcError, authmod.AuthError) as ex:
+        auth.log("-", "sso_failed", None, str(getattr(ex, "msg", ex))[:120], _ip(request))
+        return _login_error(str(getattr(ex, "msg", ex)))
+    except Exception as ex:
+        auth.log("-", "sso_failed", None, type(ex).__name__, _ip(request))
+        return _login_error("Sign-in failed")
+    resp = RedirectResponse(nxt, status_code=302)
+    _cookie(request, resp, token)
+    return resp
+
+
 @app.post("/api/auth/logout")
 def logout(request: Request, response: Response):
     auth.logout(request.state.token, request.state.user, _ip(request))
@@ -164,6 +220,13 @@ def admin_delete(uid: int, request: Request):
     except authmod.AuthError as ex:
         _err(ex)
     return {"ok": True}
+
+
+@app.get("/api/admin/audit/verify")
+def admin_audit_verify(request: Request):
+    res = auth.verify_audit()
+    auth.log(U(request)["username"], "audit_verified", None, "ok" if res["ok"] else res["problem"], _ip(request))
+    return res
 
 
 @app.get("/api/admin/audit")

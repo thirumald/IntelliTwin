@@ -20,7 +20,7 @@ dialog{background:var(--panel);color:var(--ink);border:1px solid var(--rule);bor
   <button class="p" id="start">Start live demo</button><button id="stop">Stop</button></div><div class="msg" id="ttmsg"></div>
   <p class="muted">While the window is on, the map polls TomTom through this server (shared cache, daily cap). When it ends or is stopped, the map falls back to the simulation.</p></section>
 <section><h2>Users</h2><div class="row" style="margin-bottom:8px"><button class="p" id="add">+ Add user</button></div><table id="users"></table><div class="msg" id="umsg"></div></section>
-<section><h2>Audit log</h2><div class="row" style="margin-bottom:8px"><input id="q" placeholder="Filter by user, action or target"></div><table id="audit"></table></section>
+<section><h2>Audit log</h2><div class="row" style="margin-bottom:8px"><input id="q" placeholder="Filter by user, action or target"><button id="vfy" type="button">Verify integrity</button><span id="vmsg" class="muted"></span></div><table id="audit"></table></section>
 </main>
 <dialog id="dlg"><form method="dialog" id="df"><h2 id="dt"></h2>
   <label>Username</label><input id="du" autocomplete="off"><label>Full name</label><input id="dn" autocomplete="off">
@@ -51,6 +51,7 @@ $("ds").onclick=async()=>{try{if(editing){const p={name:$("dn").value,role:$("dr
   else await api("POST","/api/admin/users",{username:$("du").value,name:$("dn").value,role:$("dr").value,password:$("dp").value});$("dlg").close();users()}catch(e){$("de").textContent=e.message}};
 async function audit(){const d=await api("GET","/api/admin/audit?limit=200"+($("q").value?"&q="+encodeURIComponent($("q").value):""));const t=$("audit");
   t.replaceChildren(el("tr",{},...["Time","User","Action","Target","Detail","IP"].map(x=>el("th",{},x))));d.items.forEach(a=>t.append(el("tr",{},el("td",{class:"muted"},when(a.ts)),el("td",{},a.actor||"-"),el("td",{},el("span",{class:"pill "+(/failed|locked|deleted/.test(a.action)?"bad":"")},a.action)),el("td",{},a.target||""),el("td",{class:"muted"},a.detail||""),el("td",{class:"muted"},a.ip||""))))}
+$("vfy").onclick=async()=>{$("vmsg").textContent="Checking…";try{const r=await api("GET","/api/admin/audit/verify");$("vmsg").textContent=r.ok?"Intact: "+r.rows+" rows, head "+r.head:"PROBLEM: "+r.problem}catch(e){$("vmsg").textContent=e.message}audit()};
 $("q").oninput=()=>{clearTimeout($("q")._t);$("q")._t=setTimeout(audit,250)};
 $("start").onclick=async()=>{try{await api("POST","/api/admin/tomtom",{action:"start",minutes:+$("mins").value});$("ttmsg").textContent="";tt();audit()}catch(e){$("ttmsg").textContent=e.message}};
 $("stop").onclick=async()=>{try{await api("POST","/api/admin/tomtom",{action:"stop"});tt();audit()}catch(e){$("ttmsg").textContent=e.message}};

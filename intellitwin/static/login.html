@@ -16,6 +16,10 @@ button{width:100%;margin-top:18px;padding:11px;border:0;border-radius:8px;backgr
 </style></head><body>
 <div class="card">
   <div class="brand"><img src="/assets/presight-logo.png" alt="Presight"><span class="vr"></span><b>Intelli<i>Twin</i></b></div>
+  <div id="sso" hidden><h1>Sign in</h1><p class="s">Traffic management and violations platform</p>
+    <button id="ssob" type="button">Sign in with single sign-on</button>
+    <p class="s" style="margin-top:16px;text-align:center"><a href="#" id="localLink" style="color:var(--muted)">Administrator sign-in with a password</a></p>
+    <div class="err" id="e0" role="alert"></div></div>
   <form id="login" autocomplete="on"><h1>Sign in</h1><p class="s">Traffic management and violations platform</p>
     <label for="u">Username</label><input id="u" name="username" autocomplete="username" autofocus required>
     <label for="p">Password</label><input id="p" name="password" type="password" autocomplete="current-password" required>
@@ -34,6 +38,11 @@ const j=async(url,body)=>{const r=await fetch(url,{method:"POST",headers:{"Conte
 const showChange=()=>{$("login").hidden=true;$("change").hidden=false;$("c0").focus()};
 fetch("/api/auth/me").then(r=>r.ok?r.json():null).then(m=>{if(m&&m.user){m.user.must_change?showChange():location.replace(next())}}).catch(()=>{});
 if(q.get("change"))fetch("/api/auth/me").then(r=>r.ok&&r.json()).then(m=>{if(m&&m.user&&m.user.must_change)showChange()});
+if(q.get("error"))$("e1").textContent=$("e0").textContent=q.get("error");
+fetch("/api/auth/config").then(r=>r.json()).then(c=>{if(c.mode==="oidc"){$("sso").hidden=false;$("login").hidden=!q.get("local");
+  if(c.sso_name)$("ssob").textContent="Sign in with "+c.sso_name;
+  $("ssob").onclick=()=>location.assign("/api/auth/oidc/login?next="+encodeURIComponent(next()));
+  $("localLink").onclick=e=>{e.preventDefault();$("sso").hidden=true;$("login").hidden=false}}}).catch(()=>{});
 $("login").addEventListener("submit",async e=>{e.preventDefault();$("e1").textContent="";$("b1").disabled=true;
   try{const u=await j("/api/auth/login",{username:$("u").value,password:$("p").value});$("c0").value=$("p").value;u.must_change?showChange():location.replace(next())}
   catch(x){$("e1").textContent=x.message}$("b1").disabled=false});
