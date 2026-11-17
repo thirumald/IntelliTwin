@@ -459,6 +459,107 @@ sampleVideos: [
     ]
   },
 
+  /* ---- Integration Studio (data source onboarding and field mapping) --------------------------- */
+  // The studio's screens are generated from this metadata: add a connector or an entity here and it
+  // appears in the wizard without code changes. Mappings are kept in this browser; nothing is sent
+  // to a server. See docs/integration-studio.md.
+  integrations: {
+    // Where a deployed studio would save, test and publish mappings (GraphQL). Empty: keep everything in the browser.
+    apiUrl: '',
+    // Connector types. `mode`: polling, streaming or file. `fields` build the connection form.
+    connectors: [
+      { id: 'rest', name: 'REST API', mode: 'polling', formats: ['json', 'xml', 'csv'], note: 'Calls an HTTP endpoint on a schedule.',
+        fields: [{ key: 'url', label: 'Endpoint URL', type: 'url', required: true, placeholder: 'https://vendor.example/api/v1/events' },
+          { key: 'method', label: 'Method', type: 'select', options: ['GET', 'POST'] }, { key: 'paging', label: 'Paging', type: 'select', options: ['None', 'Page number', 'Cursor', 'Since last timestamp'] }] },
+      { id: 'graphql', name: 'GraphQL', mode: 'polling', formats: ['json'], note: 'Runs a query on a schedule.',
+        fields: [{ key: 'url', label: 'Endpoint URL', type: 'url', required: true, placeholder: 'https://vendor.example/graphql' }, { key: 'query', label: 'Query', type: 'area', required: true, placeholder: 'query { events(since: $since) { id time } }' }] },
+      { id: 'soap', name: 'SOAP', mode: 'polling', formats: ['xml'], note: 'Calls a web-service operation on a schedule.',
+        fields: [{ key: 'wsdl', label: 'WSDL URL', type: 'url', required: true, placeholder: 'https://vendor.example/service?wsdl' }, { key: 'operation', label: 'Operation', type: 'text', required: true, placeholder: 'GetEvents' }] },
+      { id: 'kafka', name: 'Kafka', mode: 'streaming', formats: ['json'], note: 'Reads messages from a topic as they arrive.',
+        fields: [{ key: 'brokers', label: 'Bootstrap servers', type: 'text', required: true, placeholder: 'broker-1:9092, broker-2:9092' }, { key: 'topic', label: 'Topic', type: 'text', required: true, placeholder: 'vendor.events' },
+          { key: 'group', label: 'Consumer group', type: 'text', placeholder: 'intellitwin-ingest' }, { key: 'offset', label: 'Start from', type: 'select', options: ['Latest', 'Earliest'] }] },
+      { id: 'mqtt', name: 'MQTT', mode: 'streaming', formats: ['json', 'csv'], note: 'Subscribes to topics on a broker.',
+        fields: [{ key: 'broker', label: 'Broker URL', type: 'text', required: true, placeholder: 'mqtts://broker.example:8883' }, { key: 'topic', label: 'Topic filter', type: 'text', required: true, placeholder: 'roadside/+/readings' }, { key: 'qos', label: 'Quality of service', type: 'select', options: ['0', '1', '2'] }] },
+      { id: 'sql', name: 'Database (SQL)', mode: 'polling', formats: ['json'], note: 'Runs a query on a schedule and reads new rows.',
+        fields: [{ key: 'engine', label: 'Database', type: 'select', options: ['PostgreSQL', 'SQL Server', 'Oracle', 'MySQL'] }, { key: 'host', label: 'Host and port', type: 'text', required: true, placeholder: 'db.example:5432' },
+          { key: 'database', label: 'Database name', type: 'text', required: true }, { key: 'query', label: 'Query or table', type: 'area', required: true, placeholder: 'SELECT * FROM events WHERE updated_at > :last_run' }] },
+      { id: 'sftp', name: 'SFTP / file drop', mode: 'file', formats: ['csv', 'json', 'xml'], note: 'Picks up files from a folder.',
+        fields: [{ key: 'host', label: 'Host and port', type: 'text', required: true, placeholder: 'sftp.example:22' }, { key: 'path', label: 'Folder', type: 'text', required: true, placeholder: '/outbound/incidents' }, { key: 'pattern', label: 'File name pattern', type: 'text', placeholder: '*.csv' }] },
+      { id: 'upload', name: 'File upload', mode: 'file', formats: ['csv', 'json', 'xml'], note: 'A file loaded by hand, for one-off imports.', noAuth: true, fields: [] }
+    ],
+    // How a connection signs in. Only a reference to the secret is kept, never the secret itself.
+    authTypes: ['None', 'API key', 'Basic (user and password)', 'OAuth 2.0 client credentials', 'Client certificate (mTLS)'],
+    pollEvery: ['10 seconds', '30 seconds', '1 minute', '5 minutes', '15 minutes', '1 hour', '1 day'],
+    // The platform's own data model (canonical entities). `key` fields identify a record, for duplicate detection.
+    // Field types: string, integer, number, boolean, datetime. `pii` marks personal data.
+    entities: [
+      { name: 'VehicleDetection', label: 'Vehicle detection', note: 'A vehicle read by a camera: the Search and Fines sections.', key: ['plateNumber', 'timestamp', 'cameraId'], fields: [
+        { name: 'plateNumber', type: 'string', required: true, pattern: '[A-Z0-9 ]{2,12}', format: 'upper', pii: true, note: 'Capitals and digits' },
+        { name: 'timestamp', type: 'datetime', required: true, note: 'ISO 8601, UTC' }, { name: 'cameraId', type: 'string', required: true },
+        { name: 'confidence', type: 'number', min: 0, max: 100, note: 'Percent' }, { name: 'vehicleClass', type: 'string', 'enum': ['Car', 'Taxi', 'Bus', 'Light goods', 'Heavy vehicle', 'Motorcycle', 'Unknown'] },
+        { name: 'latitude', type: 'number', min: -90, max: 90 }, { name: 'longitude', type: 'number', min: -180, max: 180 }, { name: 'speedKmh', type: 'number', min: 0, max: 300 },
+        { name: 'lane', type: 'integer', min: 1, max: 12 }, { name: 'direction', type: 'string' }] },
+      { name: 'TrafficReading', label: 'Traffic reading', note: 'A count from a roadside detector: the Congestion section.', key: ['detectorId', 'timestamp', 'lane'], fields: [
+        { name: 'detectorId', type: 'string', required: true }, { name: 'timestamp', type: 'datetime', required: true }, { name: 'flowVehPerHour', type: 'integer', min: 0, max: 20000 },
+        { name: 'speedKmh', type: 'number', min: 0, max: 300 }, { name: 'occupancyPct', type: 'number', min: 0, max: 100 }, { name: 'lane', type: 'integer', min: 1, max: 12 }] },
+      { name: 'Incident', label: 'Incident', note: 'A reported incident: the Incidents and Accidents sections.', key: ['incidentId'], fields: [
+        { name: 'incidentId', type: 'string', required: true }, { name: 'timestamp', type: 'datetime', required: true },
+        { name: 'type', type: 'string', required: true, 'enum': ['Accident', 'Breakdown', 'Roadworks', 'Obstruction', 'Flooding', 'Other'] }, { name: 'severity', type: 'string', 'enum': ['Low', 'Medium', 'High', 'Critical'] },
+        { name: 'latitude', type: 'number', required: true, min: -90, max: 90 }, { name: 'longitude', type: 'number', required: true, min: -180, max: 180 },
+        { name: 'description', type: 'string', maxLength: 500 }, { name: 'status', type: 'string', 'enum': ['Open', 'Acknowledged', 'Closed'] }, { name: 'reportedBy', type: 'string', pii: true }] },
+      { name: 'SignalStatus', label: 'Signal status', note: 'The state of a signal junction: the Signals section.', key: ['junctionId', 'timestamp'], fields: [
+        { name: 'junctionId', type: 'string', required: true }, { name: 'timestamp', type: 'datetime', required: true }, { name: 'state', type: 'string', required: true, 'enum': ['Normal', 'Flashing', 'Manual', 'Fault', 'Offline'] },
+        { name: 'planId', type: 'string' }, { name: 'phase', type: 'integer', min: 1, max: 16 }, { name: 'cycleSec', type: 'integer', min: 20, max: 300 }] },
+      { name: 'TransitPosition', label: 'Transit position', note: 'A bus, taxi or shuttle position: the Transit section.', key: ['vehicleId', 'timestamp'], fields: [
+        { name: 'vehicleId', type: 'string', required: true }, { name: 'timestamp', type: 'datetime', required: true }, { name: 'latitude', type: 'number', required: true, min: -90, max: 90 },
+        { name: 'longitude', type: 'number', required: true, min: -180, max: 180 }, { name: 'routeId', type: 'string' }, { name: 'speedKmh', type: 'number', min: 0, max: 200 },
+        { name: 'delaySec', type: 'integer' }, { name: 'occupancyPct', type: 'number', min: 0, max: 100 }] },
+      { name: 'EnvironmentReading', label: 'Environment reading', note: 'Air quality and noise from a station: the environment layer.', key: ['stationId', 'timestamp'], fields: [
+        { name: 'stationId', type: 'string', required: true }, { name: 'timestamp', type: 'datetime', required: true }, { name: 'pm25', type: 'number', min: 0, max: 2000 }, { name: 'pm10', type: 'number', min: 0, max: 5000 },
+        { name: 'no2', type: 'number', min: 0, max: 2000 }, { name: 'noiseDb', type: 'number', min: 0, max: 140 }, { name: 'temperatureC', type: 'number', min: -40, max: 70 }, { name: 'humidityPct', type: 'number', min: 0, max: 100 }] }
+    ],
+    // Example integrations shown on first use. The vendors, endpoints and payloads are invented.
+    seed: [
+      { id: 'anpr-vendor', name: 'ANPR Vendor', connector: 'rest', entity: 'VehicleDetection', status: 'draft', format: 'json', ratePerSec: 240,
+        config: { url: 'https://anpr-vendor.example/api/v2/reads', method: 'GET', paging: 'Since last timestamp' }, auth: { type: 'API key', ref: 'vault://intellitwin/anpr-vendor/api-key' }, every: '10 seconds',
+        sample: '{\n  "vendor": "ANPR Vendor",\n  "count": 6,\n  "events": [\n    { "plate_no": "ad 12345", "capture_time": "17/11/2026 06:10:22", "device_code": "CAM-0012", "confidence_score": 96.4, "vehicle_type": "car", "location": { "lat": 24.4539, "lon": 54.3773 }, "speed": 62, "lane": 2 },\n    { "plate_no": "dxb 88021", "capture_time": "17/11/2026 06:10:24", "device_code": "CAM-0012", "confidence_score": 91.2, "vehicle_type": "taxi", "location": { "lat": 24.4539, "lon": 54.3773 }, "speed": 58, "lane": 1 },\n    { "plate_no": "AD 70411", "capture_time": "17/11/2026 06:10:31", "device_code": "CAM-0047", "confidence_score": 88.75, "vehicle_type": "truck", "location": { "lat": 24.4281, "lon": 54.4372 }, "speed": 74, "lane": 3 },\n    { "plate_no": "shj 5120", "capture_time": "17/11/2026 06:10:40", "device_code": "CAM-0047", "confidence_score": 79.1, "vehicle_type": "bus", "location": { "lat": 24.4281, "lon": 54.4372 }, "speed": 51, "lane": 3 },\n    { "plate_no": "ad 30977", "capture_time": "17/11/2026 06:10:44", "device_code": "CAM-0103", "confidence_score": 93.0, "vehicle_type": "pickup", "location": { "lat": 24.4912, "lon": 54.3606 }, "speed": 66, "lane": 1 },\n    { "plate_no": "ad 12345", "capture_time": "17/11/2026 06:10:22", "device_code": "CAM-0012", "confidence_score": 96.4, "vehicle_type": "car", "location": { "lat": 24.4539, "lon": 54.3773 }, "speed": 62, "lane": 2 }\n  ]\n}',
+        rules: [
+          { sourcePath: 'plate_no', targetPath: 'plateNumber', transform: 'uppercase', required: true },
+          { sourcePath: 'capture_time', targetPath: 'timestamp', transform: 'dateFormat', args: { format: 'dd/MM/yyyy HH:mm:ss', tz: '+04:00' }, required: true },
+          { sourcePath: 'device_code', targetPath: 'cameraId', transform: 'direct', required: true },
+          { sourcePath: 'confidence_score', targetPath: 'confidence', transform: 'toDecimal', args: { decimals: 1 } },
+          { sourcePath: 'vehicle_type', targetPath: 'vehicleClass', transform: 'lookup', args: { table: 'car=Car\ntaxi=Taxi\nbus=Bus\nvan=Light goods\ntruck=Heavy vehicle\nmotorbike=Motorcycle', fallback: '' } }
+        ] },
+      { id: 'roadside-detectors', name: 'Roadside detectors', connector: 'mqtt', entity: 'TrafficReading', status: 'published', format: 'json', ratePerSec: 520, platformFeed: 'Traffic detectors',
+        config: { broker: 'mqtts://roadside-broker.example:8883', topic: 'roadside/+/readings', qos: '1' }, auth: { type: 'Client certificate (mTLS)', ref: 'vault://intellitwin/roadside/client-cert' },
+        sample: '[\n  { "det": "DET-014", "ts": 1794881400, "q": 1260, "v": 71.5, "occ": 18.2, "lane": 1 },\n  { "det": "DET-014", "ts": 1794881400, "q": 1104, "v": 66.0, "occ": 21.7, "lane": 2 },\n  { "det": "DET-022", "ts": 1794881400, "q": 1832, "v": 38.4, "occ": 44.9, "lane": 1 },\n  { "det": "DET-031", "ts": 1794881460, "q": 640, "v": 92.3, "occ": 7.5, "lane": 1 }\n]',
+        rules: [
+          { sourcePath: 'det', targetPath: 'detectorId', transform: 'direct', required: true },
+          { sourcePath: 'ts', targetPath: 'timestamp', transform: 'dateFormat', args: { format: 'epoch-s', tz: '+00:00' }, required: true },
+          { sourcePath: 'q', targetPath: 'flowVehPerHour', transform: 'toInteger' }, { sourcePath: 'v', targetPath: 'speedKmh', transform: 'toDecimal', args: { decimals: 1 } },
+          { sourcePath: 'occ', targetPath: 'occupancyPct', transform: 'toDecimal', args: { decimals: 1 } }, { sourcePath: 'lane', targetPath: 'lane', transform: 'direct' }
+        ] },
+      { id: 'control-room-incidents', name: 'Control room incidents', connector: 'sftp', entity: 'Incident', status: 'published', format: 'csv', ratePerSec: 0.6, platformFeed: 'Incident reports',
+        config: { host: 'sftp.control-room.example:22', path: '/outbound/incidents', pattern: 'incidents_*.csv' }, auth: { type: 'Basic (user and password)', ref: 'vault://intellitwin/control-room/sftp' }, every: '1 minute',
+        sample: 'Incident Ref;Reported;Category;Priority;Lat;Lon;Details;State\nINC-2026-118204;17/11/2026 05:42;RTA;P1;24.4667;54.3667;Two vehicles, lane 2 blocked;OPEN\nINC-2026-118205;17/11/2026 05:51;BRK;P3;24.4310;54.4410;Stalled lorry on hard shoulder;ACK\nINC-2026-118206;17/11/2026 06:03;OBS;P2;24.4895;54.3582;Debris in lane 1;OPEN\nINC-2026-118207;17/11/2026 06:15;RWK;P4;24.4532;54.3901;Night works overrun;CLOSED',
+        rules: [
+          { sourcePath: 'Incident Ref', targetPath: 'incidentId', transform: 'direct', required: true },
+          { sourcePath: 'Reported', targetPath: 'timestamp', transform: 'dateFormat', args: { format: 'dd/MM/yyyy HH:mm', tz: '+04:00' }, required: true },
+          { sourcePath: 'Category', targetPath: 'type', transform: 'lookup', args: { table: 'RTA=Accident\nBRK=Breakdown\nRWK=Roadworks\nOBS=Obstruction\nFLD=Flooding', fallback: 'Other' }, required: true },
+          { sourcePath: 'Priority', targetPath: 'severity', transform: 'lookup', args: { table: 'P1=Critical\nP2=High\nP3=Medium\nP4=Low', fallback: '' } },
+          { sourcePath: 'Lat', targetPath: 'latitude', transform: 'toDecimal', args: { decimals: 5 }, required: true }, { sourcePath: 'Lon', targetPath: 'longitude', transform: 'toDecimal', args: { decimals: 5 }, required: true },
+          { sourcePath: 'Details', targetPath: 'description', transform: 'trim' },
+          { sourcePath: 'State', targetPath: 'status', transform: 'lookup', args: { table: 'OPEN=Open\nACK=Acknowledged\nCLOSED=Closed', fallback: '' } }
+        ] }
+    ],
+    // Reusable mappings for vendors with similar payloads.
+    templates: [
+      { name: 'Plate read, generic ANPR', entity: 'VehicleDetection', rules: [
+        { sourcePath: 'plate', targetPath: 'plateNumber', transform: 'uppercase', required: true }, { sourcePath: 'time', targetPath: 'timestamp', transform: 'dateFormat', args: { format: 'auto', tz: '+04:00' }, required: true },
+        { sourcePath: 'camera_id', targetPath: 'cameraId', transform: 'direct', required: true }, { sourcePath: 'confidence', targetPath: 'confidence', transform: 'toDecimal', args: { decimals: 1 } }] }
+    ]
+  },
+
   /* ---- People on foot ------------------------------------------------------------------------- */
   // Synthetic walkers drawn at street zoom. People per km of street by road class
   // (motorway, trunk, primary, secondary, tertiary), before the time-of-day factor. Assumed, not counted.
@@ -556,7 +657,7 @@ sampleVideos: [
   auth: {
     enabled: true,
     roles: {
-      admin: { label: 'Administrator', can: ['whatif', 'export', 'audit', 'settings', 'video', 'search'] },
+      admin: { label: 'Administrator', can: ['whatif', 'export', 'audit', 'settings', 'video', 'search', 'integrations'] },
       operator: { label: 'Operator', can: ['whatif', 'export', 'video', 'search'] },
       viewer: { label: 'Viewer', can: ['video'] }
     }

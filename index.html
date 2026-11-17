@@ -8,8 +8,8 @@
 <meta name="theme-color" content="#0b1220">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b1220'/%3E%3Cpath d='M6 22 L13 12 L19 18 L26 8' fill='none' stroke='%232dd4a7' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
-<link rel="stylesheet" href="css/styles.css?v=20261117n">
-<link rel="stylesheet" href="css/theme.css?v=20261117n">
+<link rel="stylesheet" href="css/styles.css?v=20261117p">
+<link rel="stylesheet" href="css/theme.css?v=20261117p">
 </head>
 <body>
 <header class="topbar">
@@ -73,6 +73,7 @@
     <button role="tab" data-tab="model" aria-selected="false" title="Model"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.500v.2"/></svg><span data-i18n="model">Model</span></button>
     <button type="button" class="rail-item" id="osintBtn" aria-pressed="false" title="OSINT: open-source intelligence feeds"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg><span>OSINT</span></button>
     <button type="button" class="rail-item" id="analyticsBtn" title="Analytics and city KPIs"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg><span>Analytics</span></button>
+    <button type="button" class="rail-item" id="integBtn" aria-pressed="false" title="Integration Studio: onboard data sources and map their fields"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h5v4H4zM4 14h5v4H4zM15 10h5v4h-5zM9 8h3v4h3M9 16h3v-4"/></svg><span>Integrations</span></button>
   </nav>
 
 <main class="layout">
@@ -826,6 +827,16 @@
     <div class="op-grid" id="opGrid"></div>
   </div>
 </section>
+<section class="os-page ig-page" id="integPage" hidden aria-label="Integration Studio">
+  <header class="an-head">
+    <div><h2>Integration Studio</h2><p>Onboard a data source, discover its fields, map them to the platform data model, test and publish. No code.</p></div>
+    <div class="op-tools">
+      <div class="seg" id="igTabs" role="tablist" aria-label="Integration Studio views"><button type="button" data-t="list" role="tab" class="on" aria-selected="true">Integrations</button><button type="button" data-t="registry" role="tab" aria-selected="false">Schema registry</button><button type="button" data-t="monitor" role="tab" aria-selected="false">Monitor</button></div>
+      <button type="button" class="btn" id="igClose">Close</button>
+    </div>
+  </header>
+  <div class="ig-body" id="igBody"></div>
+</section>
 <section class="analytics" id="analytics" hidden aria-label="Predictive analytics">
   <header class="an-head">
     <div><h2>Analytics and city KPIs</h2><p>Scorecard and planning projections from the synthetic model. Illustrations of the method, not forecasts for decisions.</p></div>
@@ -977,43 +988,45 @@
 <!-- Printed summary -->
 <div id="report" class="report" aria-hidden="true"></div>
 
-<script src="config.js?v=20261117n"></script>
-<script src="js/regions.js?v=20261117n"></script>
+<script src="config.js?v=20261117p"></script>
+<script src="js/regions.js?v=20261117p"></script>
 <script src="vendor/maplibre-gl.js"></script>
 <script src="vendor/deck.gl.min.js"></script>
 <script src="vendor/satellite.min.js"></script>
-<script src="js/daymodel.js?v=20261117n"></script>
-<script src="js/events.js?v=20261117n"></script>
-<script src="js/vehicles3d.js?v=20261117n"></script>
-<script src="js/app.js?v=20261117n"></script>
-<script src="js/ops.js?v=20261117n"></script>
-<script src="js/devices.js?v=20261117n"></script>
-<script src="js/i18n.js?v=20261117n"></script>
-<script src="js/response.js?v=20261117n"></script>
-<script src="js/zones.js?v=20261117n"></script>
-<script src="js/environment.js?v=20261117n"></script>
-<script src="js/buses.js?v=20261117n"></script>
-<script src="js/transit.js?v=20261117n"></script>
-<script src="js/operations.js?v=20261117n"></script>
-<script src="js/mobility.js?v=20261117n"></script>
-<script src="js/support.js?v=20261117n"></script>
-<script src="js/seaair.js?v=20261117n"></script>
-<script src="js/energy.js?v=20261117n"></script>
-<script src="js/tomtom.js?v=20261117n"></script>
-<script src="js/citycases.js?v=20261117n"></script>
-<script src="js/osint.js?v=20261117n"></script>
-<script src="js/livefeeds.js?v=20261117n"></script>
-<script src="js/osintmap.js?v=20261117n"></script>
-<script src="js/layertree.js?v=20261117n"></script>
-<script src="js/camwall.js?v=20261117n"></script>
-<script src="js/map3d.js?v=20261117n"></script>
-<script src="js/osintpage.js?v=20261117n"></script>
-<script src="js/diagnostics.js?v=20261117n"></script>
-<script src="js/platform.js?v=20261117n"></script>
-<script src="js/vlm.js?v=20261117n"></script>
-<script src="js/analytics.js?v=20261117n"></script>
-<script src="js/analytics-ops.js?v=20261117n"></script>
-<script src="js/assistant.js?v=20261117n"></script>
-<script src="js/shell.js?v=20261117n"></script>
+<script src="js/daymodel.js?v=20261117p"></script>
+<script src="js/events.js?v=20261117p"></script>
+<script src="js/vehicles3d.js?v=20261117p"></script>
+<script src="js/app.js?v=20261117p"></script>
+<script src="js/ops.js?v=20261117p"></script>
+<script src="js/devices.js?v=20261117p"></script>
+<script src="js/i18n.js?v=20261117p"></script>
+<script src="js/response.js?v=20261117p"></script>
+<script src="js/zones.js?v=20261117p"></script>
+<script src="js/environment.js?v=20261117p"></script>
+<script src="js/buses.js?v=20261117p"></script>
+<script src="js/transit.js?v=20261117p"></script>
+<script src="js/operations.js?v=20261117p"></script>
+<script src="js/mobility.js?v=20261117p"></script>
+<script src="js/support.js?v=20261117p"></script>
+<script src="js/seaair.js?v=20261117p"></script>
+<script src="js/energy.js?v=20261117p"></script>
+<script src="js/tomtom.js?v=20261117p"></script>
+<script src="js/citycases.js?v=20261117p"></script>
+<script src="js/osint.js?v=20261117p"></script>
+<script src="js/livefeeds.js?v=20261117p"></script>
+<script src="js/osintmap.js?v=20261117p"></script>
+<script src="js/layertree.js?v=20261117p"></script>
+<script src="js/camwall.js?v=20261117p"></script>
+<script src="js/map3d.js?v=20261117p"></script>
+<script src="js/osintpage.js?v=20261117p"></script>
+<script src="js/diagnostics.js?v=20261117p"></script>
+<script src="js/platform.js?v=20261117p"></script>
+<script src="js/mapping-engine.js?v=20261117p"></script>
+<script src="js/integrations.js?v=20261117p"></script>
+<script src="js/vlm.js?v=20261117p"></script>
+<script src="js/analytics.js?v=20261117p"></script>
+<script src="js/analytics-ops.js?v=20261117p"></script>
+<script src="js/assistant.js?v=20261117p"></script>
+<script src="js/shell.js?v=20261117p"></script>
 </body>
 </html>

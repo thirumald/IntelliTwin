@@ -14,7 +14,8 @@
   // One sample of the whole platform at wall-clock second `now`.
   function sample(now) {
     var k = C.kpiAt(state.scenario, state.t) || {}, veh = k.vehicles || 20000, load = Math.min(1.6, 0.35 + veh / 45000);
-    var feeds = (P.feeds || []).map(function (f, i) {
+    // Integrations published in the Integration Studio join the platform's own example feeds.
+    var feeds = (P.feeds || []).concat(T.integrations ? T.integrations.feeds() : []).map(function (f, i) {
       var bucket = Math.floor(now / 300), r = rnd(hashStr(f.name), bucket), st = r < (f.faultRate || 0.03) ? 'down' : r < (f.faultRate || 0.03) + 0.07 ? 'delayed' : 'ok';
       var rate = st === 'down' ? 0 : f.perSec * (f.followsTraffic ? load : 1) * wob(f.name, now, 0.12) * (st === 'delayed' ? 0.55 : 1);
       var lag = st === 'down' ? null : (f.lagMs || 400) * wob(f.name + 'lag', now, 0.25) * (st === 'delayed' ? 9 : 1);

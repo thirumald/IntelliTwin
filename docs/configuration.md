@@ -96,6 +96,8 @@ The sign-in is a **demo**: the role is chosen in the browser, so anyone can pick
 | `audit` | Audit log view and export |
 | `settings` | Configuration summary |
 
+The `integrations` permission allows editing, testing and publishing in the Integration Studio; its settings are described in [integration-studio.md](integration-studio.md).
+
 ## Integration points not implemented yet
 
 These need a service of your own; the app does not call them today.

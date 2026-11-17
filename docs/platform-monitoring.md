@@ -13,6 +13,8 @@ The **Platform** section shows data ingestion and infrastructure health, updatin
 | Services | Status, response time and 30-day uptime per service |
 | Storage and backup | Capacity used, growth a day, days until full, video retention, last backup |
 
+Integrations published in the [Integration Studio](integration-studio.md) are added to the Data ingestion list, with synthetic rates like the rest.
+
 ## How the figures are generated
 
 Feeds marked `followsTraffic` scale with the number of vehicles moving in the twin, so ingestion rises at the peak. Servers marked `followsLoad` do the same. Each value has a slow wave and small noise on top. A feed is shown as delayed or not receiving for some five-minute periods, and a service as degraded for some ten-minute periods, so the statuses and the open-issues list have something to show.

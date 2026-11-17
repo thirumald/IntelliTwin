@@ -21,6 +21,7 @@ Technical and data-source documentation for the IntelliTwin traffic twin for Abu
 | [tomtom.md](tomtom.md) | TomTom live data: features, setting the key, why the key is not in the repository |
 | [vlm.md](vlm.md) | Vision-language model sample in the camera window, and how to connect a real model |
 | [platform-monitoring.md](platform-monitoring.md) | Platform monitoring: data ingestion and infrastructure (synthetic) |
+| [integration-studio.md](integration-studio.md) | Integration Studio: onboarding data sources, field mapping, transformations, testing, versions (no server behind it) |
 | [environment.md](environment.md) | Environmental sensors: synthetic readings, air-quality index, noise |
 | [assistant.md](assistant.md) | The built-in assistant and how to connect a language model |
 | [limitations.md](limitations.md) | Calibration status, known limits, disclaimer |
