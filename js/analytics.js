@@ -572,5 +572,5 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('analytics').hidden) { close(); } });
   });
 
-  T.analytics = { charts: { line: lineChart, hbar: hbarChart, bar: barChart, pie: pieChart, tile: tile, COL: COL, STATUS: STATUS }, open: open, close: close, scorecard: function () { if (!M) { build(); } return scorecard(); }, model: function () { if (!M) { build(); } return M; } };
+  T.analytics = { section: section, current: function () { var b = $('anMenu').querySelector('.on'); return b ? b.getAttribute('data-an') : 'kpi'; }, refresh: function () { M = null; if (!$('analytics').hidden) { render(); } }, charts: { line: lineChart, hbar: hbarChart, bar: barChart, pie: pieChart, tile: tile, COL: COL, STATUS: STATUS }, open: open, close: close, scorecard: function () { if (!M) { build(); } return scorecard(); }, model: function () { if (!M) { build(); } return M; } };
 })();

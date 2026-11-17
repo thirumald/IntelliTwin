@@ -281,7 +281,8 @@ sampleVideos: [
   cameraWall: { tilesPerPage: 12, earthStream: 'https://www.youtube.com/embed/live_stream?channel=UCLA_DiR1FfKNvjuUpBHmylQ&autoplay=1&mute=1' },
 
   // OSINT on the 3D map: the UAE-wide view and how far heights are scaled so that aircraft and satellites can be seen.
-  osintMap: { centre: [54.6, 24.9], zoom: 6.4, pitch: 52, bearing: -12, minZoom: 4, heightExaggeration: 6, satelliteHeightScale: 0.2 },
+  // defaultView: the view the OSINT page opens on: 'region' (city, 3D buildings), 'uae' or 'world'. orbit: circle the camera when the page opens.
+  osintMap: { centre: [54.6, 24.9], zoom: 6.4, pitch: 52, bearing: -12, minZoom: 4, heightExaggeration: 6, satelliteHeightScale: 0.2, defaultView: 'region', orbit: true, orbitDegPerSec: 4 },
   // directWeather: when the published weather file is older than 75 minutes, ask Open-Meteo from the browser instead.
   osint: { rainAlertMm: 5, quakeAlertMag: 5, quakeAlertKm: 800, directWeather: true },
 
@@ -485,7 +486,21 @@ sampleVideos: [
           { key: 'database', label: 'Database name', type: 'text', required: true }, { key: 'query', label: 'Query or table', type: 'area', required: true, placeholder: 'SELECT * FROM events WHERE updated_at > :last_run' }] },
       { id: 'sftp', name: 'SFTP / file drop', mode: 'file', formats: ['csv', 'json', 'xml'], note: 'Picks up files from a folder.',
         fields: [{ key: 'host', label: 'Host and port', type: 'text', required: true, placeholder: 'sftp.example:22' }, { key: 'path', label: 'Folder', type: 'text', required: true, placeholder: '/outbound/incidents' }, { key: 'pattern', label: 'File name pattern', type: 'text', placeholder: '*.csv' }] },
-      { id: 'upload', name: 'File upload', mode: 'file', formats: ['csv', 'json', 'xml'], note: 'A file loaded by hand, for one-off imports.', noAuth: true, fields: [] }
+      { id: 'upload', name: 'File upload', mode: 'file', formats: ['csv', 'json', 'xml'], note: 'A file loaded by hand, for one-off imports.', noAuth: true, fields: [] },
+      { id: 'onvif', name: 'ONVIF / RTSP metadata', mode: 'streaming', formats: ['xml', 'json'], note: 'Events and analytics metadata from cameras or a video management system.',
+        fields: [{ key: 'host', label: 'Camera or VMS address', type: 'text', required: true, placeholder: '10.20.4.17:80' }, { key: 'profile', label: 'ONVIF profile', type: 'select', options: ['Profile M (metadata)', 'Profile S', 'Profile T'] }, { key: 'topics', label: 'Event topics', type: 'text', placeholder: 'tns1:RuleEngine//.' }] },
+      { id: 'socket', name: 'TCP / UDP stream', mode: 'streaming', formats: ['json', 'csv'], note: 'Raw sensor streams, such as radar and LiDAR object lists.',
+        fields: [{ key: 'address', label: 'Listen address and port', type: 'text', required: true, placeholder: '0.0.0.0:7100' }, { key: 'transport', label: 'Transport', type: 'select', options: ['UDP', 'TCP'] }, { key: 'framing', label: 'Message framing', type: 'select', options: ['One message per packet', 'Newline', 'Length prefix'] }] },
+      { id: 'websocket', name: 'WebSocket', mode: 'streaming', formats: ['json'], note: 'A live stream pushed by the source.',
+        fields: [{ key: 'wsUrl', label: 'Stream address', type: 'text', required: true, placeholder: 'wss://sensor-hub.example/stream' }] },
+      { id: 'snmp', name: 'SNMP / NTCIP', mode: 'polling', formats: ['json'], note: 'Reads status objects from field equipment: signal controllers, signs, cabinets, network devices.',
+        fields: [{ key: 'host', label: 'Device address', type: 'text', required: true, placeholder: '10.30.1.12:161' }, { key: 'version', label: 'Version', type: 'select', options: ['v3', 'v2c'] }, { key: 'objects', label: 'Objects to read (OIDs)', type: 'area', required: true, placeholder: '1.3.6.1.2.1.1.3.0' }] },
+      { id: 'modbus', name: 'Modbus TCP', mode: 'polling', formats: ['json', 'csv'], note: 'Reads registers from controllers, power and cabinet equipment.',
+        fields: [{ key: 'host', label: 'Device address', type: 'text', required: true, placeholder: '10.30.2.40:502' }, { key: 'unit', label: 'Unit ID', type: 'text', placeholder: '1' }, { key: 'registers', label: 'Register map', type: 'area', required: true, placeholder: '40001 battery_v float\n40003 temp_c float' }] },
+      { id: 'opcua', name: 'OPC UA', mode: 'streaming', formats: ['json'], note: 'Subscribes to nodes on an industrial server (tunnels, pumping, building systems).',
+        fields: [{ key: 'endpoint', label: 'Endpoint', type: 'text', required: true, placeholder: 'opc.tcp://plc.example:4840' }, { key: 'nodes', label: 'Nodes', type: 'area', required: true, placeholder: 'ns=2;s=Tunnel.Fan1.Speed' }] },
+      { id: 'lorawan', name: 'LoRaWAN network server', mode: 'streaming', formats: ['json'], note: 'Uplinks from low-power sensors, delivered by the network server.',
+        fields: [{ key: 'server', label: 'Network server', type: 'text', required: true, placeholder: 'lns.example' }, { key: 'application', label: 'Application', type: 'text', required: true, placeholder: 'city-sensors' }] }
     ],
     // How a connection signs in. Only a reference to the secret is kept, never the secret itself.
     authTypes: ['None', 'API key', 'Basic (user and password)', 'OAuth 2.0 client credentials', 'Client certificate (mTLS)'],
@@ -516,11 +531,119 @@ sampleVideos: [
         { name: 'delaySec', type: 'integer' }, { name: 'occupancyPct', type: 'number', min: 0, max: 100 }] },
       { name: 'EnvironmentReading', label: 'Environment reading', note: 'Air quality and noise from a station: the environment layer.', key: ['stationId', 'timestamp'], fields: [
         { name: 'stationId', type: 'string', required: true }, { name: 'timestamp', type: 'datetime', required: true }, { name: 'pm25', type: 'number', min: 0, max: 2000 }, { name: 'pm10', type: 'number', min: 0, max: 5000 },
-        { name: 'no2', type: 'number', min: 0, max: 2000 }, { name: 'noiseDb', type: 'number', min: 0, max: 140 }, { name: 'temperatureC', type: 'number', min: -40, max: 70 }, { name: 'humidityPct', type: 'number', min: 0, max: 100 }] }
+        { name: 'no2', type: 'number', min: 0, max: 2000 }, { name: 'noiseDb', type: 'number', min: 0, max: 140 }, { name: 'temperatureC', type: 'number', min: -40, max: 70 }, { name: 'humidityPct', type: 'number', min: 0, max: 100 }] },
+      { name: 'VideoEvent', label: 'Video analytics event', note: 'An event raised by camera analytics: stopped vehicle, wrong way, crowd, smoke.', key: ['eventId'], fields: [
+        { name: 'eventId', type: 'string', required: true }, { name: 'timestamp', type: 'datetime', required: true }, { name: 'cameraId', type: 'string', required: true },
+        { name: 'eventType', type: 'string', required: true, 'enum': ['Stopped vehicle', 'Wrong way', 'Pedestrian on road', 'Crowd', 'Intrusion', 'Smoke or fire', 'Debris', 'Queue', 'Other'] },
+        { name: 'confidence', type: 'number', min: 0, max: 100, note: 'Percent' }, { name: 'objectClass', type: 'string' }, { name: 'latitude', type: 'number', min: -90, max: 90 }, { name: 'longitude', type: 'number', min: -180, max: 180 },
+        { name: 'snapshotUrl', type: 'string', pii: true, note: 'Link to the image' }, { name: 'zone', type: 'string' }] },
+      { name: 'SpeedMeasurement', label: 'Speed measurement', note: 'One vehicle measured by a radar or an enforcement camera.', key: ['deviceId', 'timestamp', 'lane'], fields: [
+        { name: 'deviceId', type: 'string', required: true }, { name: 'timestamp', type: 'datetime', required: true }, { name: 'speedKmh', type: 'number', required: true, min: 0, max: 400 },
+        { name: 'speedLimitKmh', type: 'integer', min: 20, max: 160 }, { name: 'lane', type: 'integer', min: 1, max: 12 }, { name: 'direction', type: 'string' },
+        { name: 'vehicleClass', type: 'string', 'enum': ['Car', 'Taxi', 'Bus', 'Light goods', 'Heavy vehicle', 'Motorcycle', 'Unknown'] },
+        { name: 'plateNumber', type: 'string', pattern: '[A-Z0-9 ]{2,12}', format: 'upper', pii: true }, { name: 'lengthM', type: 'number', min: 0, max: 40 }] },
+      { name: 'ObjectTrack', label: 'Object track', note: 'A tracked road user from LiDAR, tracking radar or video: position, speed and size at one instant.', key: ['sensorId', 'trackId', 'timestamp'], fields: [
+        { name: 'sensorId', type: 'string', required: true }, { name: 'timestamp', type: 'datetime', required: true }, { name: 'trackId', type: 'string', required: true, tag: false },
+        { name: 'objectClass', type: 'string', required: true, 'enum': ['Car', 'Truck', 'Bus', 'Motorcycle', 'Bicycle', 'Pedestrian', 'Unknown'] },
+        { name: 'x', type: 'number', note: 'Metres from the sensor' }, { name: 'y', type: 'number', note: 'Metres from the sensor' }, { name: 'latitude', type: 'number', min: -90, max: 90 }, { name: 'longitude', type: 'number', min: -180, max: 180 },
+        { name: 'speedKmh', type: 'number', min: 0, max: 400 }, { name: 'headingDeg', type: 'number', min: 0, max: 360 }, { name: 'lengthM', type: 'number', min: 0, max: 40 }, { name: 'widthM', type: 'number', min: 0, max: 10 },
+        { name: 'heightM', type: 'number', min: 0, max: 10 }, { name: 'zone', type: 'string' }] },
+      { name: 'SensorReading', label: 'Sensor reading (generic IoT)', note: 'One measurement from any sensor: the catch-all for IoT devices without an entity of their own.', key: ['deviceId', 'metric', 'timestamp'], fields: [
+        { name: 'deviceId', type: 'string', required: true }, { name: 'timestamp', type: 'datetime', required: true }, { name: 'metric', type: 'string', required: true, tag: true }, { name: 'value', type: 'number', required: true },
+        { name: 'unit', type: 'string' }, { name: 'quality', type: 'string', 'enum': ['Good', 'Suspect', 'Bad'] }, { name: 'batteryPct', type: 'number', min: 0, max: 100 }] },
+      { name: 'DeviceHealth', label: 'Device health', note: 'Status of a field device: the Devices section and maintenance.', key: ['deviceId', 'timestamp'], fields: [
+        { name: 'deviceId', type: 'string', required: true }, { name: 'timestamp', type: 'datetime', required: true }, { name: 'status', type: 'string', required: true, 'enum': ['Online', 'Degraded', 'Offline', 'Maintenance'] },
+        { name: 'deviceType', type: 'string' }, { name: 'uptimeSec', type: 'integer', min: 0 }, { name: 'temperatureC', type: 'number', min: -40, max: 120 }, { name: 'voltageV', type: 'number', min: 0, max: 500 },
+        { name: 'signalDbm', type: 'number', min: -140, max: 0 }, { name: 'cpuPct', type: 'number', min: 0, max: 100 }, { name: 'storagePct', type: 'number', min: 0, max: 100 }, { name: 'firmware', type: 'string' },
+        { name: 'lastError', type: 'string', maxLength: 200 }] },
+      { name: 'ParkingOccupancy', label: 'Parking occupancy', note: 'A bay or a facility count: the Parking section.', key: ['facilityId', 'bayId', 'timestamp'], fields: [
+        { name: 'facilityId', type: 'string', required: true }, { name: 'timestamp', type: 'datetime', required: true }, { name: 'bayId', type: 'string' }, { name: 'occupied', type: 'boolean' },
+        { name: 'occupiedBays', type: 'integer', min: 0 }, { name: 'totalBays', type: 'integer', min: 0 }, { name: 'batteryPct', type: 'number', min: 0, max: 100 }] },
+      { name: 'WeatherReading', label: 'Road weather reading', note: 'A road weather station observation.', key: ['stationId', 'timestamp'], fields: [
+        { name: 'stationId', type: 'string', required: true }, { name: 'timestamp', type: 'datetime', required: true }, { name: 'airTempC', type: 'number', min: -40, max: 70 }, { name: 'roadTempC', type: 'number', min: -40, max: 90 },
+        { name: 'humidityPct', type: 'number', min: 0, max: 100 }, { name: 'windSpeedKmh', type: 'number', min: 0, max: 300 }, { name: 'windDirDeg', type: 'number', min: 0, max: 360 }, { name: 'visibilityM', type: 'number', min: 0 },
+        { name: 'rainMmPerHour', type: 'number', min: 0, max: 500 }, { name: 'roadCondition', type: 'string', 'enum': ['Dry', 'Wet', 'Flooded', 'Sand', 'Fog'] }] }
+    ],
+    // Device types the studio can onboard. Choosing one presets the connector, the target entity and an example
+    // payload. `connectors` lists the usual ways that device delivers data, most common first. The payloads are invented.
+    devices: [
+      { id: 'anpr', name: 'ANPR / plate-reading camera', cat: 'Cameras', connectors: ['rest', 'kafka', 'onvif'], entity: 'VehicleDetection', format: 'json',
+        sample: '[{"plate":"AD 12345","time":"2026-11-17T06:10:22+04:00","camera_id":"CAM-0012","confidence":96.4,"class":"Car","lat":24.4539,"lon":54.3773,"speed":62,"lane":2},{"plate":"DXB 88021","time":"2026-11-17T06:10:24+04:00","camera_id":"CAM-0012","confidence":91.2,"class":"Taxi","lat":24.4539,"lon":54.3773,"speed":58,"lane":1}]' },
+      { id: 'cctv', name: 'CCTV with video analytics', cat: 'Cameras', connectors: ['kafka', 'onvif', 'mqtt', 'rest'], entity: 'VideoEvent', format: 'json',
+        sample: '[{"event_id":"EV-88120","ts":"2026-11-17T06:11:02+04:00","camera":"CCTV-0231","type":"stopped_vehicle","score":0.91,"object":"car","lat":24.4667,"lon":54.3667,"snapshot":"https://vms.example/snap/88120.jpg","zone":"Lane 2"},{"event_id":"EV-88121","ts":"2026-11-17T06:11:40+04:00","camera":"CCTV-0102","type":"wrong_way","score":0.84,"object":"car","lat":24.431,"lon":54.441,"snapshot":"https://vms.example/snap/88121.jpg","zone":"Slip road"}]' },
+      { id: 'thermal', name: 'Thermal camera', cat: 'Cameras', connectors: ['onvif', 'mqtt', 'rest'], entity: 'VideoEvent', format: 'json',
+        sample: '[{"event_id":"TH-2201","ts":"2026-11-17T06:14:10+04:00","camera":"THM-T2-04","type":"fire","score":0.88,"object":"vehicle","zone":"Tunnel bore 2"},{"event_id":"TH-2202","ts":"2026-11-17T06:15:31+04:00","camera":"THM-T2-07","type":"pedestrian","score":0.79,"object":"person","zone":"Tunnel bore 2"}]' },
+      { id: 'enforcement', name: 'Speed and red-light enforcement camera', cat: 'Cameras', connectors: ['rest', 'sftp', 'kafka'], entity: 'SpeedMeasurement', format: 'json',
+        sample: '[{"site":"ENF-SZR-04","captured":"17/11/2026 06:12:40","speed_kmh":147,"limit_kmh":120,"lane":3,"plate":"AD 55210","veh_class":"Car","direction":"Southbound"},{"site":"ENF-SZR-04","captured":"17/11/2026 06:13:05","speed_kmh":133,"limit_kmh":120,"lane":2,"plate":"SHJ 4410","veh_class":"Car","direction":"Southbound"}]' },
+      { id: 'speed-radar', name: 'Speed radar', cat: 'Radar and LiDAR', connectors: ['rest', 'socket', 'mqtt'], entity: 'SpeedMeasurement', format: 'json',
+        sample: '[{"radar":"RAD-07","t":"2026-11-17T06:12:03+04:00","kmh":138.4,"limit":120,"lane":2,"dir":"NB","cls":"car","len_m":4.6},{"radar":"RAD-07","t":"2026-11-17T06:12:04+04:00","kmh":96.0,"limit":120,"lane":1,"dir":"NB","cls":"truck","len_m":11.8}]' },
+      { id: 'traffic-radar', name: 'Traffic counting radar', cat: 'Radar and LiDAR', connectors: ['mqtt', 'socket', 'rest'], entity: 'TrafficReading', format: 'json',
+        sample: '[{"unit":"TR-112","ts":1794881400,"lane":1,"volume":1320,"avg_speed":84.2,"occupancy":14.6},{"unit":"TR-112","ts":1794881400,"lane":2,"volume":1188,"avg_speed":79.5,"occupancy":16.1}]' },
+      { id: 'lidar', name: 'LiDAR sensor', cat: 'Radar and LiDAR', connectors: ['socket', 'websocket', 'kafka'], entity: 'ObjectTrack', format: 'json',
+        sample: '{"sensor":"LID-J12","frame_ts":1794881400123,"objects":[{"id":4411,"cls":"pedestrian","x":12.4,"y":-3.1,"speed_ms":1.4,"heading":92,"l":0.6,"w":0.6,"h":1.7,"zone":"Crossing N"},{"id":4412,"cls":"car","x":-8.2,"y":15.9,"speed_ms":9.8,"heading":181,"l":4.5,"w":1.9,"h":1.5,"zone":"Approach E"},{"id":4413,"cls":"bicycle","x":3.3,"y":7.0,"speed_ms":4.9,"heading":178,"l":1.8,"w":0.6,"h":1.6,"zone":"Approach E"}]}' },
+      { id: 'tracking-radar', name: 'Tracking radar (junction or perimeter)', cat: 'Radar and LiDAR', connectors: ['socket', 'websocket', 'kafka'], entity: 'ObjectTrack', format: 'json',
+        sample: '{"radar":"RDR-P03","time":"2026-11-17T06:12:05.250+04:00","tracks":[{"track":88,"class":"Truck","lat":24.4281,"lon":54.4372,"speed_kmh":71,"heading_deg":14,"length_m":12.5},{"track":91,"class":"Car","lat":24.4283,"lon":54.4369,"speed_kmh":64,"heading_deg":193,"length_m":4.4}]}' },
+      { id: 'loop', name: 'Loop or detector station', cat: 'Traffic field equipment', connectors: ['mqtt', 'snmp', 'rest'], entity: 'TrafficReading', format: 'json',
+        sample: '[{"det":"DET-014","ts":1794881400,"q":1260,"v":71.5,"occ":18.2,"lane":1},{"det":"DET-014","ts":1794881400,"q":1104,"v":66.0,"occ":21.7,"lane":2}]' },
+      { id: 'signal', name: 'Signal controller', cat: 'Traffic field equipment', connectors: ['snmp', 'rest', 'soap'], entity: 'SignalStatus', format: 'json',
+        sample: '[{"junction":"J-12","time":"2026-11-17T06:00:00+04:00","mode":"Normal","plan":"P3","phase":2,"cycle":90},{"junction":"J-15","time":"2026-11-17T06:00:05+04:00","mode":"Flashing","plan":"P1","phase":1,"cycle":120}]' },
+      { id: 'vms', name: 'Variable message sign', cat: 'Traffic field equipment', connectors: ['snmp', 'rest'], entity: 'DeviceHealth', format: 'json',
+        sample: '[{"sign":"VMS-E11-03","polled":"2026-11-17T06:10:00+04:00","state":"Online","type":"Variable message sign","temp_c":41.5,"fw":"3.2.1","last_error":""},{"sign":"VMS-E11-07","polled":"2026-11-17T06:10:00+04:00","state":"Degraded","type":"Variable message sign","temp_c":58.9,"fw":"3.2.1","last_error":"Pixel faults: 14"}]' },
+      { id: 'air', name: 'Air quality and noise station', cat: 'IoT sensors', connectors: ['mqtt', 'lorawan', 'rest'], entity: 'EnvironmentReading', format: 'json',
+        sample: '[{"station":"AQ-03","time":"2026-11-17T06:00:00+04:00","pm2_5":38.2,"pm10":91.0,"no2":44.1,"noise_db":66.3,"temp_c":27.4,"rh":58},{"station":"AQ-07","time":"2026-11-17T06:00:00+04:00","pm2_5":52.9,"pm10":120.4,"no2":61.0,"noise_db":71.8,"temp_c":27.9,"rh":55}]' },
+      { id: 'weather', name: 'Road weather station', cat: 'IoT sensors', connectors: ['rest', 'mqtt'], entity: 'WeatherReading', format: 'json',
+        sample: '[{"station_id":"RWIS-07","obs_time":"2026-11-17T06:00:00+04:00","air_temp":27.1,"road_temp":29.8,"humidity":61,"wind_speed":14,"wind_dir":310,"visibility":8000,"rain_mm_h":0,"road_condition":"Dry"},{"station_id":"RWIS-09","obs_time":"2026-11-17T06:00:00+04:00","air_temp":26.4,"road_temp":28.9,"humidity":83,"wind_speed":6,"wind_dir":295,"visibility":350,"rain_mm_h":0,"road_condition":"Fog"}]' },
+      { id: 'parking', name: 'Parking bay sensor', cat: 'IoT sensors', connectors: ['lorawan', 'mqtt', 'rest'], entity: 'ParkingOccupancy', format: 'json',
+        sample: '[{"dev_eui":"70B3D57ED0051A2C","received_at":"2026-11-17T02:09:41Z","facility":"PK-CORNICHE-2","bay":"B-114","occupied":true,"battery":87},{"dev_eui":"70B3D57ED0051A2D","received_at":"2026-11-17T02:09:55Z","facility":"PK-CORNICHE-2","bay":"B-115","occupied":false,"battery":91}]' },
+      { id: 'streetlight', name: 'Smart streetlight controller', cat: 'IoT sensors', connectors: ['lorawan', 'mqtt', 'rest'], entity: 'SensorReading', format: 'json',
+        sample: '[{"device":"SL-4471","ts":"2026-11-17T06:10:00+04:00","metric":"power_w","value":86.5,"unit":"W","quality":"Good"},{"device":"SL-4472","ts":"2026-11-17T06:10:00+04:00","metric":"power_w","value":0,"unit":"W","quality":"Suspect"}]' },
+      { id: 'flood', name: 'Water level and flood sensor', cat: 'IoT sensors', connectors: ['lorawan', 'mqtt'], entity: 'SensorReading', format: 'json',
+        sample: '[{"device":"WL-09","ts":"2026-11-17T06:10:00+04:00","metric":"water_level_cm","value":3.2,"unit":"cm","battery":78},{"device":"WL-12","ts":"2026-11-17T06:10:00+04:00","metric":"water_level_cm","value":0.4,"unit":"cm","battery":64}]' },
+      { id: 'iot', name: 'Other IoT sensor', cat: 'IoT sensors', connectors: ['mqtt', 'lorawan', 'opcua', 'modbus', 'rest'], entity: 'SensorReading', format: 'json',
+        sample: '[{"device":"TUN-FAN-01","ts":"2026-11-17T06:10:00+04:00","metric":"fan_speed_rpm","value":1180,"unit":"rpm","quality":"Good"},{"device":"TUN-CO-03","ts":"2026-11-17T06:10:00+04:00","metric":"co_ppm","value":7.5,"unit":"ppm","quality":"Good"}]' },
+      { id: 'avl', name: 'Bus and fleet tracker (GPS)', cat: 'Vehicles', connectors: ['kafka', 'websocket', 'rest'], entity: 'TransitPosition', format: 'json',
+        sample: '[{"vehicle":"BUS-2231","route":"054","gps_time":"2026-11-17T06:12:00+04:00","lat":24.4702,"lon":54.3711,"speed":34,"delay_s":95,"occupancy":62},{"vehicle":"BUS-2260","route":"032","gps_time":"2026-11-17T06:12:02+04:00","lat":24.4488,"lon":54.3954,"speed":0,"delay_s":-20,"occupancy":41}]' },
+      { id: 'health', name: 'Device health (cameras, radars, network)', cat: 'Infrastructure health', connectors: ['snmp', 'rest', 'mqtt'], entity: 'DeviceHealth', format: 'json',
+        sample: '[{"device_id":"CAM-0012","type":"ANPR camera","polled_at":"2026-11-17T06:10:00+04:00","status":"Online","uptime_s":1843200,"temp_c":48.2,"cpu":37,"storage":61,"firmware":"7.4.2","signal":-67},{"device_id":"RAD-07","type":"Speed radar","polled_at":"2026-11-17T06:10:00+04:00","status":"Degraded","uptime_s":86400,"temp_c":63.5,"cpu":88,"storage":40,"firmware":"2.1.0","signal":-81,"last_error":"Heater fault"}]' },
+      { id: 'cabinet', name: 'Cabinet, power and UPS', cat: 'Infrastructure health', connectors: ['modbus', 'snmp'], entity: 'DeviceHealth', format: 'json',
+        sample: '[{"cabinet":"CAB-J12","ts":"2026-11-17T06:10:00+04:00","state":"Online","type":"Roadside cabinet","voltage":26.8,"temp_c":44.0},{"cabinet":"CAB-J15","ts":"2026-11-17T06:10:00+04:00","state":"Degraded","type":"Roadside cabinet","voltage":22.1,"temp_c":57.3,"last_error":"On battery"}]' },
+      { id: 'cad', name: 'Control room or incident system', cat: 'Systems', connectors: ['sftp', 'rest', 'sql', 'soap'], entity: 'Incident', format: 'csv',
+        sample: 'Incident Ref;Reported;Category;Priority;Lat;Lon;Details;State\nINC-2026-118204;17/11/2026 05:42;Accident;Critical;24.4667;54.3667;Two vehicles, lane 2 blocked;Open\nINC-2026-118205;17/11/2026 05:51;Breakdown;Medium;24.4310;54.4410;Stalled lorry on hard shoulder;Acknowledged' }
+    ],
+    // Where mapped records are kept. Every entity is time-stamped, so each lands in a time-series table.
+    // No database runs in this demonstrator: the studio shows the design and generates the table definitions.
+    storage: {
+      engine: 'TimescaleDB on PostgreSQL',                 // the SQL shown is written for this engine
+      alternatives: 'InfluxDB, ClickHouse or QuestDB would hold the same model',
+      retention: '90 days', retentionChoices: ['7 days', '30 days', '90 days', '1 year', '3 years', '5 years'],
+      rollups: ['5 minutes', '1 hour', '1 day'], rollupChoices: ['1 minute', '5 minutes', '15 minutes', '1 hour', '1 day'],
+      compressAfter: '7 days',
+      compression: 10,                                     // assumed compression ratio, for the size estimate only
+      // Per entity: keep raw records for less or more time than the default.
+      entity: { ObjectTrack: { retention: '7 days', rollups: ['1 minute', '15 minutes', '1 hour'] }, VehicleDetection: { retention: '30 days' }, Incident: { retention: '5 years', rollups: ['1 day'] }, DeviceHealth: { retention: '1 year', rollups: ['1 hour', '1 day'] } }
+    },
+    // Reports, analytics and machine-learning use cases the mapped data can feed. `needs` lists the entity
+    // fields each one requires; the studio checks them against the published mappings. Nothing is trained or run here.
+    analytics: [
+      { name: 'Daily traffic report', kind: 'Report', grain: '1 hour', needs: [{ entity: 'TrafficReading', fields: ['detectorId', 'flowVehPerHour', 'speedKmh'] }], method: 'Hourly and daily rollups by detector and corridor.', output: 'Volumes, average speeds, peak hours', section: 'Reports' },
+      { name: 'Device availability report', kind: 'Report', grain: '1 day', needs: [{ entity: 'DeviceHealth', fields: ['deviceId', 'status'] }], method: 'Share of time each device was online, by type and site.', output: 'Availability against the service level', section: 'Devices, Reports' },
+      { name: 'Enforcement summary', kind: 'Report', grain: '1 day', needs: [{ entity: 'SpeedMeasurement', fields: ['deviceId', 'speedKmh', 'speedLimitKmh'] }], method: 'Counts of measurements over the limit by site, lane and hour.', output: 'Violations by site and time band', section: 'Fines' },
+      { name: 'Short-term congestion forecast', kind: 'Predictive', grain: '5 minutes', needs: [{ entity: 'TrafficReading', fields: ['detectorId', 'flowVehPerHour', 'speedKmh', 'occupancyPct'] }, { entity: 'WeatherReading', fields: ['rainMmPerHour', 'visibilityM'], optional: true }], method: 'Gradient-boosted trees or a temporal neural network on lagged flow, speed and occupancy, with time of day and weather.', output: 'Speed and flow 15 to 60 minutes ahead, per corridor', section: 'Congestion, Prediction' },
+      { name: 'Automatic incident detection', kind: 'Anomaly detection', grain: '1 minute', needs: [{ entity: 'TrafficReading', fields: ['detectorId', 'speedKmh', 'occupancyPct'] }, { entity: 'VideoEvent', fields: ['cameraId', 'eventType'], optional: true }], method: 'Sudden speed drop and occupancy rise between neighbouring detectors, confirmed by camera events.', output: 'Incident alerts with location and confidence', section: 'Incidents' },
+      { name: 'Incident clearance time prediction', kind: 'Predictive', grain: 'per incident', needs: [{ entity: 'Incident', fields: ['incidentId', 'type', 'severity', 'latitude', 'longitude', 'status'] }], method: 'Survival or regression model on incident type, severity, place and time.', output: 'Expected time to clear, for diversion planning', section: 'Incidents' },
+      { name: 'Accident risk hot spots', kind: 'Predictive', grain: '1 hour', needs: [{ entity: 'Incident', fields: ['type', 'latitude', 'longitude'] }, { entity: 'SpeedMeasurement', fields: ['deviceId', 'speedKmh'] }, { entity: 'WeatherReading', fields: ['roadCondition'], optional: true }], method: 'Space-time risk scoring from past incidents, speed distribution and road weather.', output: 'Risk score by road section and hour', section: 'Accidents' },
+      { name: 'Journey time and origin-destination flows', kind: 'Analytics', grain: '15 minutes', needs: [{ entity: 'VehicleDetection', fields: ['plateNumber', 'cameraId'] }], method: 'Matching the same plate between cameras; plates are hashed before analysis.', output: 'Journey times and movements between camera sites', section: 'Search, Congestion' },
+      { name: 'Near-miss and conflict analysis', kind: 'Analytics', grain: 'per track', needs: [{ entity: 'ObjectTrack', fields: ['sensorId', 'trackId', 'objectClass', 'x', 'y', 'speedKmh'] }], method: 'Surrogate safety measures (time to collision, post-encroachment time) from LiDAR and radar trajectories.', output: 'Conflict counts by junction arm and road-user type', section: 'Pedestrians, Accidents' },
+      { name: 'Adaptive signal timing', kind: 'Optimisation', grain: '1 cycle', needs: [{ entity: 'SignalStatus', fields: ['junctionId', 'state', 'cycleSec'] }, { entity: 'TrafficReading', fields: ['detectorId', 'flowVehPerHour'] }, { entity: 'ObjectTrack', fields: ['sensorId', 'objectClass'], optional: true }], method: 'Demand-responsive optimisation or reinforcement learning on approach flows and queues.', output: 'Recommended splits and offsets per junction', section: 'Signals' },
+      { name: 'Predictive maintenance of field devices', kind: 'Predictive', grain: '1 hour', needs: [{ entity: 'DeviceHealth', fields: ['deviceId', 'status', 'temperatureC', 'uptimeSec'] }], method: 'Failure-risk classifier or survival model on temperature, restarts, errors and age.', output: 'Devices likely to fail in the next 7 to 30 days', section: 'Devices' },
+      { name: 'Sensor data quality monitoring', kind: 'Anomaly detection', grain: '5 minutes', needs: [{ entity: 'SensorReading', fields: ['deviceId', 'metric', 'value'] }], method: 'Stuck-value, drift and outlier detection per sensor and metric.', output: 'Suspect sensors and readings to exclude', section: 'Platform' },
+      { name: 'Parking demand forecast', kind: 'Predictive', grain: '15 minutes', needs: [{ entity: 'ParkingOccupancy', fields: ['facilityId', 'occupied'] }], method: 'Seasonal time-series model per facility with events and time of day.', output: 'Free bays 30 to 120 minutes ahead', section: 'Parking' },
+      { name: 'Air quality and noise forecast', kind: 'Predictive', grain: '1 hour', needs: [{ entity: 'EnvironmentReading', fields: ['stationId', 'pm25', 'no2'] }, { entity: 'TrafficReading', fields: ['flowVehPerHour'], optional: true }, { entity: 'WeatherReading', fields: ['windSpeedKmh'], optional: true }], method: 'Regression on traffic volume, wind and past readings.', output: 'Pollutant and noise levels for the next 24 hours', section: 'Environment' },
+      { name: 'Bus arrival prediction', kind: 'Predictive', grain: '1 minute', needs: [{ entity: 'TransitPosition', fields: ['vehicleId', 'routeId', 'latitude', 'longitude', 'delaySec'] }], method: 'Travel-time model per route segment from recent vehicle positions.', output: 'Arrival times at stops, bunching alerts', section: 'Transit' }
     ],
     // Example integrations shown on first use. The vendors, endpoints and payloads are invented.
     seed: [
-      { id: 'anpr-vendor', name: 'ANPR Vendor', connector: 'rest', entity: 'VehicleDetection', status: 'draft', format: 'json', ratePerSec: 240,
+      { id: 'anpr-vendor', name: 'ANPR Vendor', device: 'anpr', connector: 'rest', entity: 'VehicleDetection', status: 'draft', format: 'json', ratePerSec: 240,
         config: { url: 'https://anpr-vendor.example/api/v2/reads', method: 'GET', paging: 'Since last timestamp' }, auth: { type: 'API key', ref: 'vault://intellitwin/anpr-vendor/api-key' }, every: '10 seconds',
         sample: '{\n  "vendor": "ANPR Vendor",\n  "count": 6,\n  "events": [\n    { "plate_no": "ad 12345", "capture_time": "17/11/2026 06:10:22", "device_code": "CAM-0012", "confidence_score": 96.4, "vehicle_type": "car", "location": { "lat": 24.4539, "lon": 54.3773 }, "speed": 62, "lane": 2 },\n    { "plate_no": "dxb 88021", "capture_time": "17/11/2026 06:10:24", "device_code": "CAM-0012", "confidence_score": 91.2, "vehicle_type": "taxi", "location": { "lat": 24.4539, "lon": 54.3773 }, "speed": 58, "lane": 1 },\n    { "plate_no": "AD 70411", "capture_time": "17/11/2026 06:10:31", "device_code": "CAM-0047", "confidence_score": 88.75, "vehicle_type": "truck", "location": { "lat": 24.4281, "lon": 54.4372 }, "speed": 74, "lane": 3 },\n    { "plate_no": "shj 5120", "capture_time": "17/11/2026 06:10:40", "device_code": "CAM-0047", "confidence_score": 79.1, "vehicle_type": "bus", "location": { "lat": 24.4281, "lon": 54.4372 }, "speed": 51, "lane": 3 },\n    { "plate_no": "ad 30977", "capture_time": "17/11/2026 06:10:44", "device_code": "CAM-0103", "confidence_score": 93.0, "vehicle_type": "pickup", "location": { "lat": 24.4912, "lon": 54.3606 }, "speed": 66, "lane": 1 },\n    { "plate_no": "ad 12345", "capture_time": "17/11/2026 06:10:22", "device_code": "CAM-0012", "confidence_score": 96.4, "vehicle_type": "car", "location": { "lat": 24.4539, "lon": 54.3773 }, "speed": 62, "lane": 2 }\n  ]\n}',
         rules: [
@@ -530,7 +653,7 @@ sampleVideos: [
           { sourcePath: 'confidence_score', targetPath: 'confidence', transform: 'toDecimal', args: { decimals: 1 } },
           { sourcePath: 'vehicle_type', targetPath: 'vehicleClass', transform: 'lookup', args: { table: 'car=Car\ntaxi=Taxi\nbus=Bus\nvan=Light goods\ntruck=Heavy vehicle\nmotorbike=Motorcycle', fallback: '' } }
         ] },
-      { id: 'roadside-detectors', name: 'Roadside detectors', connector: 'mqtt', entity: 'TrafficReading', status: 'published', format: 'json', ratePerSec: 520, platformFeed: 'Traffic detectors',
+      { id: 'roadside-detectors', name: 'Roadside detectors', device: 'loop', connector: 'mqtt', entity: 'TrafficReading', status: 'published', format: 'json', ratePerSec: 520, platformFeed: 'Traffic detectors',
         config: { broker: 'mqtts://roadside-broker.example:8883', topic: 'roadside/+/readings', qos: '1' }, auth: { type: 'Client certificate (mTLS)', ref: 'vault://intellitwin/roadside/client-cert' },
         sample: '[\n  { "det": "DET-014", "ts": 1794881400, "q": 1260, "v": 71.5, "occ": 18.2, "lane": 1 },\n  { "det": "DET-014", "ts": 1794881400, "q": 1104, "v": 66.0, "occ": 21.7, "lane": 2 },\n  { "det": "DET-022", "ts": 1794881400, "q": 1832, "v": 38.4, "occ": 44.9, "lane": 1 },\n  { "det": "DET-031", "ts": 1794881460, "q": 640, "v": 92.3, "occ": 7.5, "lane": 1 }\n]',
         rules: [
@@ -539,7 +662,7 @@ sampleVideos: [
           { sourcePath: 'q', targetPath: 'flowVehPerHour', transform: 'toInteger' }, { sourcePath: 'v', targetPath: 'speedKmh', transform: 'toDecimal', args: { decimals: 1 } },
           { sourcePath: 'occ', targetPath: 'occupancyPct', transform: 'toDecimal', args: { decimals: 1 } }, { sourcePath: 'lane', targetPath: 'lane', transform: 'direct' }
         ] },
-      { id: 'control-room-incidents', name: 'Control room incidents', connector: 'sftp', entity: 'Incident', status: 'published', format: 'csv', ratePerSec: 0.6, platformFeed: 'Incident reports',
+      { id: 'control-room-incidents', name: 'Control room incidents', device: 'cad', connector: 'sftp', entity: 'Incident', status: 'published', format: 'csv', ratePerSec: 0.6, platformFeed: 'Incident reports',
         config: { host: 'sftp.control-room.example:22', path: '/outbound/incidents', pattern: 'incidents_*.csv' }, auth: { type: 'Basic (user and password)', ref: 'vault://intellitwin/control-room/sftp' }, every: '1 minute',
         sample: 'Incident Ref;Reported;Category;Priority;Lat;Lon;Details;State\nINC-2026-118204;17/11/2026 05:42;RTA;P1;24.4667;54.3667;Two vehicles, lane 2 blocked;OPEN\nINC-2026-118205;17/11/2026 05:51;BRK;P3;24.4310;54.4410;Stalled lorry on hard shoulder;ACK\nINC-2026-118206;17/11/2026 06:03;OBS;P2;24.4895;54.3582;Debris in lane 1;OPEN\nINC-2026-118207;17/11/2026 06:15;RWK;P4;24.4532;54.3901;Night works overrun;CLOSED',
         rules: [
@@ -550,6 +673,53 @@ sampleVideos: [
           { sourcePath: 'Lat', targetPath: 'latitude', transform: 'toDecimal', args: { decimals: 5 }, required: true }, { sourcePath: 'Lon', targetPath: 'longitude', transform: 'toDecimal', args: { decimals: 5 }, required: true },
           { sourcePath: 'Details', targetPath: 'description', transform: 'trim' },
           { sourcePath: 'State', targetPath: 'status', transform: 'lookup', args: { table: 'OPEN=Open\nACK=Acknowledged\nCLOSED=Closed', fallback: '' } }
+        ] },
+      { id: 'speed-radars', name: 'Speed radar network', device: 'speed-radar', connector: 'rest', entity: 'SpeedMeasurement', status: 'published', format: 'json', ratePerSec: 95,
+        config: { url: 'https://radar-vendor.example/api/measurements', method: 'GET', paging: 'Cursor' }, auth: { type: 'OAuth 2.0 client credentials', ref: 'vault://intellitwin/radar-vendor/oauth' }, every: '10 seconds',
+        sample: '[\n  { "radar": "RAD-07", "t": "2026-11-17T06:12:03+04:00", "kmh": 138.4, "limit": 120, "lane": 2, "dir": "NB", "cls": "car", "len_m": 4.6 },\n  { "radar": "RAD-07", "t": "2026-11-17T06:12:04+04:00", "kmh": 96.0, "limit": 120, "lane": 1, "dir": "NB", "cls": "truck", "len_m": 11.8 },\n  { "radar": "RAD-11", "t": "2026-11-17T06:12:04+04:00", "kmh": 151.9, "limit": 140, "lane": 3, "dir": "SB", "cls": "car", "len_m": 4.9 },\n  { "radar": "RAD-11", "t": "2026-11-17T06:12:07+04:00", "kmh": 88.3, "limit": 140, "lane": 1, "dir": "SB", "cls": "bus", "len_m": 12.0 }\n]',
+        rules: [
+          { sourcePath: 'radar', targetPath: 'deviceId', transform: 'direct', required: true }, { sourcePath: 't', targetPath: 'timestamp', transform: 'dateFormat', args: { format: 'auto', tz: '+04:00' }, required: true },
+          { sourcePath: 'kmh', targetPath: 'speedKmh', transform: 'toDecimal', args: { decimals: 1 }, required: true }, { sourcePath: 'limit', targetPath: 'speedLimitKmh', transform: 'toInteger' }, { sourcePath: 'lane', targetPath: 'lane', transform: 'direct' },
+          { sourcePath: 'dir', targetPath: 'direction', transform: 'lookup', args: { table: 'NB=Northbound\nSB=Southbound\nEB=Eastbound\nWB=Westbound', fallback: '' } },
+          { sourcePath: 'cls', targetPath: 'vehicleClass', transform: 'lookup', args: { table: 'car=Car\ntaxi=Taxi\nbus=Bus\nvan=Light goods\ntruck=Heavy vehicle\nmotorbike=Motorcycle', fallback: 'Unknown' } },
+          { sourcePath: 'len_m', targetPath: 'lengthM', transform: 'toDecimal', args: { decimals: 1 } }
+        ] },
+      { id: 'junction-lidar', name: 'Junction LiDAR', device: 'lidar', connector: 'socket', entity: 'ObjectTrack', status: 'draft', format: 'json', ratePerSec: 900,
+        config: { address: '0.0.0.0:7100', transport: 'UDP', framing: 'One message per packet' }, auth: { type: 'None', ref: '' },
+        sample: '{\n  "sensor": "LID-J12",\n  "frame_ts": 1794881400123,\n  "objects": [\n    { "id": 4411, "cls": "pedestrian", "x": 12.4, "y": -3.1, "speed_ms": 1.4, "heading": 92, "l": 0.6, "w": 0.6, "h": 1.7, "zone": "Crossing N" },\n    { "id": 4412, "cls": "car", "x": -8.2, "y": 15.9, "speed_ms": 9.8, "heading": 181, "l": 4.5, "w": 1.9, "h": 1.5, "zone": "Approach E" },\n    { "id": 4413, "cls": "bicycle", "x": 3.3, "y": 7.0, "speed_ms": 4.9, "heading": 178, "l": 1.8, "w": 0.6, "h": 1.6, "zone": "Approach E" },\n    { "id": 4414, "cls": "truck", "x": -21.0, "y": 16.2, "speed_ms": 7.1, "heading": 180, "l": 11.2, "w": 2.5, "h": 3.6, "zone": "Approach E" }\n  ]\n}',
+        rules: [
+          { sourcePath: '_parent.sensor', targetPath: 'sensorId', transform: 'direct', required: true }, { sourcePath: '_parent.frame_ts', targetPath: 'timestamp', transform: 'dateFormat', args: { format: 'epoch-ms', tz: '+00:00' }, required: true },
+          { sourcePath: 'id', targetPath: 'trackId', transform: 'toString', required: true },
+          { sourcePath: 'cls', targetPath: 'objectClass', transform: 'lookup', args: { table: 'car=Car\ntruck=Truck\nbus=Bus\nmotorcycle=Motorcycle\nbicycle=Bicycle\npedestrian=Pedestrian', fallback: 'Unknown' }, required: true },
+          { sourcePath: 'speed_ms', targetPath: 'speedKmh', transform: 'scale', args: { factor: 3.6, offset: 0, decimals: 1 } }
+        ] },
+      { id: 'cctv-analytics', name: 'CCTV video analytics', device: 'cctv', connector: 'kafka', entity: 'VideoEvent', status: 'published', format: 'json', ratePerSec: 180, platformFeed: 'Video analytics events',
+        config: { brokers: 'vms-broker-1:9092, vms-broker-2:9092', topic: 'vms.analytics.events', group: 'intellitwin-ingest', offset: 'Latest' }, auth: { type: 'Client certificate (mTLS)', ref: 'vault://intellitwin/vms/client-cert' },
+        sample: '[\n  { "event_id": "EV-88120", "ts": "2026-11-17T06:11:02+04:00", "camera": "CCTV-0231", "type": "stopped_vehicle", "score": 0.91, "object": "car", "lat": 24.4667, "lon": 54.3667, "snapshot": "https://vms.example/snap/88120.jpg", "zone": "Lane 2" },\n  { "event_id": "EV-88121", "ts": "2026-11-17T06:11:40+04:00", "camera": "CCTV-0102", "type": "wrong_way", "score": 0.84, "object": "car", "lat": 24.4310, "lon": 54.4410, "snapshot": "https://vms.example/snap/88121.jpg", "zone": "Slip road" },\n  { "event_id": "EV-88122", "ts": "2026-11-17T06:12:15+04:00", "camera": "CCTV-0417", "type": "pedestrian", "score": 0.77, "object": "person", "lat": 24.4895, "lon": 54.3582, "snapshot": "https://vms.example/snap/88122.jpg", "zone": "Carriageway" }\n]',
+        rules: [
+          { sourcePath: 'event_id', targetPath: 'eventId', transform: 'direct', required: true }, { sourcePath: 'ts', targetPath: 'timestamp', transform: 'dateFormat', args: { format: 'auto', tz: '+04:00' }, required: true },
+          { sourcePath: 'camera', targetPath: 'cameraId', transform: 'direct', required: true },
+          { sourcePath: 'type', targetPath: 'eventType', transform: 'lookup', args: { table: 'stopped_vehicle=Stopped vehicle\nwrong_way=Wrong way\npedestrian=Pedestrian on road\ncrowd=Crowd\nintrusion=Intrusion\nfire=Smoke or fire\ndebris=Debris\nqueue=Queue', fallback: 'Other' }, required: true },
+          { sourcePath: 'score', targetPath: 'confidence', transform: 'scale', args: { factor: 100, offset: 0, decimals: 1 } }, { sourcePath: 'object', targetPath: 'objectClass', transform: 'direct' },
+          { sourcePath: 'lat', targetPath: 'latitude', transform: 'direct' }, { sourcePath: 'lon', targetPath: 'longitude', transform: 'direct' }, { sourcePath: 'snapshot', targetPath: 'snapshotUrl', transform: 'direct' }, { sourcePath: 'zone', targetPath: 'zone', transform: 'direct' }
+        ] },
+      { id: 'field-device-health', name: 'Field device health', device: 'health', connector: 'snmp', entity: 'DeviceHealth', status: 'published', format: 'json', ratePerSec: 12,
+        config: { host: 'nms.field.example:161', version: 'v3', objects: '1.3.6.1.2.1.1.3.0\n1.3.6.1.4.1.99999.1.2' }, auth: { type: 'Basic (user and password)', ref: 'vault://intellitwin/nms/snmpv3' }, every: '1 minute',
+        sample: '[\n  { "device_id": "CAM-0012", "type": "ANPR camera", "polled_at": "2026-11-17T06:10:00+04:00", "status": "up", "uptime_s": 1843200, "temp_c": 48.2, "cpu": 37, "disk": 61, "fw": "7.4.2", "rssi": -67 },\n  { "device_id": "RAD-07", "type": "Speed radar", "polled_at": "2026-11-17T06:10:00+04:00", "status": "degraded", "uptime_s": 86400, "temp_c": 63.5, "cpu": 88, "disk": 40, "fw": "2.1.0", "rssi": -81, "last_error": "Heater fault" },\n  { "device_id": "LID-J12", "type": "LiDAR", "polled_at": "2026-11-17T06:10:00+04:00", "status": "down", "uptime_s": 0, "fw": "1.9.3", "last_error": "No response" }\n]',
+        rules: [
+          { sourcePath: 'device_id', targetPath: 'deviceId', transform: 'direct', required: true }, { sourcePath: 'polled_at', targetPath: 'timestamp', transform: 'dateFormat', args: { format: 'auto', tz: '+04:00' }, required: true },
+          { sourcePath: 'status', targetPath: 'status', transform: 'lookup', args: { table: 'up=Online\ndegraded=Degraded\ndown=Offline\nmaintenance=Maintenance', fallback: '' }, required: true },
+          { sourcePath: 'type', targetPath: 'deviceType', transform: 'direct' }, { sourcePath: 'uptime_s', targetPath: 'uptimeSec', transform: 'toInteger' }, { sourcePath: 'temp_c', targetPath: 'temperatureC', transform: 'toDecimal', args: { decimals: 1 } },
+          { sourcePath: 'cpu', targetPath: 'cpuPct', transform: 'direct' }, { sourcePath: 'disk', targetPath: 'storagePct', transform: 'direct' }, { sourcePath: 'fw', targetPath: 'firmware', transform: 'direct' },
+          { sourcePath: 'rssi', targetPath: 'signalDbm', transform: 'direct' }, { sourcePath: 'last_error', targetPath: 'lastError', transform: 'trim' }
+        ] },
+      { id: 'air-quality-stations', name: 'Air quality stations', device: 'air', connector: 'mqtt', entity: 'EnvironmentReading', status: 'published', format: 'json', ratePerSec: 6, platformFeed: 'Environmental sensors',
+        config: { broker: 'mqtts://iot-broker.example:8883', topic: 'city/air/+/reading', qos: '1' }, auth: { type: 'Client certificate (mTLS)', ref: 'vault://intellitwin/iot/client-cert' },
+        sample: '[\n  { "station": "AQ-03", "time": "2026-11-17T06:00:00+04:00", "pm2_5": 38.2, "pm10": 91.0, "no2": 44.1, "noise_db": 66.3, "temp_c": 27.4, "rh": 58 },\n  { "station": "AQ-07", "time": "2026-11-17T06:00:00+04:00", "pm2_5": 52.9, "pm10": 120.4, "no2": 61.0, "noise_db": 71.8, "temp_c": 27.9, "rh": 55 },\n  { "station": "AQ-11", "time": "2026-11-17T06:00:00+04:00", "pm2_5": 21.7, "pm10": 64.3, "no2": 18.6, "noise_db": 58.2, "temp_c": 26.8, "rh": 63 }\n]',
+        rules: [
+          { sourcePath: 'station', targetPath: 'stationId', transform: 'direct', required: true }, { sourcePath: 'time', targetPath: 'timestamp', transform: 'dateFormat', args: { format: 'auto', tz: '+04:00' }, required: true },
+          { sourcePath: 'pm2_5', targetPath: 'pm25', transform: 'direct' }, { sourcePath: 'pm10', targetPath: 'pm10', transform: 'direct' }, { sourcePath: 'no2', targetPath: 'no2', transform: 'direct' },
+          { sourcePath: 'noise_db', targetPath: 'noiseDb', transform: 'direct' }, { sourcePath: 'temp_c', targetPath: 'temperatureC', transform: 'direct' }, { sourcePath: 'rh', targetPath: 'humidityPct', transform: 'direct' }
         ] }
     ],
     // Reusable mappings for vendors with similar payloads.
@@ -622,6 +792,12 @@ sampleVideos: [
   /* ---- Predictive analytics ------------------------------------------------------------------ */
   // Planning-level projections computed in the browser. Every number here is an assumption.
   analytics: {
+    // The tree and the "Data layer" drop-down in Analytics: which sections belong to which kind of data.
+    // Sections not listed here appear under "Other"; the charts under each section are read from the page.
+    nav: [
+      { name: 'City performance', sections: ['kpi', 'reg'] }, { name: 'Operations today', sections: ['ops'] }, { name: 'Traffic and roads', sections: ['over', 'road', 'other'] },
+      { name: 'Signals', sections: ['sig'] }, { name: 'Safety and enforcement', sections: ['safe'] }, { name: 'Environment', sections: ['env'] }, { name: 'Population and fleet', sections: ['pop'] }
+    ],
     growthPerYear: 0.05,              // traffic growth a year
     horizonYears: 10,
     bprAlpha: 0.6, bprBeta: 4,        // volume-delay curve: speed ratio = 1 / (1 + a·x^b)

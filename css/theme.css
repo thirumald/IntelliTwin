@@ -779,3 +779,60 @@ body.map-light .ig-chip.st-live { color: #0a6b4f; } body.map-light .ig-chip.st-w
 }
 .ig-rule > span:nth-child(2) { font-family: inherit; overflow: visible; }
 .ig-f { min-height: 48px; align-content: center; } .ig-f em { line-height: 14px; }
+
+/* ---------------------------------------------------------------- Analytics: tree navigation and compact cards */
+.an-menu { display: none; }
+.an-main { flex: 1; min-height: 0; display: flex; }
+.an-main .an-body { flex: 1; min-width: 0; }
+.an-tree { flex: none; width: 264px; overflow-y: auto; padding: 10px 8px 20px; border-right: 1px solid var(--line); background: var(--surface); font-size: 13px; }
+.an-tree > summary { list-style: none; display: flex; justify-content: space-between; gap: 8px; padding: 4px 8px 8px; font-size: 11.5px; font-weight: 650; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); cursor: default; }
+.an-tree > summary::-webkit-details-marker { display: none; } .an-tree > summary b { display: none; }
+.an-node > summary { display: flex; align-items: center; gap: 6px; padding: 7px 8px; border-radius: var(--radius-s); cursor: pointer; font-weight: 650; color: var(--text); list-style: none; }
+.an-node > summary::-webkit-details-marker { display: none; }
+.an-node > summary::before { content: ""; flex: none; width: 6px; height: 6px; border-right: 1.6px solid var(--muted); border-bottom: 1.6px solid var(--muted); transform: rotate(-45deg); transition: transform .12s; margin: 0 3px 0 2px; }
+.an-node[open] > summary::before { transform: rotate(45deg); }
+.an-node > summary small { margin-left: auto; font-weight: 500; color: var(--muted); font-size: 11px; }
+.an-node > summary:hover, .an-leaf:hover { background: var(--surface-2); }
+.an-sec { margin-left: 12px; } .an-sec > summary { font-weight: 550; color: var(--text-2); }
+.an-sec.on > summary { background: var(--accent-soft); color: var(--accent); }
+.an-leaf { display: flex; align-items: baseline; gap: 7px; width: calc(100% - 22px); margin-left: 22px; padding: 5px 8px; border: 0; border-radius: var(--radius-s); background: none; color: var(--text-2); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.an-leaf i { flex: none; width: 8px; height: 8px; border-radius: 2px; background: var(--accent); opacity: .75; } .an-leaf i.table { border-radius: 0; background: none; border: 1.5px solid var(--muted); } .an-leaf i.list { border-radius: 50%; background: var(--muted); }
+.an-flash { outline: 2px solid var(--accent); outline-offset: 2px; }
+.an-controls label { white-space: nowrap; } .an-controls select { max-width: 190px; }
+/* Shorter cards, so the next row shows without scrolling far; long tables and lists scroll inside their card. */
+#analytics .an-chart { height: clamp(150px, 23vh, 230px); }
+#analytics .an-card { padding: 12px 14px; }
+#analytics .an-card .an-scroll, #analytics .an-card > .corridors { max-height: clamp(180px, 30vh, 320px); overflow: auto; }
+#analytics .an-tiles { margin-bottom: 12px; } #analytics .an-tile { padding: 9px 12px; } #analytics .an-tile b { font-size: 21px; }
+@media (min-width: 1700px) { #analytics .an-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 900px) {
+  .an-main { flex-direction: column; }
+  .an-tree { width: auto; max-height: 46vh; border-right: 0; border-bottom: 1px solid var(--line); padding: 6px 8px; }
+  .an-tree > summary { cursor: pointer; padding: 8px; font-size: 12.5px; text-transform: none; letter-spacing: 0; color: var(--text); }
+  .an-tree > summary b { display: inline; color: var(--accent); font-weight: 650; }
+  .an-tree > summary::after { content: "▾"; color: var(--muted); } .an-tree[open] > summary::after { content: "▴"; }
+  #analytics .an-chart { height: clamp(150px, 26vh, 210px); }
+}
+/* A card is never taller than about a third of the screen: two rows of cards show together, and a long chart or table scrolls inside its card. */
+#analytics .an-grid > .an-card { max-height: clamp(230px, 31vh, 300px); overflow-y: auto; }
+#analytics .an-grid > .an-card > figcaption, #analytics .an-grid > .an-card > h3 { position: sticky; top: -12px; z-index: 1; background: inherit; padding: 6px 0 4px; margin-top: -6px; }
+#analytics .an-tiles { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+@media (max-width: 900px) { #analytics .an-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } #analytics .an-grid > .an-card { max-height: clamp(230px, 40vh, 300px); } }
+@media (max-width: 900px) {
+  #analytics .an-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; width: 100%; }
+  #analytics .an-controls label { display: grid; gap: 2px; font-size: 11.5px; } #analytics .an-controls select { width: 100%; max-width: none; margin: 0; }
+  #analytics .an-controls .btn { align-self: end; }
+}
+/* Integration Studio: top-bar button, data and analytics view */
+.topbar-right .icon-btn { display: inline-grid; place-items: center; padding: 0 8px; min-width: 32px; }
+.topbar-right .icon-btn.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.ig-ucs { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; align-items: start; }
+.ig-uc { border-radius: var(--radius); border: 1px solid var(--line-soft, var(--line)); background: var(--surface); min-width: 0; }
+.ig-uc.open { grid-column: 1 / -1; border-color: var(--accent); }
+.ig-uc-head { width: 100%; display: grid; gap: 6px; text-align: left; padding: 12px 14px; border: 0; background: none; color: var(--text); font: inherit; cursor: pointer; }
+.ig-uc-head strong { font-size: 14px; } .ig-uc-head em { font-style: normal; font-size: 12px; color: var(--muted); }
+.ig-uc-body { padding: 0 14px 14px; display: grid; gap: 10px; }
+.ig-uc-body .ig-checks { margin: 0; } .ig-uc-body .ig-checks li { align-items: start; }
+.ig-uc-body .ig-table td:first-child { white-space: nowrap; color: var(--muted); } .ig-uc-body .ig-table td:last-child { text-align: left; font-weight: 400; }
+.ig-body .pick select { width: auto; }
+@media (max-width: 760px) { .ig-ucs { grid-template-columns: 1fr; } #igTabs { overflow-x: auto; max-width: 100%; } }

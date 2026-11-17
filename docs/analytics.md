@@ -8,6 +8,20 @@ Everything is computed in the browser from the synthetic traffic. **The results 
 
 Analytics opens inside the same page, over the map area. The top bar, the side menu and the status bar stay in place; choosing any menu section, **Close** or Esc returns to the map.
 
+## Finding your way: region, scenario, data layer and the tree
+
+The header has three drop-downs beside Growth and Horizon:
+
+| Control | What it does |
+| --- | --- |
+| **Region** | The same list as the top bar. Choosing a region reloads the twin for it and opens Analytics again on the same section |
+| **Scenario** | The demand case the figures are worked out for (the "Demand case" of Scenario and layers). The charts are rebuilt when the case has loaded |
+| **Data layer** | Shows only the sections for one kind of data: city performance, operations, traffic and roads, signals, safety, environment, population |
+
+The tree on the left lists **data layer → section → chart or table**. Choosing a section opens it; choosing a chart scrolls to it. The tree is read from the page each time, so a chart added to a section, and the scorecard goals, appear in it with no further change. On a phone the tree folds into a "Sections and data" bar. The groups are set in `analytics.nav` in `config.js`; a section not listed there appears under "Other". The code is `js/analytics-nav.js`.
+
+Cards are kept to about a third of the screen height so that two rows show together; a long chart, table or list scrolls inside its card.
+
 ## City scorecard
 
 The first tab. It groups KPIs under seven goals and compares each with an example target.

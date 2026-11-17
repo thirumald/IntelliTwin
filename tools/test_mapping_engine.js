@@ -71,8 +71,8 @@ t('the ANPR example: five rules, then suggestions complete the mapping', functio
   assert.strictEqual(m.vehicleClass.sourcePath, 'vehicle_type'); assert.strictEqual(m.vehicleClass.transform, 'lookup');
 });
 t('the published examples pass their own tests', function () {
-  ['roadside-detectors', 'control-room-incidents'].forEach(function (id) {
-    var s = seed(id), e = entity(s.entity), p = M.parsePayload(s.sample, s.format), schema = M.discover(p.records, p.infer);
+  IG.seed.filter(function (x) { return x.status === 'published'; }).forEach(function (s) {
+    var id = s.id, e = entity(s.entity), p = M.parsePayload(s.sample, s.format), schema = M.discover(p.records, p.infer);
     assert.deepStrictEqual(M.checkMapping(s.rules, schema, e), [], id); var res = M.test(s.rules, p.records, e);
     assert.ok(res.ok, id + ': ' + JSON.stringify(res.rows.filter(function (r) { return r.errors.length; }).map(function (r) { return r.errors; })));
   });
@@ -101,5 +101,25 @@ t('schema change detection: added, removed, renamed, type change', function () {
 t('contract export matches MappingRuleInput', function () {
   var c = M.toContract(seed('anpr-vendor').rules);
   assert.deepStrictEqual(Object.keys(c[0]), ['sourcePath', 'targetPath', 'transform', 'required']); assert.strictEqual(c[1].transformArgs.format, 'dd/MM/yyyy HH:mm:ss');
+});
+t('records inside a message can use the message values as _parent', function () {
+  var s = seed('junction-lidar'), e = entity('ObjectTrack'), p = M.parsePayload(s.sample, 'json'), schema = M.discover(p.records, p.infer);
+  assert.strictEqual(p.recordPath, 'objects'); assert.ok(schema.some(function (f) { return f.path === '_parent.sensor'; }));
+  assert.deepStrictEqual(M.apply(s.rules, p.records[0]).out, { sensorId: 'LID-J12', timestamp: '2026-11-17T02:10:00.123Z', trackId: '4411', objectClass: 'Pedestrian', speedKmh: 5 });
+  assert.ok(M.test(s.rules, p.records, e).ok);
+  var by = {}; M.suggest(schema, e, s.rules, p.records).forEach(function (x) { by[x.targetPath] = x.sourcePath; });
+  assert.strictEqual(by.x, 'x'); assert.strictEqual(by.y, 'y'); assert.strictEqual(by.headingDeg, 'heading'); assert.strictEqual(by.lengthM, 'l'); assert.strictEqual(by.zone, 'zone');
+});
+t('every device type: connectors and entity exist, the example payload is read and mostly mapped by suggestions', function () {
+  IG.devices.forEach(function (d) {
+    assert.ok(entity(d.entity), d.id + ' entity'); d.connectors.forEach(function (c) { assert.ok(IG.connectors.some(function (x) { return x.id === c; }), d.id + ' connector ' + c); });
+    var e = entity(d.entity), p = M.parsePayload(d.sample, d.format), schema = M.discover(p.records, p.infer), sug = M.suggest(schema, e, [], p.records), got = {};
+    sug.forEach(function (x) { got[x.targetPath] = 1; });
+    var missing = e.fields.filter(function (f) { return f.required && !got[f.name]; }).map(function (f) { return f.name; });
+    assert.ok(missing.length <= 1, d.id + ': required fields not suggested: ' + missing.join(', ') + ' | got ' + sug.map(function (x) { return x.sourcePath + '>' + x.targetPath; }).join(' '));
+  });
+});
+t('analytics use cases refer to fields that exist', function () {
+  IG.analytics.forEach(function (u) { u.needs.forEach(function (n) { var e = entity(n.entity); assert.ok(e, u.name); n.fields.forEach(function (f) { assert.ok(e.fields.some(function (x) { return x.name === f; }), u.name + ': ' + n.entity + '.' + f); }); }); });
 });
 console.log('\n' + passed + ' tests passed');

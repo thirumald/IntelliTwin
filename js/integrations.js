@@ -11,32 +11,34 @@
   var T = window.IntelliTwin, C = T.core, CFG = C.CFG, $ = C.$, num = C.num, K = T.kit, esc = K.esc, M = window.IntelliTwinMapping;
   var IG = CFG.integrations, page = $('integPage'), body = $('igBody');
   if (!IG || !M || !page || !body) { return; }
-  var KEY = 'intellitwin.integrations.v1', isOpen = false, timer = 0, cache = {};
-  var ui = { tab: 'list', openId: null, step: 0, sel: -1, pick: null, rec: 0, sug: null, msg: null, adding: false, entity: IG.entities[0].name };
-  var STEPS = ['Integration type', 'Connect and discover', 'Target entity', 'Field mapping', 'Test and validate', 'Publish and monitor'];
+  var KEY = 'intellitwin.integrations.v2', ST = IG.storage || {}, isOpen = false, timer = 0, cache = {};
+  var ui = { tab: 'list', openId: null, step: 0, sel: -1, pick: null, rec: 0, sug: null, msg: null, adding: false, entity: IG.entities[0].name, cat: '', kind: '', uc: -1, ddl: '' };
+  var STEPS = ['Device and type', 'Connect and discover', 'Target entity', 'Field mapping', 'Test and validate', 'Publish and monitor'];
   var MODE = { polling: 'Polling', streaming: 'Streaming', file: 'File' };
 
   /* ---------- state (kept in this browser) ---------- */
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function normRule(r) { return { sourcePath: r.sourcePath || '', sources: r.sources || [], targetPath: r.targetPath || '', transform: r.transform || 'direct', args: Object.assign(M.defaultArgs(r.transform || 'direct'), r.args || {}), required: !!r.required, defaultValue: r.defaultValue === undefined ? '' : r.defaultValue }; }
   function fromSeed(s, i) {
-    var it = { id: s.id, name: s.name, connector: s.connector, config: clone(s.config || {}), auth: clone(s.auth || { type: 'None', ref: '' }), every: s.every || '1 minute', format: s.format || 'json', sample: s.sample || '',
+    var it = { id: s.id, name: s.name, device: s.device || '', connector: s.connector, config: clone(s.config || {}), auth: clone(s.auth || { type: 'None', ref: '' }), every: s.every || '1 minute', format: s.format || 'json', sample: s.sample || '',
       recordPath: '', schema: [], entity: s.entity, rules: (s.rules || []).map(normRule), status: 'draft', versions: [], active: 0, paused: false, drift: null, test: null, ratePerSec: s.ratePerSec || 20, platformFeed: s.platformFeed || '', connOk: s.status === 'published' };
     try { var p = M.parsePayload(it.sample, it.format); it.schema = M.discover(p.records, p.infer); it.recordPath = p.recordPath; } catch (e) { /* the example is shown without a schema */ }
     if (s.status === 'published') {
       it.status = 'published'; it.active = 1;
-      it.versions = [{ v: 1, time: new Date(Date.UTC(2026, 10, 3 + i * 4, 5, 20)).toISOString(), user: 'Administrator', note: 'First release', entity: it.entity, entityVersion: 1, rules: clone(it.rules), schema: clone(it.schema), every: it.every }];
+      it.versions = [{ v: 1, time: new Date(Date.UTC(2026, 9, 5 + i * 4, 5, 20)).toISOString(), user: 'Administrator', note: 'First release', entity: it.entity, entityVersion: 1, rules: clone(it.rules), schema: clone(it.schema), every: it.every }];
     }
     return it;
   }
-  function fresh() { return { list: (IG.seed || []).map(fromSeed), custom: {}, templates: clone(IG.templates || []) }; }
+  function fresh() { return { list: (IG.seed || []).map(fromSeed), custom: {}, store: {}, templates: clone(IG.templates || []) }; }
   var S; try { S = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e0) { S = null; }
   if (!S || !Array.isArray(S.list)) { S = fresh(); }
+  S.store = S.store || {};
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage unavailable: the session still works */ } }
   function can() { return !T.ops || T.ops.can('integrations'); }
   function who() { var u = T.ops && T.ops.user ? T.ops.user() : null; return u ? (u.name || (CFG.auth.roles[u.role] || {}).label || 'User') : 'User'; }
   function audit(text) { if (T.audit) { T.audit(text); } }
   function cur() { return S.list.filter(function (x) { return x.id === ui.openId; })[0] || null; }
+  function device(id) { return (IG.devices || []).filter(function (d) { return d.id === id; })[0] || null; }
   function connector(id) { return IG.connectors.filter(function (c) { return c.id === id; })[0] || IG.connectors[0]; }
   // The entity with any custom fields added in the schema registry, and its version.
   function entity(name) {
@@ -59,6 +61,82 @@
     return step === 0 ? !!it.connector : step === 1 ? it.schema.length > 0 : step === 2 ? !!it.entity : step === 3 ? it.rules.length > 0 && !M.checkMapping(it.rules, it.schema, e).length :
       step === 4 ? !!(it.test && it.test.ok && it.test.sig === sig(it)) : it.status === 'published' && !dirty(it);
   }
+  /* ---------- time-series storage and analytics (design only: no database or model runs here) ---------- */
+  function snake(n) { return String(n).replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase(); }
+  function col(n) { return n === 'timestamp' ? 'time' : snake(n); }
+  function days(t) { var m = /^(\d+)\s*(minute|hour|day|year)/.exec(t || ''); return m ? Number(m[1]) * { minute: 1 / 1440, hour: 1 / 24, day: 1, year: 365 }[m[2]] : 0; }
+  // How an entity is kept: tags identify the series, measures are the values, the rest are attributes.
+  function storeOf(name) {
+    var e = entity(name), o = (ST.entity || {})[e.name] || {}, u = S.store[e.name] || {}, rest = e.fields.filter(function (f) { return f.name !== 'timestamp'; });
+    // Tags: allowed-value fields and device-style identifiers. Personal data and one-per-record identifiers (tag: false) are attributes, to keep the number of series small.
+    var tags = rest.filter(function (f) { return f.type === 'string' && f.tag !== false && !f.pii && (f.tag === true || ((f['enum'] || /Id$/.test(f.name)) && !(e.key.length === 1 && e.key[0] === f.name))); });
+    var measures = rest.filter(function (f) { return tags.indexOf(f) < 0 && f.type !== 'string' && f.type !== 'datetime'; });
+    return { entity: e, table: snake(e.name), tags: tags, measures: measures, attrs: rest.filter(function (f) { return tags.indexOf(f) < 0 && measures.indexOf(f) < 0; }),
+      retention: u.retention || o.retention || ST.retention || '90 days', rollups: u.rollups || o.rollups || ST.rollups || [] };
+  }
+  function sources(name) { return S.list.filter(function (it) { return it.status === 'published' && !it.paused && it.entity === name; }); }
+  function rowsPerDay(name) { return sources(name).reduce(function (s, it) { return s + (it.ratePerSec || 0) * 86400; }, 0); }
+  function gbPerMonth(name) { return rowsPerDay(name) * (24 + 10 * entity(name).fields.length) * 30 / (ST.compression || 10) / 1e9; }
+  var SQLTYPE = { string: 'TEXT', integer: 'INTEGER', number: 'DOUBLE PRECISION', 'boolean': 'BOOLEAN', datetime: 'TIMESTAMPTZ' };
+  function aggs(fields) {
+    return fields.map(function (f) { var c = col(f.name); return f.type === 'boolean' ? 'avg(' + c + '::int) AS ' + c + '_share' : f.type === 'string' || f.type === 'datetime' ? 'count(DISTINCT ' + c + ') AS ' + c + '_distinct' : 'avg(' + c + ') AS ' + c + '_avg, max(' + c + ') AS ' + c + '_max'; });
+  }
+  function ddl(name) {
+    var st = storeOf(name), e = st.entity, t = st.table, by = st.tags.slice(0, 2).map(function (f) { return col(f.name); }), keep = days(st.retention), comp = days(ST.compressAfter || '7 days') < keep ? ST.compressAfter || '7 days' : '1 day';
+    var out = ['-- ' + e.label + ': time-series table. Written for ' + (ST.engine || 'TimescaleDB') + '; review before use.', 'CREATE TABLE ' + t + ' (', '  time TIMESTAMPTZ NOT NULL,'];
+    e.fields.forEach(function (f) { if (f.name !== 'timestamp') { out.push('  ' + col(f.name) + ' ' + (SQLTYPE[f.type] || 'TEXT') + (f.required ? ' NOT NULL' : '') + ',' + (f.pii ? '  -- personal data' : '')); } });
+    out.push('  integration_id TEXT NOT NULL,', '  ingested_at TIMESTAMPTZ NOT NULL DEFAULT now()', ');', "SELECT create_hypertable('" + t + "', 'time');");
+    if (by.length) { out.push('CREATE INDEX ON ' + t + ' (' + by[0] + ', time DESC);', 'ALTER TABLE ' + t + " SET (timescaledb.compress, timescaledb.compress_segmentby = '" + by[0] + "');"); } else { out.push('ALTER TABLE ' + t + ' SET (timescaledb.compress);'); }
+    out.push("SELECT add_compression_policy('" + t + "', INTERVAL '" + comp + "');", "SELECT add_retention_policy('" + t + "', INTERVAL '" + st.retention + "');");
+    st.rollups.forEach(function (r) {
+      out.push('', '-- Rollup every ' + r + ': kept after the raw records expire, for reports and model features', 'CREATE MATERIALIZED VIEW ' + t + '_' + r.replace(/\s+/g, '').replace(/s$/, '') + ' WITH (timescaledb.continuous) AS',
+        "SELECT time_bucket(INTERVAL '" + r + "', time) AS bucket" + by.map(function (b) { return ', ' + b; }).join('') + ', count(*) AS records' + aggs(st.measures.slice(0, 6)).map(function (a) { return ',\n       ' + a; }).join(''),
+        'FROM ' + t + ' GROUP BY bucket' + by.map(function (b) { return ', ' + b; }).join('') + ';');
+    });
+    return out.join('\n');
+  }
+  // Which published mappings supply the fields a report or model needs.
+  function cover(n) {
+    var src = sources(n.entity), have = {}; src.forEach(function (it) { var v = liveVersion(it); (v ? v.rules : []).forEach(function (r) { have[r.targetPath] = 1; }); });
+    var missing = src.length ? n.fields.filter(function (f) { return !have[f]; }) : n.fields.slice();
+    return { need: n, src: src, missing: missing, ok: src.length > 0 && !missing.length };
+  }
+  function readiness(u) {
+    var c = u.needs.map(cover), req = c.filter(function (x) { return !x.need.optional; });
+    return { cover: c, state: req.every(function (x) { return x.ok; }) ? 'ready' : c.some(function (x) { return x.src.length; }) ? 'partial' : 'none' };
+  }
+  var READY = { ready: ['Data ready', 'st-live'], partial: ['Partly covered', 'st-warn'], none: ['No data source', ''] };
+  function featureQuery(u) {
+    var grain = /^\d+ (minute|hour|day)/.test(u.grain) ? u.grain : '15 minutes';
+    return '-- ' + u.name + ': features every ' + grain + '. Example for ' + (ST.engine || 'TimescaleDB') + '; review before use.\n' + u.needs.map(function (n) {
+      var st = storeOf(n.entity), fs = n.fields.map(function (f) { return st.entity.fields.filter(function (x) { return x.name === f; })[0]; }).filter(Boolean);
+      var by = fs.filter(function (f) { return st.tags.indexOf(f) >= 0; }).map(function (f) { return col(f.name); }), vals = fs.filter(function (f) { return st.tags.indexOf(f) < 0; });
+      return '-- ' + st.entity.label + (n.optional ? ' (optional)' : '') + '\nSELECT time_bucket(INTERVAL \'' + grain + '\', time) AS bucket' + by.map(function (b) { return ', ' + b; }).join('') + ', count(*) AS records' + aggs(vals).map(function (a) { return ',\n       ' + a; }).join('') +
+        '\nFROM ' + st.table + "\nWHERE time > now() - INTERVAL '28 days'\nGROUP BY bucket" + by.map(function (b) { return ', ' + b; }).join('') + '\nORDER BY bucket;';
+    }).join('\n\n');
+  }
+  function copyText(text, label) {
+    var ok = function () { say(label + ' copied.'); render(); };
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(ok, function () { say('Copying was blocked by the browser. Select the text and copy it by hand.', 'warn'); render(); }); } else { say('Copying is not available here. Select the text and copy it by hand.', 'warn'); }
+  }
+  // Presets from the chosen device type: usual connector, target entity and, if there is no sample yet, an example payload.
+  function setDevice(it, id) {
+    var d = device(id); it.device = d ? d.id : ''; if (!d) { return; }
+    var did = [];
+    if (d.connectors.indexOf(it.connector) < 0) { it.connector = d.connectors[0]; it.connOk = false; did.push('connector ' + connector(it.connector).name); }
+    if (!it.rules.length && it.entity !== d.entity) { it.entity = d.entity; did.push('target ' + entity(d.entity).label); }
+    if (!String(it.sample || '').trim()) { loadSample(it, d); did.push('an example payload with ' + it.schema.length + ' fields'); }
+    say(d.name + (did.length ? ': set ' + did.join(', ') + '. Change any of them in the next steps.' : ' selected.'));
+  }
+  function loadSample(it, d) {
+    var text = d.sample; if (d.format === 'json') { try { text = JSON.stringify(JSON.parse(text), null, 2); } catch (e) { /* shown as it is */ } }
+    it.sample = text; it.format = d.format; it.recordPath = ''; it.schema = []; it.drift = null; cache = {};
+    try { var p = M.parsePayload(it.sample, it.format); it.schema = M.discover(p.records, p.infer); it.recordPath = p.recordPath; } catch (e2) { /* discovered by hand in the next step */ }
+  }
+  function deviceOptions(value) {
+    var cats = []; (IG.devices || []).forEach(function (d) { if (cats.indexOf(d.cat) < 0) { cats.push(d.cat); } });
+    return '<option value="">Choose a device type…</option>' + cats.map(function (c) { return '<optgroup label="' + esc(c) + '">' + IG.devices.filter(function (d) { return d.cat === c; }).map(function (d) { return '<option value="' + d.id + '"' + (d.id === value ? ' selected' : '') + '>' + esc(d.name) + '</option>'; }).join('') + '</optgroup>'; }).join('');
+  }
   function say(text, kind) { ui.msg = { text: text, kind: kind || 'ok' }; }
 
   /* ---------- small builders ---------- */
@@ -74,23 +152,25 @@
 
   /* ---------- view: all integrations ---------- */
   function viewList() {
+    var cats = []; (IG.devices || []).forEach(function (d) { if (cats.indexOf(d.cat) < 0) { cats.push(d.cat); } });
+    var shown = S.list.filter(function (x) { return !ui.cat || (device(x.device) || {}).cat === ui.cat; });
     var pub = S.list.filter(function (x) { return x.status === 'published'; }).length, rules = S.list.reduce(function (s, x) { return s + x.rules.length; }, 0);
     var h = '<p class="notice"><strong>Prototype studio.</strong> Schema discovery, mapping, transformations, tests and versions are real and run in this browser. Nothing connects to a source system or a server: connection settings are checked for completeness only, and everything is kept in this browser.</p>' +
-      '<div class="ig-kpis">' + tile('Integrations', S.list.length) + tile('Published', pub) + tile('Drafts', S.list.length - pub) + tile('Mapping rules', rules) + '</div>' + (ui.msg ? '<p class="ig-msg ' + ui.msg.kind + '" role="status">' + esc(ui.msg.text) + '</p>' : '') +
-      '<div class="ig-bar"><h3>Integrations</h3><span><button type="button" class="btn small" data-act="reset" data-edit>Restore examples</button> <button type="button" class="btn ig-primary" data-act="new" data-edit>New integration</button></span></div>';
+      '<div class="ig-kpis">' + tile('Integrations', S.list.length, pub + ' published, ' + (S.list.length - pub) + ' draft') + tile('Device types', (IG.devices || []).length, 'cameras, radar, LiDAR, IoT, field equipment') + tile('Connectors', IG.connectors.length) + tile('Mapping rules', rules) + '</div>' + (ui.msg ? '<p class="ig-msg ' + ui.msg.kind + '" role="status">' + esc(ui.msg.text) + '</p>' : '') +
+      '<div class="ig-bar"><h3>Integrations</h3><label class="pick">Show <select data-ui="cat">' + opts(cats, ui.cat, 'All device types') + '</select></label><span><button type="button" class="btn small" data-act="reset" data-edit>Restore examples</button> <button type="button" class="btn ig-primary" data-act="new" data-edit>New integration</button></span></div>';
     if (ui.adding) {
       h += '<div class="card ig-new"><div class="card-head"><h2>New integration</h2></div><div class="ig-form">' + field('Name', '<input type="text" id="igNewName" maxlength="60" placeholder="For example: Speed camera vendor">') +
-        field('Start from a template (optional)', '<select id="igNewTpl">' + opts(S.templates.map(function (t, i) { return [String(i), t.name + ' → ' + entity(t.entity).label]; }), '', 'No template') + '</select>') +
+        field('Device type', '<select id="igNewDev">' + deviceOptions('') + '</select>') + field('Start from a template (optional)', '<select id="igNewTpl">' + opts(S.templates.map(function (t, i) { return [String(i), t.name + ' → ' + entity(t.entity).label]; }), '', 'No template') + '</select>') +
         '</div><div class="ig-actions"><button type="button" class="btn ig-primary" data-act="create">Create</button><button type="button" class="btn" data-act="cancelnew">Cancel</button></div></div>';
     }
-    h += '<div class="ig-cards">' + S.list.map(function (it) {
-      var e = entity(it.entity), c = connector(it.connector), broken = M.brokenRules(it.rules, it.schema).length;
+    h += '<div class="ig-cards">' + shown.map(function (it) {
+      var e = entity(it.entity), c = connector(it.connector), d = device(it.device), broken = M.brokenRules(it.rules, it.schema).length;
       return '<button type="button" class="ig-card" data-act="open" data-id="' + esc(it.id) + '"><span class="ig-card-top"><strong>' + esc(it.name) + ' → ' + esc(e.label) + '</strong><span>' + status(it) + '</span></span>' +
-        '<span class="muted">' + esc(c.name) + ' · ' + MODE[c.mode] + ' · ' + esc((it.format || '').toUpperCase()) + '</span>' +
+        '<span class="muted">' + (d ? esc(d.name) + ' · ' : '') + esc(c.name) + ' · ' + MODE[c.mode] + ' · ' + esc((it.format || '').toUpperCase()) + '</span>' +
         '<span class="ig-card-nums"><b>' + it.schema.length + '</b> source fields<b>' + it.rules.length + '</b> mapping rules<b>' + mappedCount(it) + ' of ' + e.fields.length + '</b> target fields mapped</span>' +
         (broken ? '<span class="ig-warn">Source schema changed: ' + broken + (broken === 1 ? ' rule needs' : ' rules need') + ' attention</span>' : '') + '</button>';
     }).join('') + '</div>';
-    if (!S.list.length) { h += '<p class="muted">No integrations yet. Choose “New integration” to onboard a data source.</p>'; }
+    if (!shown.length) { h += '<p class="muted">' + (S.list.length ? 'No integrations for this device type yet.' : 'No integrations yet.') + ' Choose “New integration” to onboard a data source.</p>'; }
     h += '<div class="ig-bar"><h3>Templates</h3><span class="muted">Reusable mappings for vendors with similar payloads</span></div><table class="facts ig-table">' + (S.templates.length ? S.templates.map(function (t, i) {
       return '<tr><td>' + esc(t.name) + '<span class="sub">' + esc(entity(t.entity).label) + ' · ' + t.rules.length + ' rules</span></td><td><button type="button" class="btn small" data-act="deltpl" data-i="' + i + '" data-edit>Remove</button></td></tr>';
     }).join('') : '<tr><td class="muted">No templates. Save one from the Publish step of an integration.</td><td></td></tr>') + '</table>';
@@ -110,8 +190,10 @@
     return h;
   }
   function stepType(it) {
-    return '<h3>1. Select the integration type</h3><p class="muted">How the source system delivers its data. The list comes from <code>integrations.connectors</code> in config.js.</p><div class="ig-tiles">' + IG.connectors.map(function (c) {
-      return '<button type="button" class="ig-tile' + (c.id === it.connector ? ' on' : '') + '" data-act="connector" data-id="' + c.id + '" data-edit aria-pressed="' + (c.id === it.connector) + '"><strong>' + esc(c.name) + '</strong><span>' + chip(MODE[c.mode]) + '</span><em>' + esc(c.note) + '</em></button>';
+    var d = device(it.device), usual = d ? d.connectors : [], list = IG.connectors.slice().sort(function (a, b) { return (usual.indexOf(a.id) < 0 ? 99 : usual.indexOf(a.id)) - (usual.indexOf(b.id) < 0 ? 99 : usual.indexOf(b.id)); });
+    return '<h3>1. Device and integration type</h3><div class="card"><div class="ig-form">' + field('What is being connected', '<select data-bind="device">' + deviceOptions(it.device) + '</select>', d ? 'Usually delivered by ' + usual.map(function (c) { return connector(c).name; }).join(', ') + '. Writes to ' + entity(d.entity).label + '.' : 'Cameras, radar, LiDAR, traffic equipment, IoT sensors, vehicles, device health and control systems. The list comes from integrations.devices in config.js.') + '</div></div>' +
+      '<p class="muted">How the source delivers its data. The list comes from <code>integrations.connectors</code> in config.js.</p><div class="ig-tiles">' + list.map(function (c) {
+      return '<button type="button" class="ig-tile' + (c.id === it.connector ? ' on' : '') + '" data-act="connector" data-id="' + c.id + '" data-edit aria-pressed="' + (c.id === it.connector) + '"><strong>' + esc(c.name) + '</strong><span>' + chip(MODE[c.mode]) + (usual.indexOf(c.id) >= 0 ? chip('Usual for this device', 'st-live') : '') + '</span><em>' + esc(c.note) + '</em></button>';
     }).join('') + '</div>';
   }
   function stepConnect(it) {
@@ -129,9 +211,9 @@
     else { h += '<p class="muted">Streaming: records are read as messages arrive.</p>'; }
     h += '</div><div class="ig-actions"><button type="button" class="btn" data-act="conn" data-edit>Check connection settings</button>' + (it.connOk ? chip('Settings complete', 'st-live') : '') + '</div></div>';
     h += '<div class="card"><div class="card-head"><h2>Sample payload</h2><span class="muted">' + (records(it).length ? records(it).length + ' records' : 'none yet') + '</span></div><div class="ig-form">' +
-      '<div class="ig-row">' + field('Format', '<select data-bind="format">' + opts(c.formats.map(function (f) { return [f, f.toUpperCase()]; }), it.format) + '</select>') + field('Record path', '<input type="text" data-bind="recordPath" placeholder="auto" value="' + esc(it.recordPath === '$' ? '' : it.recordPath || '') + '">') + '</div>' +
+      '<div class="ig-row">' + field('Format', '<select data-bind="format">' + opts(c.formats.concat(c.formats.indexOf(it.format) < 0 ? [it.format] : []).map(function (f) { return [f, f.toUpperCase()]; }), it.format) + '</select>') + field('Record path', '<input type="text" data-bind="recordPath" placeholder="auto" value="' + esc(it.recordPath === '$' ? '' : it.recordPath || '') + '">') + '</div>' +
       field('Paste a response, a message or file contents', '<textarea class="ig-code" rows="9" data-bind="sample" spellcheck="false">' + esc(it.sample || '') + '</textarea>') +
-      '</div><div class="ig-actions"><button type="button" class="btn ig-primary" data-act="discover" data-edit>Discover fields</button><label class="btn ig-file">Upload a file<input type="file" id="igFile" accept=".json,.csv,.xml,.txt,.tsv" data-edit></label></div></div></div>';
+      '</div><div class="ig-actions"><button type="button" class="btn ig-primary" data-act="discover" data-edit>Discover fields</button><label class="btn ig-file">Upload a file<input type="file" id="igFile" accept=".json,.csv,.xml,.txt,.tsv" data-edit></label>' + (device(it.device) ? '<button type="button" class="btn" data-act="loadsample" data-edit>Load the example for this device</button>' : '') + '</div></div></div>';
     if (it.drift) { h += driftBox(it); }
     h += '<div class="card"><div class="card-head"><h2>Discovered schema</h2><span class="muted">' + it.schema.length + ' fields' + (it.recordPath && it.recordPath !== '$' ? ' · records at ' + esc(it.recordPath) : '') + '</span></div>';
     h += it.schema.length ? '<div class="ig-scroll"><table class="ig-grid"><thead><tr><th>Field</th><th>Type</th><th>Example</th><th>In every record</th></tr></thead><tbody>' + it.schema.map(function (f) {
@@ -233,7 +315,8 @@
   }
   function contract(it) {
     return { integration: { id: it.id, name: it.name, connectorType: it.connector, status: it.status, schemaVersion: entity(it.entity).version, targetEntity: it.entity, recordPath: it.recordPath || '$', format: it.format,
-      connection: Object.assign({}, it.config, { authType: it.auth.type, credentialRef: it.auth.type === 'None' ? null : it.auth.ref || null }), schedule: connector(it.connector).mode === 'streaming' ? 'streaming' : it.every }, mappings: M.toContract(it.rules) };
+      connection: Object.assign({}, it.config, { authType: it.auth.type, credentialRef: it.auth.type === 'None' ? null : it.auth.ref || null }), schedule: connector(it.connector).mode === 'streaming' ? 'streaming' : it.every, deviceType: it.device || null },
+      storage: (function (st) { return { table: st.table, timeColumn: 'time', tags: st.tags.map(function (f) { return col(f.name); }), measures: st.measures.map(function (f) { return col(f.name); }), rawRetention: st.retention, rollups: st.rollups }; })(storeOf(it.entity)), mappings: M.toContract(it.rules) };
   }
   function stepPublish(it, e) {
     var r = runTest(it, e), live = liveVersion(it), next = it.versions.reduce(function (m, v) { return Math.max(m, v.v); }, 0) + 1, c = connector(it.connector);
@@ -246,6 +329,12 @@
     h += '<div class="card"><div class="card-head"><h2>Versions</h2><span class="muted">' + it.versions.length + '</span></div>' + (it.versions.length ? '<table class="facts ig-table">' + it.versions.slice().reverse().map(function (v) {
       return '<tr><td>Version ' + v.v + (v.v === it.active ? ' ' + chip('Live', 'st-live') : '') + '<span class="sub">' + esc(when(v.time)) + ' · ' + esc(v.user) + ' · ' + v.rules.length + ' rules' + (v.note ? ' · ' + esc(v.note) : '') + '</span></td><td>' + (v.v === it.active && !dirty(it) ? '' : '<button type="button" class="btn small" data-act="rollback" data-v="' + v.v + '" data-edit>' + (v.v === it.active ? 'Discard changes' : 'Roll back') + '</button>') + '</td></tr>';
     }).join('') + '</table>' : '<p class="muted">No versions yet.</p>') + '</div></div>';
+    var st = storeOf(it.entity), feeds = (IG.analytics || []).filter(function (u) { return u.needs.some(function (n) { return n.entity === it.entity; }); });
+    h += '<div class="card"><div class="card-head"><h2>Storage and analytics</h2><button type="button" class="btn small" data-act="data">Open data and analytics</button></div><table class="facts ig-table">' +
+      '<tr><td>Time-series table</td><td><code>' + st.table + '</code> · time column <code>time</code></td></tr><tr><td>Series identified by</td><td>' + esc(st.tags.map(function (f) { return f.name; }).join(', ') || 'none') + '</td></tr>' +
+      '<tr><td>Measures</td><td>' + esc(st.measures.map(function (f) { return f.name; }).join(', ') || 'none') + '</td></tr><tr><td>Raw records kept</td><td>' + esc(st.retention) + ', then rollups every ' + esc(st.rollups.join(', ')) + '</td></tr>' +
+      '<tr><td>Feeds</td><td>' + (feeds.length ? feeds.map(function (u) { return esc(u.name) + ' <span class="muted">(' + u.kind.toLowerCase() + ')</span>'; }).join(' · ') : 'No report or model uses this entity yet') + '</td></tr></table>' +
+      '<p class="muted">Design only: no database or model runs in this demonstrator.</p></div>';
     h += '<div class="card"><div class="card-head"><h2>Mapping definition</h2><span><button type="button" class="btn small" data-act="copy">Copy mapping JSON</button> <button type="button" class="btn small" data-act="download">Download</button></span></div><p class="muted">In the shape of the backend contract (<code>saveMapping</code>: <code>MappingRuleInput</code>). Credentials appear only as a reference.</p><pre class="ig-pre">' + esc(JSON.stringify(contract(it), null, 2)) + '</pre></div>' +
       '<div class="ig-actions"><button type="button" class="btn" data-act="savetpl" data-edit>Save as a template</button><button type="button" class="btn" data-act="monitor">Open monitoring</button><button type="button" class="btn ig-danger" data-act="delete" data-edit>Delete this integration</button></div>';
     return h;
@@ -261,6 +350,37 @@
       '<div class="ig-row"><label class="ig-check"><input type="checkbox" id="igFReq"> Required</label><label class="ig-check"><input type="checkbox" id="igFPii"> Personal data (PII)</label></div>' + field('Note', '<input type="text" id="igFNote" maxlength="80">') + '</div><div class="ig-actions"><button type="button" class="btn ig-primary" data-act="addfield" data-edit>Add field</button></div></div>' +
       '<div class="card"><div class="card-head"><h2>Version history</h2></div><table class="facts ig-table"><tr><td>Version 1<span class="sub">Built-in definition</span></td><td></td></tr>' + e.history.map(function (x) { return '<tr><td>Version ' + x.v + '<span class="sub">' + esc(when(x.time)) + ' · ' + esc(x.user) + '</span></td><td>' + esc(x.change) + '</td></tr>'; }).join('') + '</table>' +
       '<div class="card-head sub-head"><h2>Used by</h2></div><p class="muted">' + (users.length ? users.map(function (x) { return esc(x.name); }).join(', ') : 'No integration maps to this entity yet.') + '</p></div></div>';
+  }
+  /* ---------- view: data and analytics ---------- */
+  function viewData() {
+    var names = IG.entities.map(function (e) { return e.name; }), fed = names.filter(function (n) { return sources(n).length; }), rows = names.reduce(function (s, n) { return s + rowsPerDay(n); }, 0), gb = names.reduce(function (s, n) { return s + gbPerMonth(n); }, 0);
+    var ucs = IG.analytics || [], ready = ucs.map(readiness), kinds = []; ucs.forEach(function (u) { if (kinds.indexOf(u.kind) < 0) { kinds.push(u.kind); } });
+    if (!ui.ddl) { ui.ddl = fed[0] || names[0]; }
+    var st = storeOf(ui.ddl);
+    var h = '<p class="notice"><strong>Design view.</strong> No database is running and no model is trained or run here. The table definitions are generated from the entities and can be copied; volumes are estimates from the example rates. Which reports and models the data can feed is worked out from the published mappings, and is real.</p>' +
+      (ui.msg ? '<p class="ig-msg ' + ui.msg.kind + '" role="status">' + esc(ui.msg.text) + '</p>' : '') +
+      '<div class="ig-kpis">' + tile('Time-series tables', fed.length + ' of ' + names.length, 'with a published source') + tile('Records a day', num(Math.round(rows)), 'estimate') + tile('Storage a month', (gb >= 10 ? Math.round(gb) : gb.toFixed(1)) + '<small> GB</small>', 'after about ' + (ST.compression || 10) + '× compression') + tile('Use cases with data', ready.filter(function (r) { return r.state === 'ready'; }).length + ' of ' + ucs.length) + '</div>' +
+      '<div class="card"><div class="card-head"><h2>Time-series database</h2><span class="muted">' + esc(ST.engine || '') + '</span></div><p class="muted">Every entity is time-stamped, so each is kept as a time-series table: <b>tags</b> identify the series (device, lane, class), <b>measures</b> are the values. Raw records are kept for the retention period; rollups stay for trends, reports and model training. ' + esc(ST.alternatives || '') + '.</p>' +
+      '<div class="ig-scroll"><table class="ig-grid"><thead><tr><th>Entity</th><th>Tags</th><th>Measures</th><th>Published sources</th><th>Records a day</th><th>Raw records kept</th><th>Rollups</th></tr></thead><tbody>' + names.map(function (n) {
+        var x = storeOf(n), src = sources(n);
+        return '<tr class="ig-click' + (n === ui.ddl ? ' sel' : '') + '" data-act="ddl" data-name="' + n + '"><td>' + esc(x.entity.label) + '<span class="sub ig-mono">' + x.table + '</span></td><td>' + esc(x.tags.map(function (f) { return f.name; }).join(', ') || '—') + '</td><td>' + x.measures.length + '<span class="sub">' + esc(short(x.measures.map(function (f) { return f.name; }).join(', '), 44)) + '</span></td><td>' + (src.length ? esc(src.map(function (i) { return i.name; }).join(', ')) : '<span class="muted">none</span>') + '</td><td>' + (src.length ? num(Math.round(rowsPerDay(n))) : '—') + '</td><td>' + esc(x.retention) + '</td><td>' + esc(x.rollups.join(', ')) + '</td></tr>';
+      }).join('') + '</tbody></table></div></div>' +
+      '<div class="card"><div class="card-head"><h2>' + esc(st.entity.label) + ': table definition</h2><button type="button" class="btn small" data-act="copyddl">Copy SQL</button></div><div class="ig-form"><div class="ig-row">' + field('Keep raw records for', '<select data-st="retention">' + opts(ST.retentionChoices || [st.retention], st.retention) + '</select>') +
+      '<div class="field"><span>Rollups</span><div class="ig-pills">' + (ST.rollupChoices || st.rollups).map(function (r) { return '<button type="button" class="ig-pill' + (st.rollups.indexOf(r) >= 0 ? ' on' : '') + '" data-act="roll" data-r="' + esc(r) + '" data-edit>' + esc(r) + '</button>'; }).join('') + '</div></div></div></div><pre class="ig-pre">' + esc(ddl(ui.ddl)) + '</pre></div>' +
+      '<div class="ig-bar"><h3>Reports, analytics and machine-learning use cases</h3><label class="pick">Show <select data-ui="kind">' + opts(kinds, ui.kind, 'All kinds') + '</select></label></div><div class="ig-ucs">';
+    ucs.forEach(function (u, i) {
+      if (ui.kind && u.kind !== ui.kind) { return; }
+      var r = ready[i], open = ui.uc === i;
+      h += '<div class="ig-uc' + (open ? ' open' : '') + '"><button type="button" class="ig-uc-head" data-act="uc" data-i="' + i + '" aria-expanded="' + open + '"><strong>' + esc(u.name) + '</strong><span>' + chip(u.kind, 'tf') + chip(READY[r.state][0], READY[r.state][1]) + '</span>' +
+        '<em>Needs ' + u.needs.map(function (n) { return esc(entity(n.entity).label) + (n.optional ? ' (optional)' : ''); }).join(', ') + ' · ' + (/^\d/.test(u.grain) ? 'every ' : '') + esc(u.grain) + '</em></button>';
+      if (open) {
+        h += '<div class="ig-uc-body"><table class="facts ig-table"><tr><td>Method</td><td>' + esc(u.method) + '</td></tr><tr><td>Result</td><td>' + esc(u.output) + '</td></tr><tr><td>Used in</td><td>' + esc(u.section) + '</td></tr></table><ul class="ig-checks">' + r.cover.map(function (c) {
+          return '<li class="' + (c.ok ? 'yes' : 'no') + '"><b>' + (c.ok ? '✓' : c.need.optional ? '–' : '✕') + '</b><span>' + esc(entity(c.need.entity).label) + (c.need.optional ? ' (optional)' : '') + ': ' + (c.src.length ? 'from ' + esc(c.src.map(function (x) { return x.name; }).join(', ')) + (c.missing.length ? '; not mapped: ' + esc(c.missing.join(', ')) : '; all ' + c.need.fields.length + ' fields mapped') : 'no published integration. Needs ' + esc(c.need.fields.join(', '))) + '</span></li>';
+        }).join('') + '</ul><div class="ig-actions"><button type="button" class="btn small" data-act="copyq" data-i="' + i + '">Copy feature query</button></div><pre class="ig-pre">' + esc(featureQuery(u)) + '</pre></div>';
+      }
+      h += '</div>';
+    });
+    return h + '</div>';
   }
   /* ---------- view: monitoring (synthetic) ---------- */
   function metric(it, now) {
@@ -305,7 +425,7 @@
   function render(keepScroll) {
     var it = cur(), top = body.scrollTop;
     Array.prototype.forEach.call($('igTabs').children, function (b) { var on = b.getAttribute('data-t') === ui.tab; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
-    body.innerHTML = ui.tab === 'registry' ? viewRegistry() : ui.tab === 'monitor' ? viewMonitor() : it ? viewStudio(it) : viewList();
+    body.innerHTML = ui.tab === 'registry' ? viewRegistry() : ui.tab === 'monitor' ? viewMonitor() : ui.tab === 'data' ? viewData() : it ? viewStudio(it) : viewList();
     if (!can()) { Array.prototype.forEach.call(body.querySelectorAll('[data-edit], input, select:not([data-ui]), textarea'), function (el) { el.disabled = true; }); }
     body.scrollTop = keepScroll === false ? 0 : top;
     drawLines(); ui.msg = null;
@@ -351,6 +471,7 @@
     create: function () {
       var name = ($('igNewName').value || '').trim() || 'New integration', ti = $('igNewTpl').value, tpl = ti === '' ? null : S.templates[Number(ti)];
       var it = fromSeed({ id: slug(name) + '-' + Date.now().toString(36), name: name, connector: 'rest', entity: tpl ? tpl.entity : IG.entities[0].name, rules: tpl ? clone(tpl.rules) : [], format: 'json' }, 0);
+      var nd = device($('igNewDev').value); if (nd) { it.connector = nd.connectors[0]; if (!tpl) { it.entity = nd.entity; } setDevice(it, nd.id); }
       S.list.push(it); ui.adding = false; ui.openId = it.id; ui.step = 0; ui.sel = -1; save(); audit('Integration created: ' + name);
       if (tpl) { say('Template “' + tpl.name + '” applied. Discover the source fields, then check each rule’s source.', 'ok'); } return false;
     },
@@ -404,6 +525,16 @@
     download: function (el, it) { download(slug(it.name) + '-mapping.json', JSON.stringify(contract(it), null, 2)); return true; },
     savetpl: function (el, it) { S.templates.push({ name: it.name + ' mapping', entity: it.entity, rules: clone(it.rules) }); save(); say('Saved as the template “' + it.name + ' mapping”. Choose it when creating a new integration.'); },
     monitor: function () { ui.tab = 'monitor'; return false; },
+    data: function (el, it) { ui.tab = 'data'; if (it) { ui.ddl = it.entity; } return false; },
+    loadsample: function (el, it) { var d = device(it.device); if (!d) { return; } var before = it.schema; loadSample(it, d); var df = before.length ? M.drift(before, it.schema) : null; it.drift = df && df.any ? df : null; save(); say('Example payload for ' + d.name + ' loaded: ' + it.schema.length + ' fields.' + (it.drift ? ' It differs from the previous schema: see below.' : ''), it.drift ? 'warn' : 'ok'); },
+    ddl: function (el) { ui.ddl = el.getAttribute('data-name'); },
+    copyddl: function () { copyText(ddl(ui.ddl), 'Table definition'); },
+    copyq: function (el) { copyText(featureQuery(IG.analytics[Number(el.getAttribute('data-i'))]), 'Feature query'); },
+    uc: function (el) { var i = Number(el.getAttribute('data-i')); ui.uc = ui.uc === i ? -1 : i; },
+    roll: function (el) {
+      var st = storeOf(ui.ddl), r = el.getAttribute('data-r'), list = st.rollups.slice(), k = list.indexOf(r); if (k >= 0) { list.splice(k, 1); } else { list.push(r); }
+      list.sort(function (a, b) { return days(a) - days(b); }); S.store[ui.ddl] = Object.assign({}, S.store[ui.ddl], { rollups: list }); save(); audit('Storage: ' + ui.ddl + ' rollups set to ' + (list.join(', ') || 'none'));
+    },
     'delete': function (el, it) { if (el.getAttribute('data-sure') !== '1') { el.setAttribute('data-sure', '1'); el.textContent = 'Delete: choose again to confirm'; return true; } S.list = S.list.filter(function (x) { return x !== it; }); ui.openId = null; save(); say('“' + it.name + '” deleted.'); audit('Integration deleted: ' + it.name); return false; },
     addfield: function () {
       var name = ($('igFName').value || '').trim(), e = entity(ui.entity);
@@ -419,7 +550,7 @@
       say('Field ' + name + ' removed. ' + e.label + ' is now schema version ' + (e.version + 1) + '.'); audit('Schema registry: ' + e.name + ' field ' + name + ' removed');
     }
   };
-  var VIEW_ONLY = { back: 1, open: 1, step: 1, sel: 1, rec: 1, recgo: 1, csv: 1, copy: 1, download: 1, monitor: 1, nosug: 1 };
+  var VIEW_ONLY = { back: 1, open: 1, step: 1, sel: 1, rec: 1, recgo: 1, csv: 1, copy: 1, download: 1, monitor: 1, nosug: 1, data: 1, ddl: 1, copyddl: 1, copyq: 1, uc: 1 };
   body.addEventListener('click', function (ev) {
     var el = ev.target.closest('[data-act]'), it = cur();
     if (el) {
@@ -440,7 +571,9 @@
     var el = ev.target, it = cur(), redraw = ev.type === 'change' && (el.tagName === 'SELECT' || el.type === 'checkbox'), v = el.type === 'checkbox' ? el.checked : el.value, k;
     if (el.getAttribute('data-ui')) { ui[el.getAttribute('data-ui')] = v; render(); return; }
     if (el.id === 'igFile') { var f = el.files && el.files[0]; if (f && it) { var rd = new FileReader(); rd.onload = function () { it.sample = String(rd.result); it.format = M.sniff(it.sample); var c = connector(it.connector); if (c.formats.indexOf(it.format) < 0) { say('This connector expects ' + c.formats.join(' or ').toUpperCase() + '; the file looks like ' + it.format.toUpperCase() + '.', 'warn'); it.format = c.formats[0]; } else { try { discover(it); } catch (e) { say(e.message, 'warn'); } } save(); render(); }; rd.readAsText(f); } return; }
+    if ((k = el.getAttribute('data-st'))) { if (can()) { S.store[ui.ddl] = Object.assign({}, S.store[ui.ddl]); S.store[ui.ddl][k] = v; save(); audit('Storage: ' + ui.ddl + ' raw records kept for ' + v); } render(); return; }
     if (!it || !can()) { return; }
+    if (el.getAttribute('data-bind') === 'device') { setDevice(it, v); save(); render(); return; }
     if ((k = el.getAttribute('data-bind'))) { it[k] = v; if (k === 'sample' || k === 'format' || k === 'recordPath') { cache = {}; } }
     else if ((k = el.getAttribute('data-cfg'))) { it.config[k] = v; it.connOk = false; }
     else if ((k = el.getAttribute('data-auth'))) { it.auth[k] = v; it.connOk = false; }
@@ -468,15 +601,15 @@
     if (isOpen) { return; }
     if (T.analytics && !$('analytics').hidden) { T.analytics.close(); }
     if (T.osintPage && T.osintPage.isOpen()) { T.osintPage.close(); }
-    isOpen = true; page.hidden = false; document.body.classList.add('ig-open'); $('integBtn').classList.add('active'); $('integBtn').setAttribute('aria-pressed', 'true');
+    isOpen = true; page.hidden = false; document.body.classList.add('ig-open'); [$('integBtn'), $('integTopBtn')].forEach(function (b) { if (b) { b.classList.add('active'); b.setAttribute('aria-pressed', 'true'); } });
     render(false); audit('Opened the Integration Studio');
   }
   function close() {
     if (!isOpen) { return; }
-    isOpen = false; page.hidden = true; document.body.classList.remove('ig-open'); $('integBtn').classList.remove('active'); $('integBtn').setAttribute('aria-pressed', 'false'); clearInterval(timer); timer = 0;
+    isOpen = false; page.hidden = true; document.body.classList.remove('ig-open'); [$('integBtn'), $('integTopBtn')].forEach(function (b) { if (b) { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); } }); clearInterval(timer); timer = 0;
   }
   C.onReady(function () {
-    $('integBtn').addEventListener('click', function () { if (isOpen) { close(); } else { open(); } });
+    [$('integBtn'), $('integTopBtn')].forEach(function (b) { if (b) { b.addEventListener('click', function () { if (isOpen) { close(); } else { open(); } }); } });
     $('igClose').addEventListener('click', close);
     $('igTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-t]'); if (b) { var t = b.getAttribute('data-t'); if (t === 'list' && ui.tab === 'list') { ui.openId = null; } ui.tab = t; render(false); } });
     ['osintBtn', 'analyticsBtn'].forEach(function (id) { var b = $(id); if (b) { b.addEventListener('click', close); } });

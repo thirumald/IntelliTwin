@@ -54,6 +54,8 @@ that selects or clears everything under it (a dash means some are on); a second 
 **OSINT** opens from the menu as a page of its own, like Analytics: a 3D map of the feeds (UAE 3D, World or the open
 region), a symbol legend, and the feed cards in a grid. All of it is real and fetched by the Live data workflow.
 
+The page opens on **City 3D**: street level over the open region with the 3D buildings shown and the camera slowly orbiting. Touching the map pauses the orbit; the **Orbit** button turns it off. `osintMap.defaultView` (`region`, `uae` or `world`), `osintMap.orbit` and `osintMap.orbitDegPerSec` in `config.js` set this.
+
 | Card | Source | Key |
 | --- | --- | --- |
 | Weather now | Open-Meteo, for the open region | none |
@@ -107,7 +109,7 @@ belong to, and only one is open at a time.
 the OSINT page.
 
 - **Buildings.** The OSINT map now draws the same 3D buildings as the main map.
-  "Open region" on the OSINT page flies to the selected city at street level.
+  "City 3D" on the OSINT page shows the selected city at street level.
 - **Floors.** A slider cuts all buildings at the chosen floor and marks that
   floor with a coloured band. Floors are **estimated from building height**
   (`map3d.floorHeightM`, 3.3 m by default). There are no real floor plans in the

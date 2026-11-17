@@ -35,6 +35,7 @@ There is no server-side component at run time. The simulation runs once, at buil
 | `js/vehicles3d.js` | Individual vehicles: per-link placement and the 3D car mesh |
 | `js/events.js` | Illustrative accidents and fines generated from the simulation |
 | `js/assistant.js` | The built-in assistant |
+| `js/analytics-nav.js` | Analytics: region, scenario and data-layer drop-downs and the tree of sections and charts |
 | `js/mapping-engine.js`, `js/integrations.js` | Integration Studio: field mapping engine and page ([integration-studio.md](integration-studio.md)) |
 | `vendor/` | MapLibre GL JS 4.7.1 and deck.gl 9.0.38, vendored so the app needs no CDN |
 | `data/` | Pipeline output read by the app (committed by the workflow) |

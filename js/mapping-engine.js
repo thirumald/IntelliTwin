@@ -114,6 +114,13 @@
     else { try { data = JSON.parse(text); } catch (e) { throw new Error('The sample is not valid JSON: ' + e.message); } }
     var found = findRecords(data, recordPath);
     found.records = found.records.filter(function (r) { return r && typeof r === 'object'; });
+    // When the records sit inside a larger message (a LiDAR frame, an API envelope), the message's own plain
+    // values are offered to every record as _parent.name, so a sensor id or frame time can be mapped.
+    if (found.recordPath !== '$' && data && typeof data === 'object' && !Array.isArray(data)) {
+      var parent = {}, any = false;
+      Object.keys(data).forEach(function (k) { if (data[k] === null || typeof data[k] !== 'object') { parent[k] = data[k]; any = true; } });
+      if (any) { found.records = found.records.map(function (r) { var o = {}; Object.keys(r).forEach(function (k) { o[k] = r[k]; }); o._parent = parent; return o; }); }
+    }
     if (!found.records.length) { throw new Error('No records found in the sample.'); }
     found.infer = infer; return found;
   }
@@ -365,8 +372,10 @@
     ['device', 'camera', 'cam', 'sensor', 'detector', 'unit', 'source'], ['confidence', 'conf', 'score', 'probability', 'certainty'], ['class', 'type', 'category', 'kind', 'cls'],
     ['latitude', 'lat', 'y'], ['longitude', 'lon', 'lng', 'long', 'x'], ['speed', 'velocity', 'spd', 'kmh', 'kph'], ['plate', 'licence', 'license', 'lpr', 'anpr', 'registration', 'reg'],
     ['flow', 'volume', 'count', 'vehicles'], ['occupancy', 'occ', 'load'], ['description', 'desc', 'details', 'text', 'remarks', 'note'], ['status', 'state'], ['severity', 'priority', 'level'],
-    ['direction', 'heading', 'bearing', 'dir'], ['delay', 'lateness', 'late'], ['temperature', 'temp'], ['humidity', 'rh'], ['noise', 'sound', 'db', 'laeq'], ['route', 'line', 'service'], ['junction', 'intersection', 'node']];
-  var NOISE = { capture: 1, captured: 1, event: 1, detected: 1, detection: 1, read: 1, reading: 1, measured: 1, value: 1, vehicle: 1, veh: 1, the: 1, of: 1, location: 1, position: 1, pos: 1, geo: 1, gps: 1, data: 1, info: 1, 0: 1 };
+    ['direction', 'heading', 'bearing', 'dir'], ['delay', 'lateness', 'late'], ['temperature', 'temp'], ['humidity', 'rh'], ['noise', 'sound', 'db', 'laeq'], ['route', 'line', 'service'], ['junction', 'intersection', 'node'], ['length', 'len', 'l'], ['width', 'wid', 'w'], ['height', 'hgt', 'h'], ['storage', 'disk'], ['firmware', 'fw'],
+    ['signal', 'rssi'], ['track', 'obj', 'object'], ['facility', 'site', 'carpark'], ['bay', 'space', 'slot'], ['battery', 'batt'], ['voltage', 'volt', 'volts'], ['error', 'fault'], ['visibility', 'vis'], ['rain', 'precipitation', 'precip'],
+    ['snapshot', 'image', 'picture'], ['limit', 'max'], ['wind', 'ws']];
+  var NOISE = { capture: 1, captured: 1, event: 1, detected: 1, detection: 1, read: 1, reading: 1, measured: 1, value: 1, vehicle: 1, veh: 1, the: 1, of: 1, location: 1, position: 1, pos: 1, geo: 1, gps: 1, data: 1, info: 1, 0: 1, parent: 1, deg: 1, pct: 1, sec: 1, m: 1, c: 1, v: 1, mm: 1, per: 1, hour: 1, avg: 1, received: 1, polled: 1, obs: 1, frame: 1, last: 1, s: 1 };
   var CANON = {}; SYN.forEach(function (g) { g.forEach(function (w) { CANON[w] = g[0]; }); });
   function words(name) { return String(name).replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean).map(function (w) { return CANON[w] || w; }); }
   function nameScore(src, tgt) {
@@ -393,6 +402,7 @@
     if (NUMERIC[tf.type]) {
       var nums = (samples || []).map(Number).filter(function (n) { return !isNaN(n); }), top = nums.length ? Math.max.apply(null, nums) : 0;
       if (tf.max === 1 && top > 1 && top <= 100) { args = defaultArgs('scale'); args.factor = 0.01; return { transform: 'scale', args: args }; }
+      if (tf.max === 100 && top > 0 && top <= 1 && nums.some(function (n) { return n % 1 !== 0; })) { args = defaultArgs('scale'); args.factor = 100; args.decimals = 1; return { transform: 'scale', args: args }; }
       if (tf.type === 'integer') { return sf.type === 'integer' ? { transform: 'direct', args: {} } : { transform: 'toInteger', args: {} }; }
       return sf.type === 'number' || sf.type === 'integer' ? { transform: 'direct', args: {} } : { transform: 'toDecimal', args: defaultArgs('toDecimal') };
     }
@@ -419,6 +429,19 @@
       var samples = (records || []).slice(0, 50).map(function (r) { return get(r, p.sf.path); }), st = suggestTransform(p.sf, p.tf, samples);
       out.push({ sourcePath: p.sf.path, targetPath: p.tf.name, transform: st.transform, args: st.args, required: !!p.tf.required, score: Math.round(p.score * 100) / 100,
         reason: (p.score >= 0.85 ? 'Names match' : 'Names are similar') + (p.sf.type === p.tf.type ? ', same type' : '') });
+    });
+    // Required fields still unmatched: fall back on what the values look like (the only date, a value shaped like an identifier).
+    (entity.fields || []).forEach(function (tf) {
+      if (!tf.required || taken[tf.name]) { return; }
+      var isId = tf.type === 'string' && /Id$/.test(tf.name), pick = null;
+      (schema || []).forEach(function (sf) {
+        if (pick || usedSrc[sf.path] || sf.type === 'object' || sf.type === 'array') { return; }
+        if (tf.type === 'datetime' ? sf.type === 'datetime' || (sf.type === 'integer' && Number(sf.sample) > 1e9) : isId && sf.type === 'string' && /^[A-Za-z]{2,}[A-Za-z0-9]*[-_][A-Za-z0-9_-]*\d$/.test(String(sf.sample))) { pick = sf; }
+      });
+      if (!pick) { return; }
+      taken[tf.name] = true; usedSrc[pick.path] = true;
+      var st = suggestTransform(pick, tf, (records || []).slice(0, 50).map(function (r) { return get(r, pick.path); }));
+      out.push({ sourcePath: pick.path, targetPath: tf.name, transform: st.transform, args: st.args, required: true, score: 0.5, reason: tf.type === 'datetime' ? 'The only unused date' : 'Looks like an identifier' });
     });
     return out;
   }
